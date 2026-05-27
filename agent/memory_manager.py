@@ -592,13 +592,13 @@ class MemoryManager:
     def initialize_all(self, session_id: str, **kwargs) -> None:
         """Initialize all providers.
 
-        Automatically injects ``hermes_home`` into *kwargs* so that every
+        Automatically injects ``eco_home`` into *kwargs* so that every
         provider can resolve profile-scoped storage paths without importing
-        ``get_hermes_home()`` themselves.
+        ``get_eco_home()`` themselves.
         """
-        if "hermes_home" not in kwargs:
-            from hermes_constants import get_hermes_home
-            kwargs["hermes_home"] = str(get_hermes_home())
+        if "eco_home" not in kwargs:
+            from eco_constants import get_eco_home
+            kwargs["eco_home"] = str(get_eco_home())
         for provider in self._providers:
             try:
                 provider.initialize(session_id=session_id, **kwargs)

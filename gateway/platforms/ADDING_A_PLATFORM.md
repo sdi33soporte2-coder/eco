@@ -1,6 +1,6 @@
 # Adding a New Messaging Platform
 
-There are two ways to add a platform to the Hermes gateway:
+There are two ways to add a platform to the ECO gateway:
 
 ## Plugin Path (Recommended for Community/Third-Party)
 
@@ -61,7 +61,7 @@ plugin guide with code examples and hook documentation.
 
 ## Built-in Path (Core Contributors Only)
 
-Checklist for integrating a platform directly into the Hermes core.
+Checklist for integrating a platform directly into the ECO core.
 Use this as a reference when building a built-in adapter — every item here
 is a real integration point. Missing any of them will cause broken
 functionality, missing features, or inconsistent behavior.

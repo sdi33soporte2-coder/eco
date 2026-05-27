@@ -1,15 +1,15 @@
-# Hermes Agent v0.13.0 (v2026.5.7)
+# ECO Agent v0.13.0 (v2026.5.7)
 
 **Release Date:** May 7, 2026
 **Since v0.12.0:** 864 commits · 588 merged PRs · 829 files changed · 128,366 insertions · 282 issues closed (13 P0, 36 P1) · 295 community contributors (including co-authors)
 
-> The Tenacity Release — Hermes Agent now finishes what it starts. Kanban ships as a durable multi-agent board (heartbeat, reclaim, zombie detection, auto-block on incomplete exit, per-task retries, hallucination recovery). `/goal` keeps the agent locked on a target across turns (Ralph loop). Checkpoints v2 rewrites state persistence with real pruning. Gateway auto-resumes interrupted sessions after restart. Cron grows a `no_agent` watchdog mode. A security wave closes 8 P0s — redaction is now ON by default, Discord role-allowlists are guild-scoped, WhatsApp rejects strangers by default, and TOCTOU windows close across auth.json and MCP OAuth. Google Chat becomes the 20th platform. Providers become a pluggable surface. Seven i18n locales ship.
+> The Tenacity Release — ECO Agent now finishes what it starts. Kanban ships as a durable multi-agent board (heartbeat, reclaim, zombie detection, auto-block on incomplete exit, per-task retries, hallucination recovery). `/goal` keeps the agent locked on a target across turns (Ralph loop). Checkpoints v2 rewrites state persistence with real pruning. Gateway auto-resumes interrupted sessions after restart. Cron grows a `no_agent` watchdog mode. A security wave closes 8 P0s — redaction is now ON by default, Discord role-allowlists are guild-scoped, WhatsApp rejects strangers by default, and TOCTOU windows close across auth.json and MCP OAuth. Google Chat becomes the 20th platform. Providers become a pluggable surface. Seven i18n locales ship.
 
 ---
 
 ## ✨ Highlights
 
-- **Multi-agent Kanban — delegate to an AI team that actually finishes** — Spin up a durable board, drop tasks on it, and let multiple Hermes workers pick them up, hand off, and close them out. Heartbeats, reclaim, zombie detection, retry budgets, and a hallucination gate keep the team honest. One install, many kanbans. ([#17805](https://github.com/NousResearch/hermes-agent/pull/17805), [#19653](https://github.com/NousResearch/hermes-agent/pull/19653), [#20232](https://github.com/NousResearch/hermes-agent/pull/20232), [#20332](https://github.com/NousResearch/hermes-agent/pull/20332), [#21330](https://github.com/NousResearch/hermes-agent/pull/21330), [#21183](https://github.com/NousResearch/hermes-agent/pull/21183), [#21214](https://github.com/NousResearch/hermes-agent/pull/21214))
+- **Multi-agent Kanban — delegate to an AI team that actually finishes** — Spin up a durable board, drop tasks on it, and let multiple ECO workers pick them up, hand off, and close them out. Heartbeats, reclaim, zombie detection, retry budgets, and a hallucination gate keep the team honest. One install, many kanbans. ([#17805](https://github.com/NousResearch/hermes-agent/pull/17805), [#19653](https://github.com/NousResearch/hermes-agent/pull/19653), [#20232](https://github.com/NousResearch/hermes-agent/pull/20232), [#20332](https://github.com/NousResearch/hermes-agent/pull/20332), [#21330](https://github.com/NousResearch/hermes-agent/pull/21330), [#21183](https://github.com/NousResearch/hermes-agent/pull/21183), [#21214](https://github.com/NousResearch/hermes-agent/pull/21214))
 
 - **`/goal` — the agent doesn't forget what you asked it to do** — Lock the agent onto a target and it stays on task across turns. The Ralph loop as a first-class primitive. ([#18262](https://github.com/NousResearch/hermes-agent/pull/18262), [#18275](https://github.com/NousResearch/hermes-agent/pull/18275), [#21287](https://github.com/NousResearch/hermes-agent/pull/21287))
 
@@ -260,7 +260,7 @@
 - **ProviderProfile ABC + `plugins/model-providers/`** — inference providers are now a pluggable surface (salvage of #14424) ([#20324](https://github.com/NousResearch/hermes-agent/pull/20324))
 - **`list_picker_providers`** — credential-filtered picker (salvage #13561) ([#20298](https://github.com/NousResearch/hermes-agent/pull/20298))
 - **Remove `/provider` alias for `/model`** ([#20358](https://github.com/NousResearch/hermes-agent/pull/20358))
-- **Shared Hermes dotenv loader across CLI + plugins** (salvage #13660) ([#20281](https://github.com/NousResearch/hermes-agent/pull/20281))
+- **Shared ECO dotenv loader across CLI + plugins** (salvage #13660) ([#20281](https://github.com/NousResearch/hermes-agent/pull/20281))
 - **Nous OAuth persisted across profiles via shared token store** ([#19712](https://github.com/NousResearch/hermes-agent/pull/19712))
 
 #### New models
@@ -537,7 +537,7 @@
 - **Chinese (zh-CN) README translation** (salvage #13508) ([#20431](https://github.com/NousResearch/hermes-agent/pull/20431))
 - **zh-Hans Docusaurus locale** + Tool Gateway / image-gen / WSL quickstart translations (salvage #11728) ([#20430](https://github.com/NousResearch/hermes-agent/pull/20430))
 - **Tool Gateway docs restructure** — lead with what it does, config moved to bottom ([#20827](https://github.com/NousResearch/hermes-agent/pull/20827))
-- **Quickstart — Onchain AI Garage Hermes tutorials playlist** ([#20192](https://github.com/NousResearch/hermes-agent/pull/20192))
+- **Quickstart — Onchain AI Garage ECO tutorials playlist** ([#20192](https://github.com/NousResearch/hermes-agent/pull/20192))
 - **Open WebUI bootstrap script** (salvage #9566) ([#20427](https://github.com/NousResearch/hermes-agent/pull/20427))
 - **Local Ollama setup guide** (salvage #5842) ([#20426](https://github.com/NousResearch/hermes-agent/pull/20426))
 - **Google Gemini guide** (salvage #17450) ([#20401](https://github.com/NousResearch/hermes-agent/pull/20401))
