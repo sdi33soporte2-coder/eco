@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="assets/banner.png" alt="ECO Agent" width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner.svg">
+    <img src="assets/banner.svg" alt="ECO Agent" width="100%">
+  </picture>
 </p>
 
 # ECO Agent
