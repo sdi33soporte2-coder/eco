@@ -20,7 +20,7 @@ DEFAULT_CODEX_MODELS: List[str] = [
     # the Codex CLI / OAuth backend (chatgpt.com/backend-api/codex/models)
     # for ChatGPT Pro subscribers. It is NOT available in the public OpenAI
     # API, so it intentionally stays out of the "openai" provider catalog
-    # in eco_cli/models.py — only the openai-codex (OAuth) provider
+    # in hermes_cli/models.py — only the openai-codex (OAuth) provider
     # surfaces it. The Codex backend reports ``supported_in_api: false`` for
     # this slug; that flag describes API availability, not Codex backend
     # availability, so the fetch/cache code paths below intentionally do
@@ -29,21 +29,29 @@ DEFAULT_CODEX_MODELS: List[str] = [
     # curated fallback so Pro users still see Spark in `/model` when live
     # discovery is unavailable (offline first run, transient API failure).
     "gpt-5.3-codex-spark",
-    "gpt-5.2-codex",
-    "gpt-5.1-codex-max",
-    "gpt-5.1-codex-mini",
+    # NOTE: gpt-5.2-codex / gpt-5.1-codex-max / gpt-5.1-codex-mini were
+    # previously listed here but the chatgpt.com Codex backend returns
+    # HTTP 400 "The '<model>' model is not supported when using Codex with
+    # a ChatGPT account." for all three on every ChatGPT Pro account we've
+    # tested (verified live 2026-05-27). Keeping them in the fallback list
+    # leaked dead slugs into /model when live discovery was unavailable
+    # (transient API failure, first-run before refresh) and surfaced HTTP 400
+    # crashes on selection. The Codex CLI public catalog still references
+    # these slugs, which is why they survived previously — but those entries
+    # describe the public OpenAI API, not the OAuth-backed Codex backend
+    # Hermes uses. Removed here. If OpenAI re-enables them on Codex backend,
+    # live discovery will pick them up automatically via _fetch_models_from_api.
 ]
 
 _FORWARD_COMPAT_TEMPLATE_MODELS: List[tuple[str, tuple[str, ...]]] = [
     ("gpt-5.5", ("gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex")),
-    ("gpt-5.4-mini", ("gpt-5.3-codex", "gpt-5.2-codex")),
-    ("gpt-5.4", ("gpt-5.3-codex", "gpt-5.2-codex")),
-    ("gpt-5.3-codex", ("gpt-5.2-codex",)),
+    ("gpt-5.4-mini", ("gpt-5.3-codex",)),
+    ("gpt-5.4", ("gpt-5.3-codex",)),
     # Surface Spark whenever any compatible Codex template is present so
     # accounts hitting the live endpoint with an older lineup still see
     # Spark in the picker. Backend gates real availability by ChatGPT Pro
-    # entitlement; ECO does not.
-    ("gpt-5.3-codex-spark", ("gpt-5.3-codex", "gpt-5.2-codex")),
+    # entitlement; Hermes does not.
+    ("gpt-5.3-codex-spark", ("gpt-5.3-codex",)),
 ]
 
 
@@ -149,7 +157,7 @@ def _read_cache_models(codex_home: Path) -> List[str]:
                 continue
             slug = slug.strip()
             # Do not filter on ``supported_in_api`` here.  It describes the
-            # public OpenAI API, while ECO openai-codex talks to the same
+            # public OpenAI API, while Hermes openai-codex talks to the same
             # OAuth-backed Codex backend as Codex CLI.
             visibility = item.get("visibility")
             if isinstance(visibility, str) and visibility.strip().lower() in {"hide", "hidden"}:

@@ -17,7 +17,10 @@ Setup::
     # Option 2: Docker
     docker run -p 9377:9377 -e CAMOFOX_PORT=9377 jo-inc/camofox-browser
 
-Then set ``CAMOFOX_URL=http://localhost:9377`` in ``~/.eco/.env``.
+Then set ``CAMOFOX_URL=http://localhost:9377`` in ``~/.hermes/.env``.
+For Docker Camofox, optionally set ``CAMOFOX_REWRITE_LOOPBACK_URLS=true``
+so page URLs like ``http://127.0.0.1:3000`` are opened inside the
+container as ``http://host.docker.internal:3000``.
 """
 
 from __future__ import annotations
@@ -29,10 +32,11 @@ import os
 import threading
 import uuid
 from typing import Any, Dict, Optional
+from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 import requests
 
-from eco_cli.config import cfg_get, load_config
+from hermes_cli.config import cfg_get, load_config
 from tools.browser_camofox_state import get_camofox_identity
 from tools.registry import tool_error
 
@@ -109,7 +113,7 @@ def _get_camofox_config() -> Dict[str, Any]:
 
 
 def _managed_persistence_enabled() -> bool:
-    """Return whether ECO-managed persistence is enabled for Camofox.
+    """Return whether Hermes-managed persistence is enabled for Camofox.
 
     When enabled, sessions use a stable profile-scoped userId so the
     Camofox server can map it to a persistent browser profile directory.
@@ -124,7 +128,7 @@ def _camofox_identity_override(task_id: Optional[str], camofox_cfg: Dict[str, An
     """Return an externally configured Camofox identity, if one is set.
 
     Integrations that own the visible Camofox browser can set a shared user ID
-    so ECO operates in the same browser profile instead of creating a
+    so Hermes operates in the same browser profile instead of creating a
     separate private session.
     """
     user_id = os.getenv("CAMOFOX_USER_ID", "").strip() or str(camofox_cfg.get("user_id") or "").strip()
@@ -152,11 +156,94 @@ def _env_flag(name: str) -> Optional[bool]:
 
 
 def _adopt_existing_tab_enabled(camofox_cfg: Dict[str, Any]) -> bool:
-    """Return whether ECO should recover an existing Camofox tab ID."""
+    """Return whether Hermes should recover an existing Camofox tab ID."""
     env_value = _env_flag("CAMOFOX_ADOPT_EXISTING_TAB")
     if env_value is not None:
         return env_value
     return bool(camofox_cfg.get("adopt_existing_tab"))
+
+
+def _loopback_rewrite_enabled(camofox_cfg: Dict[str, Any]) -> bool:
+    """Return whether loopback navigation URLs should be rewritten for Docker.
+
+    ``CAMOFOX_URL`` itself often points at a host-published Docker port such as
+    ``http://127.0.0.1:9377``.  That is correct for Hermes talking to the
+    Camofox control API, but a page URL like ``http://127.0.0.1:3000`` is opened
+    by the browser *inside* the Docker container.  In that context loopback
+    points at the container, not the host running the web app.
+
+    The rewrite is opt-in because non-Docker Camofox installs run the browser on
+    the host, where loopback URLs are already correct.
+    """
+    env_value = _env_flag("CAMOFOX_REWRITE_LOOPBACK_URLS")
+    if env_value is not None:
+        return env_value
+    return bool(camofox_cfg.get("rewrite_loopback_urls"))
+
+
+def _loopback_rewrite_host(camofox_cfg: Dict[str, Any]) -> str:
+    """Return the host alias used when rewriting loopback page URLs."""
+    return (
+        os.getenv("CAMOFOX_LOOPBACK_HOST_ALIAS", "").strip()
+        or str(camofox_cfg.get("loopback_host_alias") or "").strip()
+        or "host.docker.internal"
+    )
+
+
+def _is_loopback_hostname(hostname: Optional[str]) -> bool:
+    """Return True for localhost/127.0.0.0/8/::1-style hostnames."""
+    if not hostname:
+        return False
+    host = hostname.strip().strip("[]").lower()
+    if host in {"localhost", "localhost.localdomain"}:
+        return True
+    try:
+        import ipaddress
+
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _rewrite_loopback_url_for_camofox(url: str) -> tuple[str, Optional[Dict[str, str]]]:
+    """Rewrite loopback page URLs for Docker-hosted Camofox, if configured.
+
+    Returns ``(rewritten_url, metadata)``.  ``metadata`` is present only when a
+    rewrite happened so the tool result can disclose the change to the model.
+    """
+    camofox_cfg = _get_camofox_config()
+    if not _loopback_rewrite_enabled(camofox_cfg):
+        return url, None
+
+    try:
+        parsed = urlsplit(url)
+    except ValueError:
+        return url, None
+
+    if parsed.scheme not in {"http", "https"} or not _is_loopback_hostname(parsed.hostname):
+        return url, None
+
+    alias = _loopback_rewrite_host(camofox_cfg)
+    if not alias:
+        return url, None
+
+    userinfo = ""
+    if parsed.username:
+        userinfo = parsed.username
+        if parsed.password:
+            userinfo += f":{parsed.password}"
+        userinfo += "@"
+    host_part = f"[{alias}]" if ":" in alias and not alias.startswith("[") else alias
+    port_part = f":{parsed.port}" if parsed.port else ""
+    rewritten = urlunsplit(
+        SplitResult(parsed.scheme, f"{userinfo}{host_part}{port_part}", parsed.path, parsed.query, parsed.fragment)
+    )
+    return rewritten, {
+        "from": parsed.hostname or "",
+        "to": alias,
+        "original_url": url,
+        "rewritten_url": rewritten,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +257,7 @@ _sessions_lock = threading.Lock()
 def _adopt_existing_tab(session: Dict[str, Any]) -> Dict[str, Any]:
     """Attach process-local state to an already-open managed Camofox tab.
 
-    Some integrations own the visible Camofox tab outside ECO. Gateway
+    Some integrations own the visible Camofox tab outside Hermes. Gateway
     restarts can leave this module's in-memory session cache empty even though
     Camofox still has that tab, so rehydrate tab_id before creating a new tab.
     """
@@ -209,7 +296,7 @@ def _get_session(task_id: Optional[str]) -> Dict[str, Any]:
     """Get or create a camofox session for the given task.
 
     When managed persistence is enabled, uses a deterministic userId
-    derived from the ECO profile so the Camofox server can map it
+    derived from the Hermes profile so the Camofox server can map it
     to the same persistent browser profile across restarts.
     """
     task_id = task_id or "default"
@@ -238,7 +325,7 @@ def _get_session(task_id: Optional[str]) -> Dict[str, Any]:
             }
         else:
             session = {
-                "user_id": f"eco_{uuid.uuid4().hex[:10]}",
+                "user_id": f"hermes_{uuid.uuid4().hex[:10]}",
                 "tab_id": None,
                 "session_key": f"task_{task_id[:16]}",
                 "managed": False,
@@ -336,23 +423,31 @@ def _delete(path: str, body: dict = None, timeout: int = _DEFAULT_TIMEOUT) -> di
 def camofox_navigate(url: str, task_id: Optional[str] = None) -> str:
     """Navigate to a URL via Camofox."""
     try:
+        browser_url, rewrite_info = _rewrite_loopback_url_for_camofox(url)
         session = _get_session(task_id)
         if not session["tab_id"]:
             # Create tab with the target URL directly
-            session = _ensure_tab(task_id, url)
-            data = {"ok": True, "url": url}
+            session = _ensure_tab(task_id, browser_url)
+            data = {"ok": True, "url": browser_url}
         else:
             # Navigate existing tab
             data = _post(
                 f"/tabs/{session['tab_id']}/navigate",
-                {"userId": session["user_id"], "url": url},
+                {"userId": session["user_id"], "url": browser_url},
                 timeout=60,
             )
         result = {
             "success": True,
-            "url": data.get("url", url),
+            "url": data.get("url", browser_url),
             "title": data.get("title", ""),
         }
+        if rewrite_info:
+            result["requested_url"] = url
+            result["url_rewrite"] = rewrite_info
+            result["warning"] = (
+                "Rewrote loopback URL for Docker-hosted Camofox: "
+                f"{rewrite_info['from']} -> {rewrite_info['to']}"
+            )
         vnc = get_vnc_url()
         if vnc:
             result["vnc_url"] = vnc
@@ -601,8 +696,8 @@ def camofox_vision(question: str, annotate: bool = False,
         )
 
         # Save screenshot to cache
-        from eco_constants import get_eco_home
-        screenshots_dir = get_eco_home() / "browser_screenshots"
+        from hermes_constants import get_hermes_home
+        screenshots_dir = get_hermes_home() / "browser_screenshots"
         screenshots_dir.mkdir(parents=True, exist_ok=True)
         screenshot_path = str(screenshots_dir / f"browser_screenshot_{uuid.uuid4().hex[:8]}.png")
 

@@ -11,7 +11,7 @@ Operational failures (spawn error, timeout, unknown exit code) respect
 the fail_open config setting. Programming errors propagate.
 
 Auto-install: if tirith is not found on PATH or at the configured path,
-it is automatically downloaded from GitHub releases to $ECO_HOME/bin/tirith.
+it is automatically downloaded from GitHub releases to $HERMES_HOME/bin/tirith.
 The download always verifies SHA-256 checksums.  When cosign is available on
 PATH, provenance verification (GitHub Actions workflow signature) is also
 performed.  If cosign is not installed, the download proceeds with SHA-256
@@ -34,7 +34,7 @@ import threading
 import time
 import urllib.request
 
-from eco_constants import get_eco_home
+from hermes_constants import get_hermes_home
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ def _load_security_config() -> dict:
         "tirith_fail_open": True,
     }
     try:
-        from eco_cli.config import load_config
+        from hermes_cli.config import load_config
         cfg = load_config().get("security", {}) or {}
     except Exception:
         cfg = {}
@@ -133,14 +133,14 @@ def _reset_spawn_warning_state() -> None:
 _MARKER_TTL = 86400  # 24 hours
 
 
-def _get_eco_home() -> str:
-    """Return the ECO home directory, respecting ECO_HOME env var."""
-    return str(get_eco_home())
+def _get_hermes_home() -> str:
+    """Return the Hermes home directory, respecting HERMES_HOME env var."""
+    return str(get_hermes_home())
 
 
 def _failure_marker_path() -> str:
     """Return the path to the install-failure marker file."""
-    return os.path.join(_get_eco_home(), ".tirith-install-failed")
+    return os.path.join(_get_hermes_home(), ".tirith-install-failed")
 
 
 def _read_failure_reason() -> str | None:
@@ -206,9 +206,9 @@ def _clear_install_failed():
         pass
 
 
-def _eco_bin_dir() -> str:
-    """Return $ECO_HOME/bin, creating it if needed."""
-    d = os.path.join(_get_eco_home(), "bin")
+def _hermes_bin_dir() -> str:
+    """Return $HERMES_HOME/bin, creating it if needed."""
+    d = os.path.join(_get_hermes_home(), "bin")
     os.makedirs(d, exist_ok=True)
     return d
 
@@ -326,8 +326,34 @@ def _verify_checksum(archive_path: str, checksums_path: str, archive_name: str) 
     return True
 
 
+def _extract_tirith_binary(tar: tarfile.TarFile, dest_dir: str, log) -> tuple[str | None, str]:
+    """Extract the tirith binary from a release archive into dest_dir."""
+    for member in tar.getmembers():
+        if member.name == "tirith" or member.name.endswith("/tirith"):
+            if ".." in member.name:
+                continue
+            if not member.isfile():
+                log("tirith archive member is not a regular file: %s", member.name)
+                return None, "binary_not_regular_file"
+            src_file = tar.extractfile(member)
+            if src_file is None:
+                log("tirith binary could not be read from archive")
+                return None, "binary_extract_failed"
+
+            dest_path = os.path.join(dest_dir, "tirith")
+            try:
+                with open(dest_path, "wb") as out:
+                    shutil.copyfileobj(src_file, out)
+            finally:
+                src_file.close()
+            return dest_path, ""
+
+    log("tirith binary not found in archive")
+    return None, "binary_not_in_archive"
+
+
 def _install_tirith(*, log_failures: bool = True) -> tuple[str | None, str]:
-    """Download and install tirith to $ECO_HOME/bin/tirith.
+    """Download and install tirith to $HERMES_HOME/bin/tirith.
 
     Verifies provenance via cosign and SHA-256 checksum.
     Returns (installed_path, failure_reason).  On success failure_reason is "".
@@ -394,20 +420,11 @@ def _install_tirith(*, log_failures: bool = True) -> tuple[str | None, str]:
             return None, "checksum_failed"
 
         with tarfile.open(archive_path, "r:gz") as tar:
-            # Extract only the tirith binary (safety: reject paths with ..)
-            for member in tar.getmembers():
-                if member.name == "tirith" or member.name.endswith("/tirith"):
-                    if ".." in member.name:
-                        continue
-                    member.name = "tirith"
-                    tar.extract(member, tmpdir)
-                    break
-            else:
-                log("tirith binary not found in archive")
-                return None, "binary_not_in_archive"
+            src, reason = _extract_tirith_binary(tar, tmpdir, log)
+            if src is None:
+                return None, reason
 
-        src = os.path.join(tmpdir, "tirith")
-        dest = os.path.join(_eco_bin_dir(), "tirith")
+        dest = os.path.join(_hermes_bin_dir(), "tirith")
         try:
             shutil.move(src, dest)
         except OSError:
@@ -447,8 +464,8 @@ def _resolve_tirith_path(configured_path: str) -> str:
 
     For the default "tirith":
     1. PATH lookup via shutil.which
-    2. $ECO_HOME/bin/tirith (previously auto-installed)
-    3. Auto-install from GitHub releases → $ECO_HOME/bin/tirith
+    2. $HERMES_HOME/bin/tirith (previously auto-installed)
+    3. Auto-install from GitHub releases → $HERMES_HOME/bin/tirith
 
     Failed installs are cached for the process lifetime (and persisted to
     disk for 24h) to avoid repeated network attempts.
@@ -497,12 +514,12 @@ def _resolve_tirith_path(configured_path: str) -> str:
         _clear_install_failed()
         return found
 
-    eco_bin = os.path.join(_eco_bin_dir(), "tirith")
-    if os.path.isfile(eco_bin) and os.access(eco_bin, os.X_OK):
-        _resolved_path = eco_bin
+    hermes_bin = os.path.join(_hermes_bin_dir(), "tirith")
+    if os.path.isfile(hermes_bin) and os.access(hermes_bin, os.X_OK):
+        _resolved_path = hermes_bin
         _install_failure_reason = ""
         _clear_install_failed()
-        return eco_bin
+        return hermes_bin
 
     # Local checks failed.  If a previous install attempt already failed,
     # skip the network retry — UNLESS the failure was "cosign_missing" and
@@ -561,9 +578,9 @@ def _background_install(*, log_failures: bool = True):
             _install_failure_reason = ""
             return
 
-        eco_bin = os.path.join(_eco_bin_dir(), "tirith")
-        if os.path.isfile(eco_bin) and os.access(eco_bin, os.X_OK):
-            _resolved_path = eco_bin
+        hermes_bin = os.path.join(_hermes_bin_dir(), "tirith")
+        if os.path.isfile(hermes_bin) and os.access(hermes_bin, os.X_OK):
+            _resolved_path = hermes_bin
             _install_failure_reason = ""
             return
 
@@ -631,12 +648,12 @@ def ensure_installed(*, log_failures: bool = True):
         _clear_install_failed()
         return found
 
-    eco_bin = os.path.join(_eco_bin_dir(), "tirith")
-    if os.path.isfile(eco_bin) and os.access(eco_bin, os.X_OK):
-        _resolved_path = eco_bin
+    hermes_bin = os.path.join(_hermes_bin_dir(), "tirith")
+    if os.path.isfile(hermes_bin) and os.access(hermes_bin, os.X_OK):
+        _resolved_path = hermes_bin
         _install_failure_reason = ""
         _clear_install_failed()
-        return eco_bin
+        return hermes_bin
 
     # If previously failed in-memory, check if the cause is now resolved
     if _resolved_path is _INSTALL_FAILED:

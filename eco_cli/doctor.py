@@ -1,32 +1,30 @@
 """
-Doctor command for eco CLI.
+Doctor command for hermes CLI.
 
-Diagnoses issues with ECO Agent setup.
+Diagnoses issues with Hermes Agent setup.
 """
 
 import os
 import sys
 import subprocess
 import shutil
-import importlib.util
 from pathlib import Path
 
-from eco_cli.config import get_project_root, get_eco_home, get_env_path
-from eco_cli.env_loader import load_eco_dotenv
-from eco_constants import display_eco_home
+from hermes_cli.config import get_project_root, get_hermes_home, get_env_path
+from hermes_cli.env_loader import load_hermes_dotenv
+from hermes_constants import display_hermes_home
 
 PROJECT_ROOT = get_project_root()
-ECO_HOME = get_eco_home()
-_DHH = display_eco_home()  # user-facing display path (e.g. ~/.eco or ~/.eco/profiles/coder)
+HERMES_HOME = get_hermes_home()
+_DHH = display_hermes_home()  # user-facing display path (e.g. ~/.hermes or ~/.hermes/profiles/coder)
 
-# Load environment variables from ~/.eco/.env so API key checks work
+# Load environment variables from ~/.hermes/.env so API key checks work
 _env_path = get_env_path()
-load_eco_dotenv(eco_home=_env_path.parent, project_env=PROJECT_ROOT / ".env")
+load_hermes_dotenv(hermes_home=_env_path.parent, project_env=PROJECT_ROOT / ".env")
 
-from eco_cli.colors import Colors, color
-from eco_cli.models import _ECO_USER_AGENT
-from eco_cli.vercel_auth import describe_vercel_auth
-from eco_constants import OPENROUTER_MODELS_URL
+from hermes_cli.colors import Colors, color
+from hermes_cli.models import _HERMES_USER_AGENT
+from hermes_constants import OPENROUTER_MODELS_URL
 from utils import base_url_host_matches
 
 
@@ -49,7 +47,6 @@ _PROVIDER_ENV_HINTS = (
     "DEEPSEEK_API_KEY",
     "DASHSCOPE_API_KEY",
     "HF_TOKEN",
-    "AI_GATEWAY_API_KEY",
     "OPENCODE_ZEN_API_KEY",
     "OPENCODE_GO_API_KEY",
     "XIAOMI_API_KEY",
@@ -57,7 +54,7 @@ _PROVIDER_ENV_HINTS = (
 )
 
 
-from eco_constants import is_termux as _is_termux
+from hermes_constants import is_termux as _is_termux
 
 
 def _python_install_cmd() -> str:
@@ -101,7 +98,7 @@ def _termux_install_all_fallback_notes() -> list[str]:
 
 
 def _has_provider_env_config(content: str) -> bool:
-    """Return True when ~/.eco/.env contains provider auth/base URL settings."""
+    """Return True when ~/.hermes/.env contains provider auth/base URL settings."""
     return any(key in content for key in _PROVIDER_ENV_HINTS)
 
 
@@ -120,7 +117,7 @@ def _is_kanban_worker_env_gate(item: dict) -> bool:
     """Return True when Kanban is unavailable only because this is not a worker process."""
     if item.get("name") != "kanban":
         return False
-    if os.environ.get("ECO_KANBAN_TASK"):
+    if os.environ.get("HERMES_KANBAN_TASK"):
         return False
 
     tools = item.get("tools") or []
@@ -129,7 +126,7 @@ def _is_kanban_worker_env_gate(item: dict) -> bool:
 
 def _doctor_tool_availability_detail(toolset: str) -> str:
     """Optional explanatory suffix for toolsets whose doctor status needs context."""
-    if toolset == "kanban" and not os.environ.get("ECO_KANBAN_TASK"):
+    if toolset == "kanban" and not os.environ.get("HERMES_KANBAN_TASK"):
         return "(runtime-gated; loaded only for dispatcher-spawned workers)"
     return ""
 
@@ -163,19 +160,19 @@ def _has_healthy_oauth_fallback_for_apikey_provider(provider_label: str) -> bool
     normalized = (provider_label or "").strip().lower()
     if normalized in {"google / gemini", "gemini"}:
         try:
-            from eco_cli.auth import get_gemini_oauth_auth_status
+            from hermes_cli.auth import get_gemini_oauth_auth_status
             return bool((get_gemini_oauth_auth_status() or {}).get("logged_in"))
         except Exception:
             return False
     if normalized == "minimax":
         try:
-            from eco_cli.auth import get_minimax_oauth_auth_status
+            from hermes_cli.auth import get_minimax_oauth_auth_status
             return bool((get_minimax_oauth_auth_status() or {}).get("logged_in"))
         except Exception:
             return False
     if normalized == "xai":
         try:
-            from eco_cli.auth import get_xai_oauth_auth_status
+            from hermes_cli.auth import get_xai_oauth_auth_status
             return bool((get_xai_oauth_auth_status() or {}).get("logged_in"))
         except Exception:
             return False
@@ -215,13 +212,13 @@ def _check_s6_supervision(issues: list[str]) -> None:
     container so host runs aren't cluttered with irrelevant output.
 
     Reports:
-      - Whether the main-eco and dashboard static services are up
+      - Whether the main-hermes and dashboard static services are up
       - How many per-profile gateway slots are registered (via
         ``S6ServiceManager.list_profile_gateways()``) and how many are
         currently supervised as ``up``
     """
     try:
-        from eco_cli.service_manager import (
+        from hermes_cli.service_manager import (
             S6ServiceManager,
             detect_service_manager,
         )
@@ -237,7 +234,7 @@ def _check_s6_supervision(issues: list[str]) -> None:
 
     # Static services. They live under /run/service/ via s6-rc symlinks,
     # so the same s6-svstat probe works.
-    for static in ("main-eco", "dashboard"):
+    for static in ("main-hermes", "dashboard"):
         if mgr.is_running(static):
             check_ok(f"{static}: up")
         else:
@@ -245,7 +242,7 @@ def _check_s6_supervision(issues: list[str]) -> None:
 
     profiles = mgr.list_profile_gateways()
     if not profiles:
-        check_info("No per-profile gateways registered yet — create one with `eco profile create <name>`")
+        check_info("No per-profile gateways registered yet — create one with `hermes profile create <name>`")
         return
 
     up_count = sum(1 for p in profiles if mgr.is_running(f"gateway-{p}"))
@@ -264,12 +261,12 @@ def _check_gateway_service_linger(issues: list[str]) -> None:
     ``_check_s6_supervision``.
     """
     try:
-        from eco_cli.gateway import (
+        from hermes_cli.gateway import (
             get_systemd_linger_status,
             get_systemd_unit_path,
             is_linux,
         )
-        from eco_cli.service_manager import detect_service_manager
+        from hermes_cli.service_manager import detect_service_manager
     except Exception as e:
         check_warn("Gateway service linger", f"(could not import gateway helpers: {e})")
         return
@@ -324,7 +321,6 @@ def _build_apikey_providers_list() -> list:
         ("MiniMax",          ("MINIMAX_API_KEY",),                           "https://api.minimax.io/v1/models",    "MINIMAX_BASE_URL", True),
         # MiniMax CN: /v1 endpoint does NOT support /models (returns 404).
         ("MiniMax (China)",  ("MINIMAX_CN_API_KEY",),                        "https://api.minimaxi.com/v1/models",  "MINIMAX_CN_BASE_URL", False),
-        ("Vercel AI Gateway", ("AI_GATEWAY_API_KEY",),                       "https://ai-gateway.vercel.sh/v1/models", "AI_GATEWAY_BASE_URL", True),
         ("Kilo Code",        ("KILOCODE_API_KEY",),                          "https://api.kilo.ai/api/gateway/models", "KILOCODE_BASE_URL", True),
         ("OpenCode Zen",     ("OPENCODE_ZEN_API_KEY",),                      "https://opencode.ai/zen/v1/models",  "OPENCODE_ZEN_BASE_URL", True),
         # OpenCode Go has no shared /models endpoint; skip the health check.
@@ -340,7 +336,7 @@ def _build_apikey_providers_list() -> list:
         "Arcee AI": "arcee", "GMI Cloud": "gmi", "DeepSeek": "deepseek",
         "Hugging Face": "huggingface", "NVIDIA NIM": "nvidia",
         "Alibaba/DashScope": "alibaba", "MiniMax": "minimax",
-        "MiniMax (China)": "minimax-cn", "Vercel AI Gateway": "ai-gateway",
+        "MiniMax (China)": "minimax-cn",
         "Kilo Code": "kilocode", "OpenCode Zen": "opencode-zen",
         "OpenCode Go": "opencode-go",
     }
@@ -356,7 +352,7 @@ def _build_apikey_providers_list() -> list:
         from providers import list_providers
         from providers.base import ProviderProfile as _PP
         try:
-            from eco_cli.providers import normalize_provider as _normalize_provider
+            from hermes_cli.providers import normalize_provider as _normalize_provider
         except Exception:  # pragma: no cover - normalization is best-effort
             def _normalize_provider(_name: str) -> str:
                 return (_name or "").strip().lower()
@@ -401,14 +397,14 @@ def run_doctor(args):
     ack_target = getattr(args, 'ack', None)
 
     # Doctor runs from the interactive CLI, so CLI-gated tool availability
-    # checks (like cronjob management) should see the same context as `eco`.
-    os.environ.setdefault("ECO_INTERACTIVE", "1")
+    # checks (like cronjob management) should see the same context as `hermes`.
+    os.environ.setdefault("HERMES_INTERACTIVE", "1")
 
-    # Handle `eco doctor --ack <id>` as a fast path. Persist the ack and
+    # Handle `hermes doctor --ack <id>` as a fast path. Persist the ack and
     # return without running the rest of the diagnostics — the user has
     # already seen the advisory and just wants to silence it.
     if ack_target:
-        from eco_cli.security_advisories import (
+        from hermes_cli.security_advisories import (
             ADVISORIES,
             ack_advisory,
         )
@@ -429,7 +425,7 @@ def run_doctor(args):
         else:
             print(color(
                 f"  ✗ Failed to persist ack for {ack_target}. "
-                f"Check ~/.eco/config.yaml is writable.",
+                f"Check ~/.hermes/config.yaml is writable.",
                 Colors.RED,
             ))
             sys.exit(1)
@@ -441,12 +437,12 @@ def run_doctor(args):
 
     print()
     print(color("┌─────────────────────────────────────────────────────────┐", Colors.CYAN))
-    print(color("│                 🩺 ECO Doctor                        │", Colors.CYAN))
+    print(color("│                 🩺 Hermes Doctor                        │", Colors.CYAN))
     print(color("└─────────────────────────────────────────────────────────┘", Colors.CYAN))
 
     _section("Security Advisories")
     try:
-        from eco_cli.security_advisories import (
+        from hermes_cli.security_advisories import (
             detect_compromised,
             filter_unacked,
             full_remediation_text,
@@ -473,7 +469,7 @@ def run_doctor(args):
                     f"Resolve security advisory {hit.advisory.id}: "
                     f"uninstall {hit.package}=={hit.installed_version} and "
                     f"rotate credentials, then run "
-                    f"`eco doctor --ack {hit.advisory.id}`."
+                    f"`hermes doctor --ack {hit.advisory.id}`."
                 )
             # Acked-but-still-installed: show as informational so the user
             # knows the package is still on disk after the ack.
@@ -544,8 +540,8 @@ def run_doctor(args):
             check_warn(name, "(optional, not installed)")
     
     _section("Configuration Files")
-    # Check ~/.eco/.env (primary location for user config)
-    env_path = ECO_HOME / '.env'
+    # Check ~/.hermes/.env (primary location for user config)
+    env_path = HERMES_HOME / '.env'
     if env_path.exists():
         check_ok(f"{_DHH}/.env file exists")
         
@@ -558,7 +554,7 @@ def run_doctor(args):
             check_ok("API key or custom endpoint configured")
         else:
             check_warn(f"No API key found in {_DHH}/.env")
-            issues.append("Run 'eco setup' to configure API keys")
+            issues.append("Run 'hermes setup' to configure API keys")
     else:
         # Also check project root as fallback
         fallback_env = PROJECT_ROOT / '.env'
@@ -577,14 +573,14 @@ def run_doctor(args):
                 except OSError:
                     pass
                 check_ok(f"Created empty {_DHH}/.env")
-                check_info("Run 'eco setup' to configure API keys")
+                check_info("Run 'hermes setup' to configure API keys")
                 fixed_count += 1
             else:
-                check_info("Run 'eco setup' to create one")
-                issues.append("Run 'eco setup' to create .env")
+                check_info("Run 'hermes setup' to create one")
+                issues.append("Run 'hermes setup' to create .env")
     
-    # Check ~/.eco/config.yaml (primary) or project cli-config.yaml (fallback)
-    config_path = ECO_HOME / 'config.yaml'
+    # Check ~/.hermes/config.yaml (primary) or project cli-config.yaml (fallback)
+    config_path = HERMES_HOME / 'config.yaml'
     if config_path.exists():
         check_ok(f"{_DHH}/config.yaml exists")
 
@@ -599,7 +595,7 @@ def run_doctor(args):
 
             known_providers: set = set()
             try:
-                from eco_cli.auth import (
+                from hermes_cli.auth import (
                     PROVIDER_REGISTRY,
                     resolve_provider as _resolve_auth_provider,
                 )
@@ -608,8 +604,8 @@ def run_doctor(args):
                 _resolve_auth_provider = None
                 pass
             try:
-                from eco_cli.config import get_compatible_custom_providers as _compatible_custom_providers
-                from eco_cli.providers import (
+                from hermes_cli.config import get_compatible_custom_providers as _compatible_custom_providers
+                from hermes_cli.providers import (
                     normalize_provider as _normalize_catalog_provider,
                     resolve_provider_full as _resolve_provider_full,
                 )
@@ -679,7 +675,7 @@ def run_doctor(args):
                         (
                             f"model.provider '{provider_raw}' is unknown. "
                             f"Valid providers: {known_list}. "
-                            f"Fix: run 'eco config set model.provider <valid_provider>'"
+                            f"Fix: run 'hermes config set model.provider <valid_provider>'"
                         ),
                         issues,
                     )
@@ -690,7 +686,6 @@ def run_doctor(args):
                 "openrouter",
                 "custom",
                 "auto",
-                "ai-gateway",
                 "kilocode",
                 "opencode-zen",
                 "huggingface",
@@ -721,14 +716,14 @@ def run_doctor(args):
             if runtime_provider and runtime_provider not in ("auto", "custom"):
                 try:
                     if runtime_provider == "openrouter":
-                        from eco_cli.config import get_env_value
+                        from hermes_cli.config import get_env_value
 
                         configured = bool(
                             str(get_env_value("OPENROUTER_API_KEY") or "").strip()
                             or str(get_env_value("OPENAI_API_KEY") or "").strip()
                         )
                     else:
-                        from eco_cli.auth import PROVIDER_REGISTRY, get_auth_status
+                        from hermes_cli.auth import PROVIDER_REGISTRY, get_auth_status
 
                         pconfig = PROVIDER_REGISTRY.get(runtime_provider)
                         configured = True
@@ -742,11 +737,11 @@ def run_doctor(args):
                     if not configured:
                         _fail_and_issue(
                             f"model.provider '{runtime_provider}' is set but no API key is configured",
-                            "(check ~/.eco/.env or run 'eco setup')",
+                            "(check ~/.hermes/.env or run 'hermes setup')",
                             (
                                 f"No credentials found for provider '{runtime_provider}'. "
-                                f"Run 'eco setup' or set the provider's API key in {_DHH}/.env, "
-                                f"or switch providers with 'eco config set model.provider <name>'"
+                                f"Run 'hermes setup' or set the provider's API key in {_DHH}/.env, "
+                                f"or switch providers with 'hermes config set model.provider <name>'"
                             ),
                             issues,
                         )
@@ -767,7 +762,7 @@ def run_doctor(args):
                     shutil.copy2(str(example_config), str(config_path))
                     check_ok(f"Created {_DHH}/config.yaml from cli-config.yaml.example")
                 else:
-                    from eco_cli.config import DEFAULT_CONFIG, save_config
+                    from hermes_cli.config import DEFAULT_CONFIG, save_config
                     save_config(DEFAULT_CONFIG)
                     check_ok(f"Created {_DHH}/config.yaml from defaults")
                 fixed_count += 1
@@ -775,10 +770,10 @@ def run_doctor(args):
                 check_warn("config.yaml not found", "(using defaults)")
 
     # Check config version and stale keys
-    config_path = ECO_HOME / 'config.yaml'
+    config_path = HERMES_HOME / 'config.yaml'
     if config_path.exists():
         try:
-            from eco_cli.config import check_config_version, migrate_config
+            from hermes_cli.config import check_config_version, migrate_config
             current_ver, latest_ver = check_config_version()
             if current_ver < latest_ver:
                 check_warn(
@@ -792,9 +787,9 @@ def run_doctor(args):
                         fixed_count += 1
                     except Exception as mig_err:
                         check_warn(f"Auto-migration failed: {mig_err}")
-                        issues.append("Run 'eco setup' to migrate config")
+                        issues.append("Run 'hermes setup' to migrate config")
                 else:
-                    issues.append("Run 'eco doctor --fix' or 'eco setup' to migrate config")
+                    issues.append("Run 'hermes doctor --fix' or 'hermes setup' to migrate config")
             else:
                 check_ok(f"Config version up to date (v{current_ver})")
         except Exception:
@@ -834,13 +829,13 @@ def run_doctor(args):
                     check_ok("Migrated stale root-level keys into model section")
                     fixed_count += 1
                 else:
-                    issues.append("Stale root-level provider/base_url in config.yaml — run 'eco doctor --fix'")
+                    issues.append("Stale root-level provider/base_url in config.yaml — run 'hermes doctor --fix'")
         except Exception:
             pass
 
         # Validate config structure (catches malformed custom_providers, etc.)
         try:
-            from eco_cli.config import validate_config_structure
+            from hermes_cli.config import validate_config_structure
             config_issues = validate_config_structure()
             if config_issues:
                 _section("Config Structure")
@@ -859,8 +854,8 @@ def run_doctor(args):
     _section("xAI Model Retirement (May 15, 2026)")
 
     try:
-        from eco_cli.config import load_config
-        from eco_cli.xai_retirement import (
+        from hermes_cli.config import load_config
+        from hermes_cli.xai_retirement import (
             MIGRATION_GUIDE_URL,
             find_retired_xai_refs,
             format_issue,
@@ -884,7 +879,7 @@ def run_doctor(args):
     _section("Auth Providers")
 
     try:
-        from eco_cli.auth import (
+        from hermes_cli.auth import (
             get_nous_auth_status,
             get_codex_auth_status,
             get_gemini_oauth_auth_status,
@@ -904,7 +899,7 @@ def run_doctor(args):
             check_warn("OpenAI Codex auth", "(not logged in)")
             if codex_status.get("error"):
                 check_info(codex_status["error"])
-            # Native OAuth uses ECO' own device-code flow — the Codex CLI is
+            # Native OAuth uses Hermes' own device-code flow — the Codex CLI is
             # only needed to import existing tokens from ~/.codex/auth.json.
             # Attach the hint to the Codex auth row so it doesn't read as
             # remediation for whichever provider happens to print next (#27975).
@@ -941,7 +936,7 @@ def run_doctor(args):
     # xAI OAuth — separate try/except so an import failure here cannot
     # disrupt the already-printed Nous/Codex/Gemini/MiniMax rows above.
     try:
-        from eco_cli.auth import get_xai_oauth_auth_status
+        from hermes_cli.auth import get_xai_oauth_auth_status
         xai_oauth_status = get_xai_oauth_auth_status() or {}
         if xai_oauth_status.get("logged_in"):
             check_ok("xAI OAuth", "(logged in)")
@@ -953,11 +948,11 @@ def run_doctor(args):
         pass
 
     _section("Directory Structure")
-    eco_home = ECO_HOME
-    if eco_home.exists():
+    hermes_home = HERMES_HOME
+    if hermes_home.exists():
         check_ok(f"{_DHH} directory exists")
     elif should_fix:
-        eco_home.mkdir(parents=True, exist_ok=True)
+        hermes_home.mkdir(parents=True, exist_ok=True)
         check_ok(f"Created {_DHH} directory")
         fixed_count += 1
     else:
@@ -966,7 +961,7 @@ def run_doctor(args):
     # Check expected subdirectories
     expected_subdirs = ["cron", "sessions", "logs", "skills", "memories"]
     for subdir_name in expected_subdirs:
-        subdir_path = eco_home / subdir_name
+        subdir_path = hermes_home / subdir_name
         if subdir_path.exists():
             check_ok(f"{_DHH}/{subdir_name}/ exists")
         elif should_fix:
@@ -977,7 +972,7 @@ def run_doctor(args):
             check_warn(f"{_DHH}/{subdir_name}/ not found", "(will be created on first use)")
     
     # Check for SOUL.md persona file
-    soul_path = eco_home / "SOUL.md"
+    soul_path = hermes_home / "SOUL.md"
     if soul_path.exists():
         content = soul_path.read_text(encoding="utf-8").strip()
         # Check if it's just the template comments (no real content)
@@ -987,20 +982,20 @@ def run_doctor(args):
         else:
             check_info(f"{_DHH}/SOUL.md exists but is empty — edit it to customize personality")
     else:
-        check_warn(f"{_DHH}/SOUL.md not found", "(create it to give ECO a custom personality)")
+        check_warn(f"{_DHH}/SOUL.md not found", "(create it to give Hermes a custom personality)")
         if should_fix:
             soul_path.parent.mkdir(parents=True, exist_ok=True)
             soul_path.write_text(
-                "# ECO Agent Persona\n\n"
-                "<!-- Edit this file to customize how ECO communicates. -->\n\n"
-                "You are ECO, a helpful AI assistant.\n",
+                "# Hermes Agent Persona\n\n"
+                "<!-- Edit this file to customize how Hermes communicates. -->\n\n"
+                "You are Hermes, a helpful AI assistant.\n",
                 encoding="utf-8",
             )
             check_ok(f"Created {_DHH}/SOUL.md with basic template")
             fixed_count += 1
     
     # Check memory directory
-    memories_dir = eco_home / "memories"
+    memories_dir = hermes_home / "memories"
     if memories_dir.exists():
         check_ok(f"{_DHH}/memories/ directory exists")
         memory_file = memories_dir / "MEMORY.md"
@@ -1023,7 +1018,7 @@ def run_doctor(args):
             fixed_count += 1
     
     # Check SQLite session store
-    state_db_path = eco_home / "state.db"
+    state_db_path = hermes_home / "state.db"
     if state_db_path.exists():
         try:
             import sqlite3
@@ -1038,7 +1033,7 @@ def run_doctor(args):
         check_info(f"{_DHH}/state.db not created yet (will be created on first session)")
 
     # Check WAL file size (unbounded growth indicates missed checkpoints)
-    wal_path = eco_home / "state.db-wal"
+    wal_path = hermes_home / "state.db-wal"
     if wal_path.exists():
         try:
             wal_size = wal_path.stat().st_size
@@ -1056,7 +1051,7 @@ def run_doctor(args):
                     check_ok(f"WAL checkpoint performed ({wal_size // 1024}K → {new_size // 1024}K)")
                     fixed_count += 1
                 else:
-                    issues.append("Large WAL file — run 'eco doctor --fix' to checkpoint")
+                    issues.append("Large WAL file — run 'hermes doctor --fix' to checkpoint")
             elif wal_size > 10 * 1024 * 1024:  # 10 MB
                 check_info(f"WAL file is {wal_size // (1024*1024)} MB (normal for active sessions)")
         except Exception:
@@ -1070,7 +1065,7 @@ def run_doctor(args):
         # Determine the venv entry point location
         _venv_bin = None
         for _venv_name in ("venv", ".venv"):
-            _candidate = PROJECT_ROOT / _venv_name / "bin" / "eco"
+            _candidate = PROJECT_ROOT / _venv_name / "bin" / "hermes"
             if _candidate.exists():
                 _venv_bin = _candidate
                 break
@@ -1084,12 +1079,12 @@ def run_doctor(args):
         else:
             _cmd_link_dir = Path.home() / ".local" / "bin"
             _cmd_link_display = "~/.local/bin"
-        _cmd_link = _cmd_link_dir / "eco"
+        _cmd_link = _cmd_link_dir / "hermes"
 
         if _venv_bin is None:
             check_warn(
                 "Venv entry point not found",
-                "(eco not in venv/bin/ or .venv/bin/ — reinstall with pip install -e '.[all]')"
+                "(hermes not in venv/bin/ or .venv/bin/ — reinstall with pip install -e '.[all]')"
             )
             manual_issues.append(
                 f"Reinstall entry point: cd {PROJECT_ROOT} && source venv/bin/activate && pip install -e '.[all]'"
@@ -1102,31 +1097,31 @@ def run_doctor(args):
                 _target = _cmd_link.resolve()
                 _expected = _venv_bin.resolve()
                 if _target == _expected:
-                    check_ok(f"{_cmd_link_display}/eco → correct target")
+                    check_ok(f"{_cmd_link_display}/hermes → correct target")
                 else:
                     check_warn(
-                        f"{_cmd_link_display}/eco points to wrong target",
+                        f"{_cmd_link_display}/hermes points to wrong target",
                         f"(→ {_target}, expected → {_expected})"
                     )
                     if should_fix:
                         _cmd_link.unlink()
                         _cmd_link.symlink_to(_venv_bin)
-                        check_ok(f"Fixed symlink: {_cmd_link_display}/eco → {_venv_bin}")
+                        check_ok(f"Fixed symlink: {_cmd_link_display}/hermes → {_venv_bin}")
                         fixed_count += 1
                     else:
-                        issues.append(f"Broken symlink at {_cmd_link_display}/eco — run 'eco doctor --fix'")
+                        issues.append(f"Broken symlink at {_cmd_link_display}/hermes — run 'hermes doctor --fix'")
             elif _cmd_link.exists():
                 # It's a regular file, not a symlink — possibly a wrapper script
-                check_ok(f"{_cmd_link_display}/eco exists (non-symlink)")
+                check_ok(f"{_cmd_link_display}/hermes exists (non-symlink)")
             else:
                 check_fail(
-                    f"{_cmd_link_display}/eco not found",
-                    "(eco command may not work outside the venv)"
+                    f"{_cmd_link_display}/hermes not found",
+                    "(hermes command may not work outside the venv)"
                 )
                 if should_fix:
                     _cmd_link_dir.mkdir(parents=True, exist_ok=True)
                     _cmd_link.symlink_to(_venv_bin)
-                    check_ok(f"Created symlink: {_cmd_link_display}/eco → {_venv_bin}")
+                    check_ok(f"Created symlink: {_cmd_link_display}/hermes → {_venv_bin}")
                     fixed_count += 1
 
                     # Check if the link dir is on PATH
@@ -1138,7 +1133,7 @@ def run_doctor(args):
                         )
                         manual_issues.append(f"Add {_cmd_link_display} to your PATH")
                 else:
-                    issues.append(f"Missing {_cmd_link_display}/eco symlink — run 'eco doctor --fix'")
+                    issues.append(f"Missing {_cmd_link_display}/hermes symlink — run 'hermes doctor --fix'")
 
     _section("External Tools")
     # Git
@@ -1157,7 +1152,7 @@ def run_doctor(args):
     # Docker (optional)
     terminal_env = os.getenv("TERMINAL_ENV", "local")
     try:
-        from eco_constants import is_container as _is_container
+        from hermes_constants import is_container as _is_container
         running_in_container = _is_container()
     except Exception:
         running_in_container = False
@@ -1262,68 +1257,6 @@ def run_doctor(args):
                 issues,
             )
 
-    # Vercel Sandbox (if using vercel_sandbox backend)
-    if terminal_env == "vercel_sandbox":
-        runtime = os.getenv("TERMINAL_VERCEL_RUNTIME", "node24").strip() or "node24"
-        from tools.terminal_tool import _SUPPORTED_VERCEL_RUNTIMES
-        if runtime in _SUPPORTED_VERCEL_RUNTIMES:
-            check_ok("Vercel runtime", f"({runtime})")
-        else:
-            supported = ", ".join(_SUPPORTED_VERCEL_RUNTIMES)
-            _fail_and_issue(
-                "Vercel runtime unsupported",
-                f"({runtime}; use {supported})",
-                f"Set TERMINAL_VERCEL_RUNTIME to one of: {supported}",
-                issues,
-            )
-
-        disk = os.getenv("TERMINAL_CONTAINER_DISK", "51200").strip()
-        if disk in {"", "0", "51200"}:
-            check_ok("Vercel disk setting", "(uses platform default)")
-        else:
-            _fail_and_issue(
-                "Vercel custom disk unsupported",
-                "(reset terminal.container_disk to 51200)",
-                "Vercel Sandbox does not support custom container_disk; use the shared default 51200",
-                issues,
-            )
-
-        if importlib.util.find_spec("vercel") is not None:
-            check_ok("vercel SDK", "(installed)")
-        else:
-            _fail_and_issue(
-                "vercel SDK not installed",
-                "(pip install 'eco[vercel]')",
-                "Install the Vercel optional dependency: pip install 'eco[vercel]'",
-                issues,
-            )
-
-        auth_status = describe_vercel_auth()
-        if auth_status.ok:
-            check_ok("Vercel auth", f"({auth_status.label})")
-        elif auth_status.label.startswith("partial"):
-            _fail_and_issue(
-                "Vercel auth incomplete",
-                f"({auth_status.label})",
-                "Set VERCEL_TOKEN, VERCEL_PROJECT_ID, and VERCEL_TEAM_ID together",
-                issues,
-            )
-        else:
-            _fail_and_issue(
-                "Vercel auth not configured",
-                f"({auth_status.label})",
-                "Configure Vercel Sandbox auth with VERCEL_TOKEN, VERCEL_PROJECT_ID, and VERCEL_TEAM_ID",
-                issues,
-            )
-        for line in auth_status.detail_lines:
-            check_info(f"Vercel auth {line}")
-
-        persistent = os.getenv("TERMINAL_CONTAINER_PERSISTENT", "true").lower() in {"1", "true", "yes", "on"}
-        if persistent:
-            check_info("Vercel persistence: snapshot filesystem only; live processes do not survive sandbox recreation")
-        else:
-            check_info("Vercel persistence: ephemeral filesystem")
-
     # Node.js + agent-browser (for browser automation tools)
     if _safe_which("node"):
         check_ok("Node.js")
@@ -1354,7 +1287,7 @@ def run_doctor(args):
         if agent_browser_ok and not _is_termux():
             try:
                 # Lazy import: browser_tool is a ~150KB module we don't want
-                # to eagerly load in every `eco doctor` invocation.
+                # to eagerly load in every `hermes doctor` invocation.
                 from tools.browser_tool import (
                     _chromium_installed,
                     _is_camofox_mode,
@@ -1508,7 +1441,7 @@ def run_doctor(args):
                     [(color("✗", Colors.RED), "OpenRouter API",
                       color("(out of credits — payment required)", Colors.DIM))],
                     ["OpenRouter account has insufficient credits. "
-                     "Fix: run 'eco config set model.provider <provider>' "
+                     "Fix: run 'hermes config set model.provider <provider>' "
                      "to switch providers, or fund your OpenRouter account "
                      "at https://openrouter.ai/settings/credits"],
                 )
@@ -1535,7 +1468,7 @@ def run_doctor(args):
             )
 
     def _probe_anthropic() -> _ConnectivityResult:
-        from eco_cli.auth import get_anthropic_key
+        from hermes_cli.auth import get_anthropic_key
         key = get_anthropic_key()
         if not key:
             return _ConnectivityResult("Anthropic API", [], [])
@@ -1638,7 +1571,7 @@ def run_doctor(args):
             url = (base.rstrip("/") + "/models") if base else default_url
             headers = {
                 "Authorization": f"Bearer {key}",
-                "User-Agent": _ECO_USER_AGENT,
+                "User-Agent": _HERMES_USER_AGENT,
             }
             if base_url_host_matches(base, "api.kimi.com"):
                 headers["User-Agent"] = "claude-code/0.1.0"
@@ -1647,7 +1580,7 @@ def run_doctor(args):
             # ``ACCESS_TOKEN_TYPE_UNSUPPORTED`` — that header is reserved for
             # OAuth 2 access tokens, not plain API keys. Plain keys use
             # ``x-goog-api-key`` (or ``?key=``). Without this, a perfectly valid
-            # GOOGLE_API_KEY/GEMINI_API_KEY always shows red in ``eco doctor``.
+            # GOOGLE_API_KEY/GEMINI_API_KEY always shows red in ``hermes doctor``.
             if url and base_url_host_matches(url, "generativelanguage.googleapis.com"):
                 headers.pop("Authorization", None)
                 headers["x-goog-api-key"] = key
@@ -1752,7 +1685,7 @@ def run_doctor(args):
         """
         label = "Azure Foundry (Entra ID)".ljust(28)
         try:
-            from eco_cli.config import load_config
+            from hermes_cli.config import load_config
             cfg = load_config()
             model_cfg = cfg.get("model") if isinstance(cfg, dict) else {}
             if not isinstance(model_cfg, dict):
@@ -1852,7 +1785,7 @@ def run_doctor(args):
     # Set on the parent thread before submitting work so the env-var
     # mutation never races with another worker. has_aws_credentials() in
     # the bedrock probe already gates on real env-var creds, so IMDS is
-    # never the legitimate source for `eco doctor`.
+    # never the legitimate source for `hermes doctor`.
     _imds_prev = os.environ.get("AWS_EC2_METADATA_DISABLED")
     os.environ["AWS_EC2_METADATA_DISABLED"] = "true"
     try:
@@ -1907,12 +1840,12 @@ def run_doctor(args):
         # Count disabled tools with API key requirements
         api_disabled = [u for u in unavailable if (u.get("missing_vars") or u.get("env_vars"))]
         if api_disabled:
-            issues.append("Run 'eco setup' to configure missing API keys for full tool access")
+            issues.append("Run 'hermes setup' to configure missing API keys for full tool access")
     except Exception as e:
         check_warn("Could not check tool availability", f"({e})")
     
     _section("Skills Hub")
-    hub_dir = ECO_HOME / "skills" / ".hub"
+    hub_dir = HERMES_HOME / "skills" / ".hub"
     if hub_dir.exists():
         check_ok("Skills Hub directory exists")
         lock_file = hub_dir / "lock.json"
@@ -1929,9 +1862,9 @@ def run_doctor(args):
         if q_count > 0:
             check_warn(f"{q_count} skill(s) in quarantine", "(pending review)")
     else:
-        check_warn("Skills Hub directory not initialized", "(run: eco skills list)")
+        check_warn("Skills Hub directory not initialized", "(run: hermes skills list)")
 
-    from eco_cli.config import get_env_value
+    from hermes_cli.config import get_env_value
 
     def _gh_authenticated() -> bool:
         """Check if gh CLI is authenticated via token file or device flow."""
@@ -1956,7 +1889,7 @@ def run_doctor(args):
     _active_memory_provider = ""
     try:
         import yaml as _yaml
-        _mem_cfg_path = ECO_HOME / "config.yaml"
+        _mem_cfg_path = HERMES_HOME / "config.yaml"
         if _mem_cfg_path.exists():
             with open(_mem_cfg_path, encoding="utf-8") as _f:
                 _raw_cfg = _yaml.safe_load(_f) or {}
@@ -1973,14 +1906,14 @@ def run_doctor(args):
             _honcho_cfg_path = resolve_config_path()
 
             if not _honcho_cfg_path.exists():
-                check_warn("Honcho config not found", "run: eco memory setup")
+                check_warn("Honcho config not found", "run: hermes memory setup")
             elif not hcfg.enabled:
                 check_info(f"Honcho disabled (set enabled: true in {_honcho_cfg_path} to activate)")
             elif not (hcfg.api_key or hcfg.base_url):
                 _fail_and_issue(
                     "Honcho API key or base URL not set",
-                    "run: eco memory setup",
-                    "No Honcho API key — run 'eco memory setup'",
+                    "run: hermes memory setup",
+                    "No Honcho API key — run 'hermes memory setup'",
                     issues,
                 )
             else:
@@ -2014,7 +1947,7 @@ def run_doctor(args):
             else:
                 _fail_and_issue(
                     "Mem0 API key not set",
-                    "(set MEM0_API_KEY in .env or run eco memory setup)",
+                    "(set MEM0_API_KEY in .env or run hermes memory setup)",
                     "Mem0 is set as memory provider but API key is missing",
                     issues,
                 )
@@ -2035,14 +1968,14 @@ def run_doctor(args):
             if _provider and _provider.is_available():
                 check_ok(f"{_active_memory_provider} provider active")
             elif _provider:
-                check_warn(f"{_active_memory_provider} configured but not available", "run: eco memory status")
+                check_warn(f"{_active_memory_provider} configured but not available", "run: hermes memory status")
             else:
-                check_warn(f"{_active_memory_provider} plugin not found", "run: eco memory setup")
+                check_warn(f"{_active_memory_provider} plugin not found", "run: hermes memory setup")
         except Exception as _e:
             check_warn(f"{_active_memory_provider} check failed", str(_e))
 
     try:
-        from eco_cli.profiles import list_profiles, _get_wrapper_dir, profile_exists
+        from hermes_cli.profiles import list_profiles, _get_wrapper_dir, profile_exists
         import re as _re
 
         named_profiles = [p for p in list_profiles() if not p.is_default]
@@ -2073,8 +2006,8 @@ def run_doctor(args):
                         continue
                     try:
                         content = wrapper.read_text()
-                        if "eco -p" in content:
-                            _m = _re.search(r"eco -p (\S+)", content)
+                        if "hermes -p" in content:
+                            _m = _re.search(r"hermes -p (\S+)", content)
                             if _m and not profile_exists(_m.group(1)):
                                 check_warn(f"Orphan alias: {wrapper.name} → profile '{_m.group(1)}' no longer exists")
                     except Exception:
@@ -2106,7 +2039,7 @@ def run_doctor(args):
             print(f"  {i}. {issue}")
         print()
         if not should_fix:
-            print(color("  Tip: run 'eco doctor --fix' to auto-fix what's possible.", Colors.DIM))
+            print(color("  Tip: run 'hermes doctor --fix' to auto-fix what's possible.", Colors.DIM))
     else:
         print(color("─" * 60, Colors.GREEN))
         print(color("  All checks passed! 🎉", Colors.GREEN, Colors.BOLD))

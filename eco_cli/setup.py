@@ -1,5 +1,5 @@
 """
-Interactive setup wizard for ECO Agent.
+Interactive setup wizard for Hermes Agent.
 
 Modular wizard with independently-runnable sections:
   1. Model & Provider — choose your AI provider and model
@@ -8,11 +8,10 @@ Modular wizard with independently-runnable sections:
   4. Messaging Platforms — connect Telegram, Discord, etc.
   5. Tools — configure TTS, web search, image generation, etc.
 
-Config files are stored in ~/.eco/ for easy access.
+Config files are stored in ~/.hermes/ for easy access.
 """
 
 import importlib.util
-import json
 import logging
 import os
 import re
@@ -22,16 +21,16 @@ import copy
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from eco_cli.nous_subscription import get_nous_subscription_features
+from hermes_cli.nous_subscription import get_nous_subscription_features
 from tools.tool_backend_helpers import managed_nous_tools_enabled
 from utils import base_url_hostname
-from eco_constants import get_optional_skills_dir
+from hermes_constants import get_optional_skills_dir
 
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
-_DOCS_BASE = "https://eco.nousresearch.com/docs"
+_DOCS_BASE = "https://hermes-agent.nousresearch.com/docs"
 
 
 def _model_config_dict(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -61,7 +60,7 @@ def _supports_same_provider_pool_setup(provider: str) -> bool:
         return False
     if provider == "openrouter":
         return True
-    from eco_cli.auth import PROVIDER_REGISTRY
+    from hermes_cli.auth import PROVIDER_REGISTRY
 
     pconfig = PROVIDER_REGISTRY.get(provider)
     if not pconfig:
@@ -101,10 +100,9 @@ _DEFAULT_PROVIDER_MODELS = {
     "arcee": ["trinity-large-thinking", "trinity-large-preview", "trinity-mini"],
     "minimax": ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2"],
     "minimax-cn": ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2"],
-    "ai-gateway": ["anthropic/claude-opus-4.6", "anthropic/claude-sonnet-4.6", "openai/gpt-5", "google/gemini-3-flash"],
     "kilocode": ["anthropic/claude-opus-4.6", "anthropic/claude-sonnet-4.6", "openai/gpt-5.4", "google/gemini-3-pro-preview", "google/gemini-3-flash-preview"],
     "opencode-zen": ["gpt-5.4", "gpt-5.3-codex", "claude-sonnet-4-6", "gemini-3-flash", "glm-5", "kimi-k2.5", "minimax-m2.7"],
-    "opencode-go": ["kimi-k2.6", "kimi-k2.5", "glm-5.1", "glm-5", "mimo-v2.5-pro", "mimo-v2.5", "mimo-v2-pro", "mimo-v2-omni", "minimax-m2.7", "minimax-m2.5", "qwen3.6-plus", "qwen3.5-plus"],
+    "opencode-go": ["kimi-k2.6", "kimi-k2.5", "glm-5.1", "glm-5", "mimo-v2.5-pro", "mimo-v2.5", "mimo-v2-pro", "mimo-v2-omni", "minimax-m2.7", "minimax-m2.5", "qwen3.7-max", "qwen3.6-plus", "qwen3.5-plus"],
     "huggingface": [
         "Qwen/Qwen3.5-397B-A17B", "Qwen/Qwen3-235B-A22B-Thinking-2507",
         "Qwen/Qwen3-Coder-480B-A35B-Instruct", "deepseek-ai/DeepSeek-R1-0528",
@@ -131,10 +129,10 @@ def _set_reasoning_effort(config: Dict[str, Any], effort: str) -> None:
 
 
 # Import config helpers
-from eco_cli.config import (
+from hermes_cli.config import (
     cfg_get,
     DEFAULT_CONFIG,
-    get_eco_home,
+    get_hermes_home,
     get_config_path,
     get_env_path,
     load_config,
@@ -142,11 +140,11 @@ from eco_cli.config import (
     save_env_value,
     remove_env_value,
     get_env_value,
-    ensure_eco_home,
+    ensure_hermes_home,
 )
-# display_eco_home imported lazily at call sites (stale-module safety during eco update)
+# display_hermes_home imported lazily at call sites (stale-module safety during hermes update)
 
-from eco_cli.colors import Colors, color
+from hermes_cli.colors import Colors, color
 
 
 def print_header(title: str):
@@ -155,13 +153,13 @@ def print_header(title: str):
     print(color(f"◆ {title}", Colors.CYAN, Colors.BOLD))
 
 
-from eco_cli.cli_output import (  # noqa: E402
+from hermes_cli.cli_output import (  # noqa: E402
     print_error,
     print_info,
     print_success,
     print_warning,
 )
-from eco_cli.secret_prompt import masked_secret_prompt  # noqa: E402
+from hermes_cli.secret_prompt import masked_secret_prompt  # noqa: E402
 
 
 def is_interactive_stdin() -> bool:
@@ -178,19 +176,19 @@ def is_interactive_stdin() -> bool:
 def print_noninteractive_setup_guidance(reason: str | None = None) -> None:
     """Print guidance for headless/non-interactive setup flows."""
     print()
-    print(color("⚕ ECO Setup — Non-interactive mode", Colors.CYAN, Colors.BOLD))
+    print(color("⚕ Hermes Setup — Non-interactive mode", Colors.CYAN, Colors.BOLD))
     print()
     if reason:
         print_info(reason)
     print_info("The interactive wizard cannot be used here.")
     print()
-    print_info("Configure ECO using environment variables or config commands:")
-    print_info("  eco config set model.provider custom")
-    print_info("  eco config set model.base_url http://localhost:8080/v1")
-    print_info("  eco config set model.default your-model-name")
+    print_info("Configure Hermes using environment variables or config commands:")
+    print_info("  hermes config set model.provider custom")
+    print_info("  hermes config set model.base_url http://localhost:8080/v1")
+    print_info("  hermes config set model.default your-model-name")
     print()
     print_info("Or set OPENROUTER_API_KEY / OPENAI_API_KEY in your environment.")
-    print_info("Run 'eco setup' in an interactive terminal to use the full wizard.")
+    print_info("Run 'hermes setup' in an interactive terminal to use the full wizard.")
     print()
 
 
@@ -226,7 +224,7 @@ def _sanitize_pasted_input(value: str) -> str:
 
 def _curses_prompt_choice(question: str, choices: list, default: int = 0, description: str | None = None) -> int:
     """Single-select menu using curses. Delegates to curses_radiolist."""
-    from eco_cli.curses_ui import curses_radiolist
+    from hermes_cli.curses_ui import curses_radiolist
     return curses_radiolist(question, choices, selected=default, cancel_returns=-1, description=description)
 
 
@@ -316,7 +314,7 @@ def prompt_checklist(title: str, items: list, pre_selected: list = None) -> list
     if pre_selected is None:
         pre_selected = []
 
-    from eco_cli.curses_ui import curses_checklist
+    from hermes_cli.curses_ui import curses_checklist
 
     chosen = curses_checklist(
         title,
@@ -352,10 +350,10 @@ def _prompt_api_key(var: dict):
         save_env_value(var["name"], value)
         print_success("  ✓ Saved")
     else:
-        print_warning("  Skipped (configure later with 'eco setup')")
+        print_warning("  Skipped (configure later with 'hermes setup')")
 
 
-def _print_setup_summary(config: dict, eco_home):
+def _print_setup_summary(config: dict, hermes_home):
     """Print the setup completion summary."""
     # Tool availability summary
     print()
@@ -375,7 +373,7 @@ def _print_setup_summary(config: dict, eco_home):
     if _vision_backends:
         tool_status.append(("Vision (image analysis)", True, None))
     else:
-        tool_status.append(("Vision (image analysis)", False, "run 'eco setup' to configure"))
+        tool_status.append(("Vision (image analysis)", False, "run 'hermes setup' to configure"))
 
     # Mixture of Agents — requires OpenRouter specifically (calls multiple models)
     if get_env_value("OPENROUTER_API_KEY"):
@@ -434,7 +432,7 @@ def _print_setup_summary(config: dict, eco_home):
         _img_backend = None
         try:
             from agent.image_gen_registry import list_providers
-            from eco_cli.plugins import _ensure_plugins_discovered
+            from hermes_cli.plugins import _ensure_plugins_discovered
 
             _ensure_plugins_discovered()
             for _p in list_providers():
@@ -453,12 +451,12 @@ def _print_setup_summary(config: dict, eco_home):
         else:
             tool_status.append(("Image Generation", False, "FAL_KEY or OPENAI_API_KEY"))
 
-    # Video generation — opt-in via `eco tools` → Video Generation.
+    # Video generation — opt-in via `hermes tools` → Video Generation.
     # Only show the row when a plugin reports available so we don't badger
     # users who don't care about video gen with a "missing" status line.
     try:
         from agent.video_gen_registry import list_providers as _list_video_providers
-        from eco_cli.plugins import _ensure_plugins_discovered as _ensure_plugins
+        from hermes_cli.plugins import _ensure_plugins_discovered as _ensure_plugins
         _ensure_plugins()
         _video_backend = None
         for _vp in _list_video_providers():
@@ -497,7 +495,7 @@ def _print_setup_summary(config: dict, eco_home):
         if neutts_ok:
             tool_status.append(("Text-to-Speech (NeuTTS local)", True, None))
         else:
-            tool_status.append(("Text-to-Speech (NeuTTS — not installed)", False, "run 'eco setup tts'"))
+            tool_status.append(("Text-to-Speech (NeuTTS — not installed)", False, "run 'hermes setup tts'"))
     elif tts_provider == "kittentts":
         try:
             import importlib.util
@@ -507,7 +505,7 @@ def _print_setup_summary(config: dict, eco_home):
         if kittentts_ok:
             tool_status.append(("Text-to-Speech (KittenTTS local)", True, None))
         else:
-            tool_status.append(("Text-to-Speech (KittenTTS — not installed)", False, "run 'eco setup tts'"))
+            tool_status.append(("Text-to-Speech (KittenTTS — not installed)", False, "run 'hermes setup tts'"))
     else:
         tool_status.append(("Text-to-Speech (Edge TTS)", True, None))
 
@@ -517,7 +515,7 @@ def _print_setup_summary(config: dict, eco_home):
         if subscription_features.modal.direct_override:
             tool_status.append(("Modal Execution (direct Modal)", True, None))
         else:
-            tool_status.append(("Modal Execution", False, "run 'eco setup terminal'"))
+            tool_status.append(("Modal Execution", False, "run 'hermes setup terminal'"))
     elif managed_nous_tools_enabled() and subscription_features.nous_auth_present:
         tool_status.append(("Modal Execution (optional via Nous subscription)", True, None))
 
@@ -525,9 +523,9 @@ def _print_setup_summary(config: dict, eco_home):
     if get_env_value("HASS_TOKEN"):
         tool_status.append(("Smart Home (Home Assistant)", True, None))
 
-    # Spotify (OAuth via eco auth spotify — check auth.json, not env vars)
+    # Spotify (OAuth via hermes auth spotify — check auth.json, not env vars)
     try:
-        from eco_cli.auth import get_provider_auth_state
+        from hermes_cli.auth import get_provider_auth_state
         _spotify_state = get_provider_auth_state("spotify") or {}
         if _spotify_state.get("access_token") or _spotify_state.get("refresh_token"):
             tool_status.append(("Spotify (PKCE OAuth)", True, None))
@@ -569,9 +567,9 @@ def _print_setup_summary(config: dict, eco_home):
     disabled_tools = [(name, var) for name, avail, var in tool_status if not avail]
     if disabled_tools:
         print_warning(
-            "Some tools are disabled. Run 'eco setup tools' to configure them,"
+            "Some tools are disabled. Run 'hermes setup tools' to configure them,"
         )
-        from eco_constants import display_eco_home as _dhh
+        from hermes_constants import display_hermes_home as _dhh
         print_warning(f"or edit {_dhh()}/.env directly to add the missing API keys.")
         print()
 
@@ -595,13 +593,13 @@ def _print_setup_summary(config: dict, eco_home):
     print()
 
     # Show file locations prominently
-    from eco_constants import display_eco_home as _dhh
+    from hermes_constants import display_hermes_home as _dhh
     print(color(f"📁 All your files are in {_dhh()}/:", Colors.CYAN, Colors.BOLD))
     print()
     print(f"   {color('Settings:', Colors.YELLOW)}  {get_config_path()}")
     print(f"   {color('API Keys:', Colors.YELLOW)}  {get_env_path()}")
     print(
-        f"   {color('Data:', Colors.YELLOW)}      {eco_home}/cron/, sessions/, logs/"
+        f"   {color('Data:', Colors.YELLOW)}      {hermes_home}/cron/, sessions/, logs/"
     )
     print()
 
@@ -609,17 +607,17 @@ def _print_setup_summary(config: dict, eco_home):
     print()
     print(color("📝 To edit your configuration:", Colors.CYAN, Colors.BOLD))
     print()
-    print(f"   {color('eco setup', Colors.GREEN)}          Re-run the full wizard")
-    print(f"   {color('eco setup model', Colors.GREEN)}    Change model/provider")
-    print(f"   {color('eco setup terminal', Colors.GREEN)} Change terminal backend")
-    print(f"   {color('eco setup gateway', Colors.GREEN)}  Configure messaging")
-    print(f"   {color('eco setup tools', Colors.GREEN)}    Configure tool providers")
+    print(f"   {color('hermes setup', Colors.GREEN)}          Re-run the full wizard")
+    print(f"   {color('hermes setup model', Colors.GREEN)}    Change model/provider")
+    print(f"   {color('hermes setup terminal', Colors.GREEN)} Change terminal backend")
+    print(f"   {color('hermes setup gateway', Colors.GREEN)}  Configure messaging")
+    print(f"   {color('hermes setup tools', Colors.GREEN)}    Configure tool providers")
     print()
-    print(f"   {color('eco config', Colors.GREEN)}         View current settings")
+    print(f"   {color('hermes config', Colors.GREEN)}         View current settings")
     print(
-        f"   {color('eco config edit', Colors.GREEN)}    Open config in your editor"
+        f"   {color('hermes config edit', Colors.GREEN)}    Open config in your editor"
     )
-    print(f"   {color('eco config set <key> <value>', Colors.GREEN)}")
+    print(f"   {color('hermes config set <key> <value>', Colors.GREEN)}")
     print("                          Set a specific value")
     print()
     print("   Or edit the files directly:")
@@ -631,9 +629,9 @@ def _print_setup_summary(config: dict, eco_home):
     print()
     print(color("🚀 Ready to go!", Colors.CYAN, Colors.BOLD))
     print()
-    print(f"   {color('eco', Colors.GREEN)}              Start chatting")
-    print(f"   {color('eco gateway', Colors.GREEN)}      Start messaging gateway")
-    print(f"   {color('eco doctor', Colors.GREEN)}       Check for issues")
+    print(f"   {color('hermes', Colors.GREEN)}              Start chatting")
+    print(f"   {color('hermes gateway', Colors.GREEN)}      Start messaging gateway")
+    print(f"   {color('hermes doctor', Colors.GREEN)}       Check for issues")
     print()
 
 
@@ -679,104 +677,8 @@ def _prompt_container_resources(config: dict):
         pass
 
 
-def _prompt_vercel_sandbox_settings(config: dict):
-    """Prompt for Vercel Sandbox settings without exposing unsupported disk sizing."""
-    terminal = config.setdefault("terminal", {})
-
-    print()
-    print_info("Vercel Sandbox settings:")
-    print_info("  Filesystem persistence uses Vercel snapshots.")
-    print_info("  Snapshots restore files only; live processes do not continue after sandbox recreation.")
-
-    from tools.terminal_tool import _SUPPORTED_VERCEL_RUNTIMES
-
-    current_runtime = terminal.get("vercel_runtime") or "node24"
-    supported_label = ", ".join(_SUPPORTED_VERCEL_RUNTIMES)
-    runtime = prompt(f"  Runtime ({supported_label})", current_runtime).strip() or current_runtime
-    if runtime not in _SUPPORTED_VERCEL_RUNTIMES:
-        print_warning(f"Unsupported Vercel runtime '{runtime}', keeping {current_runtime}.")
-        runtime = current_runtime if current_runtime in _SUPPORTED_VERCEL_RUNTIMES else "node24"
-    terminal["vercel_runtime"] = runtime
-    save_env_value("TERMINAL_VERCEL_RUNTIME", runtime)
-
-    current_persist = terminal.get("container_persistent", True)
-    persist_label = "yes" if current_persist else "no"
-    terminal["container_persistent"] = prompt(
-        "  Persist filesystem with snapshots? (yes/no)", persist_label
-    ).lower() in {"yes", "true", "y", "1"}
-
-    current_cpu = terminal.get("container_cpu", 1)
-    cpu_str = prompt("  CPU cores", str(current_cpu))
-    try:
-        terminal["container_cpu"] = float(cpu_str)
-    except ValueError:
-        pass
-
-    current_mem = terminal.get("container_memory", 5120)
-    mem_str = prompt("  Memory in MB (5120 = 5GB)", str(current_mem))
-    try:
-        terminal["container_memory"] = int(mem_str)
-    except ValueError:
-        pass
-
-    if terminal.get("container_disk", 51200) not in {0, 51200}:
-        print_warning("Vercel Sandbox does not support custom disk sizing; resetting container_disk to 51200.")
-    terminal["container_disk"] = 51200
-
-    print()
-    print_info("Vercel authentication:")
-    print_info("  Use a long-lived Vercel access token plus project/team IDs.")
-    linked_project = _read_nearest_vercel_project()
-    if linked_project:
-        print_info("  Found defaults in nearest .vercel/project.json.")
-
-    remove_env_value("VERCEL_OIDC_TOKEN")
-    token = prompt("    Vercel access token", get_env_value("VERCEL_TOKEN") or "", password=True)
-    project = prompt(
-        "    Vercel project ID",
-        get_env_value("VERCEL_PROJECT_ID") or linked_project.get("projectId", ""),
-    )
-    team = prompt(
-        "    Vercel team ID",
-        get_env_value("VERCEL_TEAM_ID") or linked_project.get("orgId", ""),
-    )
-    if token:
-        save_env_value("VERCEL_TOKEN", token)
-    if project:
-        save_env_value("VERCEL_PROJECT_ID", project)
-    if team:
-        save_env_value("VERCEL_TEAM_ID", team)
-
-
-def _read_nearest_vercel_project(start: Path | None = None) -> dict[str, str]:
-    """Read project/team defaults from the nearest Vercel link file."""
-    current = (start or Path.cwd()).resolve()
-    if current.is_file():
-        current = current.parent
-
-    for directory in (current, *current.parents):
-        project_file = directory / ".vercel" / "project.json"
-        if not project_file.exists():
-            continue
-        try:
-            data = json.loads(project_file.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return {}
-        if not isinstance(data, dict):
-            return {}
-        return {
-            key: value
-            for key, value in {
-                "projectId": data.get("projectId"),
-                "orgId": data.get("orgId"),
-            }.items()
-            if isinstance(value, str) and value.strip()
-        }
-    return {}
-
-
 # Tool categories and provider config are now in tools_config.py (shared
-# between `eco tools` and `eco setup tools`).
+# between `hermes tools` and `hermes setup tools`).
 
 
 # =============================================================================
@@ -788,24 +690,24 @@ def _read_nearest_vercel_project(start: Path | None = None) -> dict[str, str]:
 def setup_model_provider(config: dict, *, quick: bool = False):
     """Configure the inference provider and default model.
 
-    Delegates to ``cmd_model()`` (the same flow used by ``eco model``)
+    Delegates to ``cmd_model()`` (the same flow used by ``hermes model``)
     for provider selection, credential prompting, and model picking.
     This ensures a single code path for all provider setup — any new
-    provider added to ``eco model`` is automatically available here.
+    provider added to ``hermes model`` is automatically available here.
 
     When *quick* is True, skips credential rotation, vision, and TTS
     configuration — used by the streamlined first-time quick setup.
     """
-    from eco_cli.config import load_config, save_config
+    from hermes_cli.config import load_config, save_config
 
     print_header("Inference Provider")
     print_info("Choose how to connect to your main chat model.")
     print_info(f"   Guide: {_DOCS_BASE}/integrations/providers")
     print()
 
-    # Delegate to the shared eco model flow — handles provider picker,
+    # Delegate to the shared hermes model flow — handles provider picker,
     # credential prompting, model selection, and config persistence.
-    from eco_cli.main import select_provider_and_model
+    from hermes_cli.main import select_provider_and_model
     try:
         select_provider_and_model()
     except (SystemExit, KeyboardInterrupt):
@@ -814,7 +716,7 @@ def setup_model_provider(config: dict, *, quick: bool = False):
     except Exception as exc:
         logger.debug("select_provider_and_model error during setup: %s", exc)
         print_warning(f"Provider setup encountered an error: {exc}")
-        print_info("You can try again later with: eco model")
+        print_info("You can try again later with: hermes model")
 
     # Re-sync the wizard's config dict from what cmd_model saved to disk.
     # This is critical: cmd_model writes to disk via its own load/save cycle,
@@ -837,7 +739,7 @@ def setup_model_provider(config: dict, *, quick: bool = False):
         try:
             from types import SimpleNamespace
             from agent.credential_pool import load_pool
-            from eco_cli.auth_commands import auth_add_command
+            from hermes_cli.auth_commands import auth_add_command
 
             pool = load_pool(selected_provider)
             entries = pool.entries()
@@ -847,7 +749,7 @@ def setup_model_provider(config: dict, *, quick: bool = False):
             print()
             print_header("Same-Provider Fallback & Rotation")
             print_info(
-                "ECO can keep multiple credentials for one provider and rotate between"
+                "Hermes can keep multiple credentials for one provider and rotate between"
             )
             print_info(
                 "them when a credential is exhausted or rate-limited. This preserves"
@@ -879,7 +781,6 @@ def setup_model_provider(config: dict, *, quick: bool = False):
                         timeout=15.0,
                         insecure=False,
                         ca_bundle=None,
-                        min_key_ttl_seconds=5 * 60,
                     )
                 )
                 pool = load_pool(selected_provider)
@@ -936,7 +837,6 @@ def setup_model_provider(config: dict, *, quick: bool = False):
             "minimax": "MiniMax",
             "minimax-cn": "MiniMax CN",
             "anthropic": "Anthropic",
-            "ai-gateway": "Vercel AI Gateway",
             "custom": "your custom endpoint",
         }
         _prov_display = _prov_names.get(selected_provider, selected_provider or "your provider")
@@ -944,7 +844,7 @@ def setup_model_provider(config: dict, *, quick: bool = False):
         print()
         print_header("Vision & Image Analysis (optional)")
         print_info(f"Vision uses a separate multimodal backend. {_prov_display}")
-        print_info("doesn't currently provide one ECO can auto-use for vision,")
+        print_info("doesn't currently provide one Hermes can auto-use for vision,")
         print_info("so choose a backend now or skip and configure later.")
         print()
 
@@ -994,7 +894,7 @@ def setup_model_provider(config: dict, *, quick: bool = False):
             else:
                 print_info("Skipped — vision won't be available")
         else:
-            print_info("Skipped — add later with 'eco setup' or configure AUXILIARY_VISION_* settings")
+            print_info("Skipped — add later with 'hermes setup' or configure AUXILIARY_VISION_* settings")
 
 
     # Tool Gateway prompt is already shown by _model_flow_nous() above.
@@ -1093,10 +993,10 @@ def _xai_oauth_logged_in_for_setup() -> bool:
     """True iff xAI Grok OAuth credentials are already stored locally.
 
     Lets TTS / STT setup skip the API-key prompt for users who logged in
-    through ``eco model`` -> xAI Grok OAuth (SuperGrok / Premium+).
+    through ``hermes model`` -> xAI Grok OAuth (SuperGrok / Premium+).
     """
     try:
-        from eco_cli.auth import get_xai_oauth_auth_status
+        from hermes_cli.auth import get_xai_oauth_auth_status
 
         return bool(get_xai_oauth_auth_status().get("logged_in"))
     except Exception:
@@ -1110,7 +1010,7 @@ def _run_xai_oauth_login_from_setup() -> bool:
     to whatever the user picked next, e.g. Edge TTS).
     """
     try:
-        from eco_cli.auth import (
+        from hermes_cli.auth import (
             DEFAULT_XAI_OAUTH_BASE_URL,
             _is_remote_session,
             _save_xai_oauth_tokens,
@@ -1198,7 +1098,7 @@ def _setup_tts_provider(config: dict):
         print_info("OpenAI TTS will use the managed Nous gateway and bill to your subscription.")
         if get_env_value("VOICE_TOOLS_OPENAI_KEY") or get_env_value("OPENAI_API_KEY"):
             print_warning(
-                "Direct OpenAI credentials are still configured and may take precedence until removed from ~/.eco/.env."
+                "Direct OpenAI credentials are still configured and may take precedence until removed from ~/.hermes/.env."
             )
 
     if selected == "neutts":
@@ -1250,7 +1150,7 @@ def _setup_tts_provider(config: dict):
 
     elif selected == "xai":
         # Resolution order: existing OAuth tokens (free for SuperGrok subscribers
-        # via the ECO auth store) > existing XAI_API_KEY > prompt the user.
+        # via the Hermes auth store) > existing XAI_API_KEY > prompt the user.
         # When neither is configured, offer both options instead of forcing the
         # API-key path — xAI TTS works fine with OAuth bearer tokens too.
         oauth_logged_in = _xai_oauth_logged_in_for_setup()
@@ -1291,10 +1191,10 @@ def _setup_tts_provider(config: dict):
                     save_env_value("XAI_API_KEY", api_key)
                     print_success("xAI TTS API key saved")
                 else:
-                    from eco_constants import display_eco_home as _dhh
+                    from hermes_constants import display_hermes_home as _dhh
                     print_warning(
                         "No xAI API key provided for TTS. Configure XAI_API_KEY "
-                        f"via eco setup model or {_dhh()}/.env to use xAI TTS. "
+                        f"via hermes setup model or {_dhh()}/.env to use xAI TTS. "
                         "Falling back to Edge TTS."
                     )
                     selected = "edge"
@@ -1379,7 +1279,7 @@ def _setup_tts_provider(config: dict):
 
 
 def setup_tts(config: dict):
-    """Standalone TTS setup (for 'eco setup tts')."""
+    """Standalone TTS setup (for 'hermes setup tts')."""
     _setup_tts_provider(config)
 
 
@@ -1392,7 +1292,7 @@ def setup_terminal_backend(config: dict):
     """Configure the terminal execution backend."""
     import platform as _platform
     print_header("Terminal Backend")
-    print_info("Choose where ECO runs shell commands and code.")
+    print_info("Choose where Hermes runs shell commands and code.")
     print_info("This affects tool execution, file access, and isolation.")
     print_info(f"   Guide: {_DOCS_BASE}/developer-guide/environments")
     print()
@@ -1407,12 +1307,11 @@ def setup_terminal_backend(config: dict):
         "Modal - serverless cloud sandbox",
         "SSH - run on a remote machine",
         "Daytona - persistent cloud development environment",
-        "Vercel Sandbox - cloud microVM with snapshot filesystem persistence",
     ]
-    idx_to_backend = {0: "local", 1: "docker", 2: "modal", 3: "ssh", 4: "daytona", 5: "vercel_sandbox"}
-    backend_to_idx = {"local": 0, "docker": 1, "modal": 2, "ssh": 3, "daytona": 4, "vercel_sandbox": 5}
+    idx_to_backend = {0: "local", 1: "docker", 2: "modal", 3: "ssh", 4: "daytona"}
+    backend_to_idx = {"local": 0, "docker": 1, "modal": 2, "ssh": 3, "daytona": 4}
 
-    next_idx = 6
+    next_idx = 5
     if is_linux:
         terminal_choices.append("Singularity/Apptainer - HPC-friendly container")
         idx_to_backend[next_idx] = "singularity"
@@ -1658,39 +1557,6 @@ def setup_terminal_backend(config: dict):
 
         _prompt_container_resources(config)
 
-    elif selected_backend == "vercel_sandbox":
-        print_success("Terminal backend: Vercel Sandbox")
-        print_info("Cloud microVM sandboxes with snapshot-backed filesystem persistence.")
-        print_info("Requires the optional SDK: pip install 'eco[vercel]'")
-
-        try:
-            __import__("vercel")
-        except ImportError:
-            print_info("Installing vercel SDK...")
-            import subprocess
-
-            uv_bin = shutil.which("uv")
-            if uv_bin:
-                result = subprocess.run(
-                    [uv_bin, "pip", "install", "--python", sys.executable, "vercel"],
-                    capture_output=True,
-                    text=True,
-                )
-            else:
-                result = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "vercel"],
-                    capture_output=True,
-                    text=True,
-                )
-            if result.returncode == 0:
-                print_success("vercel SDK installed")
-            else:
-                print_warning("Install failed — run manually: pip install 'eco[vercel]'")
-                if result.stderr:
-                    print_info(f"  Error: {result.stderr.strip().splitlines()[-1]}")
-
-        _prompt_vercel_sandbox_settings(config)
-
     elif selected_backend == "ssh":
         print_success("Terminal backend: SSH")
         print_info("Run commands on a remote machine via SSH.")
@@ -1744,8 +1610,6 @@ def setup_terminal_backend(config: dict):
     save_env_value("TERMINAL_ENV", selected_backend)
     if selected_backend == "modal":
         save_env_value("TERMINAL_MODAL_MODE", config["terminal"].get("modal_mode", "auto"))
-    if selected_backend == "vercel_sandbox":
-        save_env_value("TERMINAL_VERCEL_RUNTIME", config["terminal"].get("vercel_runtime", "node24"))
     save_config(config)
     print()
     print_success(f"Terminal backend set to: {selected_backend}")
@@ -1760,10 +1624,10 @@ def _apply_default_agent_settings(config: dict):
     """Apply recommended defaults for all agent settings without prompting."""
     config.setdefault("agent", {})["max_turns"] = 90
     # config.yaml is the authoritative source for max_turns; the gateway
-    # bridges it into ECO_MAX_ITERATIONS at startup. We no longer write
+    # bridges it into HERMES_MAX_ITERATIONS at startup. We no longer write
     # to .env to avoid the dual-source inconsistency that caused the
     # 60-vs-500 bug (stale .env entry silently shadowing config.yaml).
-    remove_env_value("ECO_MAX_ITERATIONS")
+    remove_env_value("HERMES_MAX_ITERATIONS")
 
     config.setdefault("display", {})["tool_progress"] = "all"
 
@@ -1782,7 +1646,7 @@ def _apply_default_agent_settings(config: dict):
     print_info("  Tool progress: all")
     print_info("  Compression threshold: 0.50")
     print_info("  Session reset: inactivity (1440 min) + daily (4:00)")
-    print_info("  Run `eco setup agent` later to customize.")
+    print_info("  Run `hermes setup agent` later to customize.")
 
 
 def setup_agent_settings(config: dict):
@@ -1810,10 +1674,10 @@ def setup_agent_settings(config: dict):
             # Write to config.yaml (authoritative) only. Also clean up any
             # stale .env entry from earlier setup runs — the gateway's
             # bridge in gateway/run.py now unconditionally derives
-            # ECO_MAX_ITERATIONS from agent.max_turns at startup.
+            # HERMES_MAX_ITERATIONS from agent.max_turns at startup.
             config.setdefault("agent", {})["max_turns"] = max_iter
             config.pop("max_turns", None)
-            remove_env_value("ECO_MAX_ITERATIONS")
+            remove_env_value("HERMES_MAX_ITERATIONS")
             print_success(f"Max iterations set to {max_iter}")
     except ValueError:
         print_warning("Invalid number, keeping current value")
@@ -2013,7 +1877,7 @@ def _setup_telegram():
         print_info("⚠️  No allowlist set - anyone who finds your bot can use it!")
 
     print()
-    print_info("📬 Home Channel: where ECO delivers cron job results,")
+    print_info("📬 Home Channel: where Hermes delivers cron job results,")
     print_info("   cross-platform messages, and notifications.")
     print_info("   For Telegram DMs, this is your user ID (same as above).")
 
@@ -2044,7 +1908,7 @@ def _setup_slack():
             # new commands (e.g. /btw, /stop, ...) get registered in Slack.
             if prompt_yes_no(
                 "Regenerate the Slack app manifest with the latest command "
-                "list? (recommended after `eco update`)",
+                "list? (recommended after `hermes update`)",
                 True,
             ):
                 _write_slack_manifest_and_instruct()
@@ -2058,7 +1922,7 @@ def _setup_slack():
     print_info("   3. Install to Workspace: Settings → Install App")
     print_info("   4. After installing, invite the bot to channels: /invite @YourBot")
     print()
-    print_info("   Full guide: https://eco.nousresearch.com/docs/user-guide/messaging/slack/")
+    print_info("   Full guide: https://hermes-agent.nousresearch.com/docs/user-guide/messaging/slack/")
     print()
 
     # Generate and write manifest up-front so the user can paste it into
@@ -2091,7 +1955,7 @@ def _setup_slack():
         print_info("   Set SLACK_ALLOW_ALL_USERS=true or GATEWAY_ALLOW_ALL_USERS=true only if you intentionally want open workspace access.")
 
     print()
-    print_info("📬 Home Channel: where ECO delivers cron job results,")
+    print_info("📬 Home Channel: where Hermes delivers cron job results,")
     print_info("   cross-platform messages, and notifications.")
     print_info("   To get a channel ID: open the channel in Slack, then right-click")
     print_info("   the channel name → Copy link — the ID starts with C (e.g. C01ABC2DE3F).")
@@ -2102,7 +1966,7 @@ def _setup_slack():
 
 
 def _write_slack_manifest_and_instruct():
-    """Generate the Slack manifest, write it under ECO_HOME, and print
+    """Generate the Slack manifest, write it under HERMES_HOME, and print
     paste-into-Slack instructions.
 
     Exposed as its own helper so both the initial setup flow and the
@@ -2112,14 +1976,14 @@ def _write_slack_manifest_and_instruct():
     the whole Slack setup.
     """
     try:
-        from eco_cli.slack_cli import _build_full_manifest
-        from eco_constants import get_eco_home
+        from hermes_cli.slack_cli import _build_full_manifest
+        from hermes_constants import get_hermes_home
 
         manifest = _build_full_manifest(
-            bot_name="ECO",
-            bot_description="Your ECO agent on Slack",
+            bot_name="Hermes",
+            bot_description="Your Hermes agent on Slack",
         )
-        target = Path(get_eco_home()) / "slack-manifest.json"
+        target = Path(get_hermes_home()) / "slack-manifest.json"
         target.parent.mkdir(parents=True, exist_ok=True)
         import json as _json
         target.write_text(
@@ -2133,14 +1997,14 @@ def _write_slack_manifest_and_instruct():
             "reinstall if scopes or slash commands changed."
         )
         print_info(
-            "   Re-run `eco slack manifest --write` anytime to refresh after "
-            "ECO adds new commands."
+            "   Re-run `hermes slack manifest --write` anytime to refresh after "
+            "Hermes adds new commands."
         )
     except Exception as exc:  # pragma: no cover - best-effort UX helper
         print_warning(f"Couldn't write Slack manifest: {exc}")
         print_info(
             "   You can generate it manually later with: "
-            "eco slack manifest --write"
+            "hermes slack manifest --write"
         )
 
 
@@ -2252,7 +2116,7 @@ def _setup_matrix():
             print_info("⚠️  No allowlist set - anyone who can message the bot can use it!")
 
         print()
-        print_info("📬 Home Room: where ECO delivers cron job results and notifications.")
+        print_info("📬 Home Room: where Hermes delivers cron job results and notifications.")
         print_info("   Room IDs look like !abc123:server (shown in Element room settings)")
         print_info("   You can also set this later by typing /set-home in a Matrix room.")
         home_room = prompt("Home room ID (leave empty to set later with /set-home)")
@@ -2269,7 +2133,7 @@ def _setup_bluebubbles():
         if not prompt_yes_no("Reconfigure BlueBubbles?", False):
             return
 
-    print_info("Connects ECO to iMessage via BlueBubbles — a free, open-source")
+    print_info("Connects Hermes to iMessage via BlueBubbles — a free, open-source")
     print_info("macOS server that bridges iMessage to any device.")
     print_info("   Requires a Mac running BlueBubbles Server v1.0.0+")
     print_info("   Download: https://bluebubbles.app/")
@@ -2327,7 +2191,7 @@ def _setup_bluebubbles():
 
 def _setup_qqbot():
     """Configure QQ Bot (Official API v2) via gateway setup."""
-    from eco_cli.gateway import _setup_qqbot as _gateway_setup_qqbot
+    from hermes_cli.gateway import _setup_qqbot as _gateway_setup_qqbot
     _gateway_setup_qqbot()
 
 
@@ -2345,7 +2209,7 @@ def _setup_webhooks():
     print_warning("   internet. For security, run the gateway in a sandboxed environment")
     print_warning("   (Docker, VM, etc.) to limit blast radius from prompt injection.")
     print()
-    print_info("   Full guide: https://eco.nousresearch.com/docs/user-guide/messaging/webhooks/")
+    print_info("   Full guide: https://hermes-agent.nousresearch.com/docs/user-guide/messaging/webhooks/")
     print()
 
     port = prompt("Webhook port (default 8644)")
@@ -2366,24 +2230,24 @@ def _setup_webhooks():
     save_env_value("WEBHOOK_ENABLED", "true")
     print()
     print_success("Webhooks enabled! Next steps:")
-    from eco_constants import display_eco_home as _dhh
+    from hermes_constants import display_hermes_home as _dhh
     print_info(f"   1. Define webhook routes in {_dhh()}/config.yaml")
     print_info("   2. Point your service (GitHub, GitLab, etc.) at:")
     print_info("      http://your-server:8644/webhooks/<route-name>")
     print()
     print_info("   Route configuration guide:")
-    print_info("   https://eco.nousresearch.com/docs/user-guide/messaging/webhooks/#configuring-routes")
+    print_info("   https://hermes-agent.nousresearch.com/docs/user-guide/messaging/webhooks/#configuring-routes")
     print()
-    print_info("   Open config in your editor:  eco config edit")
-    print_info("   Open config in your editor:  eco config edit")
+    print_info("   Open config in your editor:  hermes config edit")
+    print_info("   Open config in your editor:  hermes config edit")
 
 
 def setup_gateway(config: dict):
     """Configure messaging platform integrations."""
-    from eco_cli.gateway import _all_platforms, _platform_status, _configure_platform
+    from hermes_cli.gateway import _all_platforms, _platform_status, _configure_platform
 
     print_header("Messaging Platforms")
-    print_info("Connect to messaging platforms to chat with ECO from anywhere.")
+    print_info("Connect to messaging platforms to chat with Hermes from anywhere.")
     print_info("Toggle with Space, confirm with Enter.")
     print()
 
@@ -2401,7 +2265,7 @@ def setup_gateway(config: dict):
     selected = prompt_checklist("Select platforms to configure:", items, pre_selected)
 
     if not selected:
-        print_info("No platforms selected. Run 'eco setup gateway' later to configure.")
+        print_info("No platforms selected. Run 'hermes setup gateway' later to configure.")
         return
 
     for idx in selected:
@@ -2454,7 +2318,7 @@ def setup_gateway(config: dict):
             print_info("   Set one later with /set-home in your chat, or:")
             for plat in missing_home:
                 print_info(
-                    f"     eco config set {plat.upper()}_HOME_CHANNEL <channel_id>"
+                    f"     hermes config set {plat.upper()}_HOME_CHANNEL <channel_id>"
                 )
 
         # Offer to install the gateway as a system service
@@ -2464,12 +2328,12 @@ def setup_gateway(config: dict):
         _is_macos = _platform.system() == "Darwin"
         _is_windows = _platform.system() == "Windows"
 
-        from eco_cli.gateway import (
+        from hermes_cli.gateway import (
             _is_service_installed,
             _is_service_running,
             supports_systemd_services,
             has_conflicting_systemd_units,
-            has_legacy_eco_units,
+            has_legacy_hermes_units,
             install_linux_gateway_from_setup,
             print_systemd_scope_conflict_warning,
             print_legacy_unit_warning,
@@ -2494,7 +2358,7 @@ def setup_gateway(config: dict):
             print_systemd_scope_conflict_warning()
             print()
 
-        if supports_systemd and has_legacy_eco_units():
+        if supports_systemd and has_legacy_hermes_units():
             print_legacy_unit_warning()
             print()
 
@@ -2508,7 +2372,7 @@ def setup_gateway(config: dict):
                     elif _is_macos:
                         launchd_restart()
                     elif _is_windows:
-                        from eco_cli import gateway_windows
+                        from hermes_cli import gateway_windows
                         gateway_windows.restart()
                 except UserSystemdUnavailableError as e:
                     print_error("  Restart failed — user systemd not reachable:")
@@ -2533,7 +2397,7 @@ def setup_gateway(config: dict):
                     elif _is_macos:
                         launchd_start()
                     elif _is_windows:
-                        from eco_cli import gateway_windows
+                        from hermes_cli import gateway_windows
                         gateway_windows.start()
                 except UserSystemdUnavailableError as e:
                     print_error("  Start failed — user systemd not reachable:")
@@ -2569,7 +2433,7 @@ def setup_gateway(config: dict):
                         # Task AND starts it immediately (via schtasks /Run
                         # or a direct spawn fallback), so no separate start
                         # prompt is needed here.
-                        from eco_cli import gateway_windows
+                        from hermes_cli import gateway_windows
                         gateway_windows.install(force=False)
                         did_install = True
                         started_inline = True
@@ -2591,24 +2455,24 @@ def setup_gateway(config: dict):
                             print_error(f"  Start failed: {e}")
                 except Exception as e:
                     print_error(f"  Install failed: {e}")
-                    print_info("  You can try manually: eco gateway install")
+                    print_info("  You can try manually: hermes gateway install")
             else:
-                print_info("  You can install later: eco gateway install")
+                print_info("  You can install later: hermes gateway install")
                 if supports_systemd:
-                    print_info("  Or as a boot-time service: sudo eco gateway install --system")
-                print_info("  Or run in foreground:  eco gateway")
+                    print_info("  Or as a boot-time service: sudo hermes gateway install --system")
+                print_info("  Or run in foreground:  hermes gateway")
         else:
-            from eco_constants import is_container
+            from hermes_constants import is_container
             if is_container():
                 print_info("Start the gateway to bring your bots online:")
-                print_info("   eco gateway run          # Run as container main process")
+                print_info("   hermes gateway run          # Run as container main process")
                 print_info("")
                 print_info("For automatic restarts, use a Docker restart policy:")
                 print_info("   docker run --restart unless-stopped ...")
                 print_info("   docker restart <container>  # Manual restart")
             else:
                 print_info("Start the gateway to bring your bots online:")
-                print_info("   eco gateway              # Run in foreground")
+                print_info("   hermes gateway              # Run in foreground")
 
         print_info("━" * 50)
 
@@ -2621,14 +2485,14 @@ def setup_gateway(config: dict):
 def setup_tools(config: dict, first_install: bool = False):
     """Configure tools — delegates to the unified tools_command() in tools_config.py.
 
-    Both `eco setup tools` and `eco tools` use the same flow:
+    Both `hermes setup tools` and `hermes tools` use the same flow:
     platform selection → toolset toggles → provider/API key configuration.
 
     Args:
         first_install: When True, uses the simplified first-install flow
             (no platform menu, prompts for all unconfigured API keys).
     """
-    from eco_cli.tools_config import tools_command
+    from hermes_cli.tools_config import tools_command
 
     tools_command(first_install=first_install, config=config)
 
@@ -2642,7 +2506,7 @@ def _model_section_has_credentials(config: dict) -> bool:
     """Return True when any known inference provider has usable credentials.
 
     Sources of truth:
-      * ``PROVIDER_REGISTRY`` in ``eco_cli.auth`` — lists every supported
+      * ``PROVIDER_REGISTRY`` in ``hermes_cli.auth`` — lists every supported
         provider along with its ``api_key_env_vars``.
       * ``active_provider`` in the auth store — covers OAuth device-code /
         external-OAuth providers (Nous, Codex, Qwen, Gemini CLI, ...).
@@ -2650,14 +2514,14 @@ def _model_section_has_credentials(config: dict) -> bool:
         ``OPENAI_API_KEY`` / ``OPENROUTER_API_KEY`` values through OpenRouter.
     """
     try:
-        from eco_cli.auth import get_active_provider
+        from hermes_cli.auth import get_active_provider
         if get_active_provider():
             return True
     except Exception:
         pass
 
     try:
-        from eco_cli.auth import PROVIDER_REGISTRY
+        from hermes_cli.auth import PROVIDER_REGISTRY
     except Exception:
         PROVIDER_REGISTRY = {}  # type: ignore[assignment]
 
@@ -2710,7 +2574,7 @@ def _get_section_config_summary(config: dict, section_key: str) -> Optional[str]
     """Return a short summary if a setup section is already configured, else None.
 
     Used after OpenClaw migration to detect which sections can be skipped.
-    ``get_env_value`` is the module-level import from eco_cli.config
+    ``get_env_value`` is the module-level import from hermes_cli.config
     so that test patches on ``setup_mod.get_env_value`` take effect.
     """
     if section_key == "model":
@@ -2732,7 +2596,7 @@ def _get_section_config_summary(config: dict, section_key: str) -> Optional[str]
         return f"max turns: {max_turns}"
 
     elif section_key == "gateway":
-        from eco_cli.gateway import _all_platforms, _platform_status
+        from hermes_cli.gateway import _all_platforms, _platform_status
         # Count any non-empty status other than the "not configured" sentinel —
         # platforms like WhatsApp ("enabled, not paired"), Matrix ("configured
         # + E2EE"), and Signal ("partially configured") all indicate the user
@@ -2786,12 +2650,12 @@ _OPENCLAW_SCRIPT = (
     / "migration"
     / "openclaw-migration"
     / "scripts"
-    / "openclaw_to_eco.py"
+    / "openclaw_to_hermes.py"
 )
 
 
 def _load_openclaw_migration_module():
-    """Load the openclaw_to_eco migration script as a module.
+    """Load the openclaw_to_hermes migration script as a module.
 
     Returns the loaded module, or None if the script can't be loaded.
     """
@@ -2799,7 +2663,7 @@ def _load_openclaw_migration_module():
         return None
 
     spec = importlib.util.spec_from_file_location(
-        "openclaw_to_eco", _OPENCLAW_SCRIPT
+        "openclaw_to_hermes", _OPENCLAW_SCRIPT
     )
     if spec is None or spec.loader is None:
         return None
@@ -2819,15 +2683,15 @@ def _load_openclaw_migration_module():
 
 # Item kinds that represent high-impact changes warranting explicit warnings.
 # Gateway tokens/channels can hijack messaging platforms from the old agent.
-# Config values may have different semantics between OpenClaw and ECO.
+# Config values may have different semantics between OpenClaw and Hermes.
 # Instruction/context files (.md) can contain incompatible setup procedures.
 _HIGH_IMPACT_KIND_KEYWORDS = {
-    "gateway": "⚠ Gateway/messaging — this will configure ECO to use your OpenClaw messaging channels",
-    "telegram": "⚠ Telegram — this will point ECO at your OpenClaw Telegram bot",
-    "slack": "⚠ Slack — this will point ECO at your OpenClaw Slack workspace",
-    "discord": "⚠ Discord — this will point ECO at your OpenClaw Discord bot",
-    "whatsapp": "⚠ WhatsApp — this will point ECO at your OpenClaw WhatsApp connection",
-    "config": "⚠ Config values — OpenClaw settings may not map 1:1 to ECO equivalents",
+    "gateway": "⚠ Gateway/messaging — this will configure Hermes to use your OpenClaw messaging channels",
+    "telegram": "⚠ Telegram — this will point Hermes at your OpenClaw Telegram bot",
+    "slack": "⚠ Slack — this will point Hermes at your OpenClaw Slack workspace",
+    "discord": "⚠ Discord — this will point Hermes at your OpenClaw Discord bot",
+    "whatsapp": "⚠ WhatsApp — this will point Hermes at your OpenClaw WhatsApp connection",
+    "config": "⚠ Config values — OpenClaw settings may not map 1:1 to Hermes equivalents",
     "soul": "⚠ Instruction file — may contain OpenClaw-specific setup/restart procedures",
     "memory": "⚠ Memory/context file — may reference OpenClaw-specific infrastructure",
     "context": "⚠ Context file — may contain OpenClaw-specific instructions",
@@ -2871,7 +2735,7 @@ def _print_migration_preview(report: dict):
         print()
 
     if conflict_items:
-        print(color("  Would overwrite (conflicts with existing ECO config):", Colors.YELLOW))
+        print(color("  Would overwrite (conflicts with existing Hermes config):", Colors.YELLOW))
         for item in conflict_items:
             kind = item.get("kind", "unknown")
             reason = item.get("reason", "already exists")
@@ -2892,13 +2756,13 @@ def _print_migration_preview(report: dict):
         for warning in sorted(warnings_shown):
             print(color(f"    {warning}", Colors.YELLOW))
         print()
-        print(color("  Note: OpenClaw config values may have different semantics in ECO.", Colors.YELLOW))
-        print(color("  For example, OpenClaw's tool_call_execution: \"auto\" ≠ ECO's yolo mode.", Colors.YELLOW))
+        print(color("  Note: OpenClaw config values may have different semantics in Hermes.", Colors.YELLOW))
+        print(color("  For example, OpenClaw's tool_call_execution: \"auto\" ≠ Hermes's yolo mode.", Colors.YELLOW))
         print(color("  Instruction files (.md) from OpenClaw may contain incompatible procedures.", Colors.YELLOW))
         print()
 
 
-def _offer_openclaw_migration(eco_home: Path) -> bool:
+def _offer_openclaw_migration(hermes_home: Path) -> bool:
     """Detect ~/.openclaw and offer to migrate during first-time setup.
 
     Runs a dry-run first to show the user exactly what would be imported,
@@ -2916,12 +2780,12 @@ def _offer_openclaw_migration(eco_home: Path) -> bool:
     print()
     print_header("OpenClaw Installation Detected")
     print_info(f"Found OpenClaw data at {openclaw_dir}")
-    print_info("ECO can preview what would be imported before making any changes.")
+    print_info("Hermes can preview what would be imported before making any changes.")
     print()
 
     if not prompt_yes_no("Would you like to see what can be imported?", default=True):
         print_info(
-            "Skipping migration. You can run it later with: eco claw migrate --dry-run"
+            "Skipping migration. You can run it later with: hermes claw migrate --dry-run"
         )
         return False
 
@@ -2946,7 +2810,7 @@ def _offer_openclaw_migration(eco_home: Path) -> bool:
         selected = mod.resolve_selected_options(None, None, preset="full")
         dry_migrator = mod.Migrator(
             source_root=openclaw_dir.resolve(),
-            target_root=eco_home.resolve(),
+            target_root=hermes_home.resolve(),
             execute=False,  # dry-run — no files modified
             workspace_target=None,
             overwrite=True,  # show everything including conflicts
@@ -2979,22 +2843,22 @@ def _offer_openclaw_migration(eco_home: Path) -> bool:
     # ── Phase 2: Confirm and execute ──
     if not prompt_yes_no("Proceed with migration?", default=False):
         print_info(
-            "Migration cancelled. You can run it later with: eco claw migrate"
+            "Migration cancelled. You can run it later with: hermes claw migrate"
         )
         print_info(
             "Use --dry-run to preview again, or --preset minimal for a lighter import."
         )
         return False
 
-    # Execute the migration — overwrite=False so existing ECO configs are
+    # Execute the migration — overwrite=False so existing Hermes configs are
     # preserved. The user saw the preview; conflicts are skipped by default.
     try:
         migrator = mod.Migrator(
             source_root=openclaw_dir.resolve(),
-            target_root=eco_home.resolve(),
+            target_root=hermes_home.resolve(),
             execute=True,
             workspace_target=None,
-            overwrite=False,  # preserve existing ECO config
+            overwrite=False,  # preserve existing Hermes config
             migrate_secrets=True,
             output_dir=None,
             selected_options=selected,
@@ -3017,7 +2881,7 @@ def _offer_openclaw_migration(eco_home: Path) -> bool:
     if migrated:
         print_success(f"Imported {migrated} item(s) from OpenClaw.")
     if conflicts:
-        print_info(f"Skipped {conflicts} item(s) that already exist in ECO (use eco claw migrate --overwrite to force).")
+        print_info(f"Skipped {conflicts} item(s) that already exist in Hermes (use hermes claw migrate --overwrite to force).")
     if skipped:
         print_info(f"Skipped {skipped} item(s) (not found or unchanged).")
     if errors:
@@ -3048,18 +2912,18 @@ SETUP_SECTIONS = [
 def _run_portal_one_shot(config: dict) -> None:
     """One-shot Nous Portal setup — OAuth + provider switch + Tool Gateway.
 
-    Wired into ``eco setup --portal``. Does NOT prompt for anything
+    Wired into ``hermes setup --portal``. Does NOT prompt for anything
     besides what the underlying OAuth + Tool Gateway prompts already need.
-    Designed to be shareable as a single command (``eco setup --portal``)
-    that gets a brand-new user from zero to a fully working ECO session
+    Designed to be shareable as a single command (``hermes setup --portal``)
+    that gets a brand-new user from zero to a fully working Hermes session
     with web/image/tts/browser tools all routed via their Portal sub.
     """
     from types import SimpleNamespace
 
-    from eco_cli.auth_commands import auth_add_command
-    from eco_cli.config import save_config
-    from eco_cli.auth import get_nous_auth_status
-    from eco_cli.nous_subscription import prompt_enable_tool_gateway
+    from hermes_cli.auth_commands import auth_add_command
+    from hermes_cli.config import save_config
+    from hermes_cli.auth import get_nous_auth_status
+    from hermes_cli.nous_subscription import prompt_enable_tool_gateway
 
     print()
     print(
@@ -3068,7 +2932,7 @@ def _run_portal_one_shot(config: dict) -> None:
             Colors.MAGENTA,
         )
     )
-    print(color("│     ⚕ ECO Setup — Nous Portal (one-shot)             │", Colors.MAGENTA))
+    print(color("│     ⚕ Hermes Setup — Nous Portal (one-shot)             │", Colors.MAGENTA))
     print(
         color(
             "└─────────────────────────────────────────────────────────┘",
@@ -3084,7 +2948,7 @@ def _run_portal_one_shot(config: dict) -> None:
     print()
 
     # Skip OAuth if already logged in (don't re-prompt every time the user
-    # runs `eco setup --portal` after a successful first run).
+    # runs `hermes setup --portal` after a successful first run).
     already_logged_in = False
     try:
         already_logged_in = bool((get_nous_auth_status() or {}).get("logged_in"))
@@ -3095,7 +2959,7 @@ def _run_portal_one_shot(config: dict) -> None:
         print_success("  Already logged into Nous Portal.")
     else:
         # Hand off to the shared auth wiring so the device-code flow is
-        # identical to `eco auth add nous --type oauth`. SimpleNamespace
+        # identical to `hermes auth add nous --type oauth`. SimpleNamespace
         # mirrors the argparse Namespace contract that auth_add_command expects.
         ns = SimpleNamespace(
             provider="nous",
@@ -3110,14 +2974,13 @@ def _run_portal_one_shot(config: dict) -> None:
             timeout=None,
             insecure=False,
             ca_bundle=None,
-            min_key_ttl_seconds=5 * 60,
         )
         try:
             auth_add_command(ns)
         except SystemExit as e:
             print()
             print_error(f"  Nous Portal login failed (exit {e.code}).")
-            print_info("  You can retry later with `eco auth add nous --type oauth`.")
+            print_info("  You can retry later with `hermes auth add nous --type oauth`.")
             return
         except (KeyboardInterrupt, EOFError):
             print()
@@ -3126,13 +2989,13 @@ def _run_portal_one_shot(config: dict) -> None:
         except Exception as exc:
             print()
             print_error(f"  Nous Portal login failed: {exc}")
-            print_info("  You can retry later with `eco auth add nous --type oauth`.")
+            print_info("  You can retry later with `hermes auth add nous --type oauth`.")
             return
 
     # Set provider → nous so the model picker, status surfaces, and
     # managed-tool gating all light up. Leave model.model empty so the
     # runtime picks Nous's default model; the user can change it later
-    # with `eco model`.
+    # with `hermes model`.
     model_cfg = config.get("model")
     if not isinstance(model_cfg, dict):
         model_cfg = {}
@@ -3143,7 +3006,7 @@ def _run_portal_one_shot(config: dict) -> None:
     print_success("  Nous set as your inference provider.")
 
     # Offer the Tool Gateway opt-in (single Y/n) — same flow that fires
-    # from `eco model` after picking Nous.
+    # from `hermes model` after picking Nous.
     print()
     try:
         prompt_enable_tool_gateway(config)
@@ -3154,27 +3017,27 @@ def _run_portal_one_shot(config: dict) -> None:
 
     print()
     print_success("Portal setup complete.")
-    print_info("  Run `eco portal status` to inspect routing.")
-    print_info("  Run `eco` to start chatting.")
+    print_info("  Run `hermes portal status` to inspect routing.")
+    print_info("  Run `hermes` to start chatting.")
 
 
 def run_setup_wizard(args):
     """Run the interactive setup wizard.
 
     Supports full, quick, and section-specific setup:
-      eco setup           — full or quick (auto-detected)
-      eco setup model     — just model/provider
-      eco setup tts       — just text-to-speech
-      eco setup terminal  — just terminal backend
-      eco setup gateway   — just messaging platforms
-      eco setup tools     — just tool configuration
-      eco setup agent     — just agent settings
+      hermes setup           — full or quick (auto-detected)
+      hermes setup model     — just model/provider
+      hermes setup tts       — just text-to-speech
+      hermes setup terminal  — just terminal backend
+      hermes setup gateway   — just messaging platforms
+      hermes setup tools     — just tool configuration
+      hermes setup agent     — just agent settings
     """
-    from eco_cli.config import is_managed, managed_error
+    from hermes_cli.config import is_managed, managed_error
     if is_managed():
         managed_error("run setup wizard")
         return
-    ensure_eco_home()
+    ensure_hermes_home()
 
     reset_requested = bool(getattr(args, "reset", False))
     if reset_requested:
@@ -3185,7 +3048,7 @@ def run_setup_wizard(args):
     quick_requested = bool(getattr(args, "quick", False))
 
     config = load_config()
-    eco_home = get_eco_home()
+    hermes_home = get_hermes_home()
 
     # Back up existing config before setup modifies it (#3522)
     config_path = get_config_path()
@@ -3230,7 +3093,7 @@ def run_setup_wizard(args):
                         Colors.MAGENTA,
                     )
                 )
-                print(color(f"│     ⚕ ECO Setup — {label:<34s} │", Colors.MAGENTA))
+                print(color(f"│     ⚕ Hermes Setup — {label:<34s} │", Colors.MAGENTA))
                 print(
                     color(
                         "└─────────────────────────────────────────────────────────┘",
@@ -3248,7 +3111,7 @@ def run_setup_wizard(args):
         return
 
     # Check if this is an existing installation with a provider configured
-    from eco_cli.auth import get_active_provider
+    from hermes_cli.auth import get_active_provider
 
     active_provider = get_active_provider()
     is_existing = (
@@ -3266,7 +3129,7 @@ def run_setup_wizard(args):
     )
     print(
         color(
-            "│             ⚕ ECO Agent Setup Wizard                │", Colors.MAGENTA
+            "│             ⚕ Hermes Agent Setup Wizard                │", Colors.MAGENTA
         )
     )
     print(
@@ -3277,7 +3140,7 @@ def run_setup_wizard(args):
     )
     print(
         color(
-            "│  Let's configure your ECO Agent installation.       │", Colors.MAGENTA
+            "│  Let's configure your Hermes Agent installation.       │", Colors.MAGENTA
         )
     )
     print(
@@ -3301,16 +3164,16 @@ def run_setup_wizard(args):
         # missing items" flow (useful after a partial OpenClaw migration
         # or when a required API key got cleared).
         if quick_requested:
-            _run_quick_setup(config, eco_home)
+            _run_quick_setup(config, hermes_home)
             return
 
         print()
         print_header("Reconfigure")
-        print_success("You already have ECO configured.")
+        print_success("You already have Hermes configured.")
         print_info("Running the full wizard — each prompt shows your current value.")
         print_info("Press Enter to keep it, or type a new value to change it.")
         print_info("")
-        print_info("Tip: jump straight to a section with 'eco setup model|terminal|")
+        print_info("Tip: jump straight to a section with 'hermes setup model|terminal|")
         print_info("     gateway|tools|agent', or fill only missing items with --quick.")
         # Fall through to the "Full Setup — run all sections" block below.
         # --reconfigure is now the default on existing installs; the flag
@@ -3326,27 +3189,27 @@ def run_setup_wizard(args):
             print()
 
         # Offer OpenClaw migration before configuration begins
-        migration_ran = _offer_openclaw_migration(eco_home)
+        migration_ran = _offer_openclaw_migration(hermes_home)
         if migration_ran:
             config = load_config()
 
-        setup_mode = prompt_choice("How would you like to set up ECO?", [
+        setup_mode = prompt_choice("How would you like to set up Hermes?", [
             "Quick setup — provider, model & messaging (recommended)",
             "Full setup — configure everything",
         ], 0)
 
         if setup_mode == 0:
-            _run_first_time_quick_setup(config, eco_home, is_existing)
+            _run_first_time_quick_setup(config, hermes_home, is_existing)
             return
 
     # ── Full Setup — run all sections ──
     print_header("Configuration Location")
     print_info(f"Config file:  {get_config_path()}")
     print_info(f"Secrets file: {get_env_path()}")
-    print_info(f"Data folder:  {eco_home}")
+    print_info(f"Data folder:  {hermes_home}")
     print_info(f"Install dir:  {PROJECT_ROOT}")
     print()
-    print_info("You can edit these files directly or use 'eco config edit'")
+    print_info("You can edit these files directly or use 'hermes config edit'")
 
     if migration_ran:
         print()
@@ -3380,14 +3243,14 @@ def run_setup_wizard(args):
         print_info(f"Previous config backed up to: {_backup_path}")
         print_info("If setup changed a value you customized, restore it with:")
         print_info(f"  cp {_backup_path} {config_path}")
-    _print_setup_summary(config, eco_home)
+    _print_setup_summary(config, hermes_home)
 
 
-def _run_first_time_quick_setup(config: dict, eco_home, is_existing: bool):
+def _run_first_time_quick_setup(config: dict, hermes_home, is_existing: bool):
     """Streamlined first-time setup: provider, model, terminal & messaging.
 
     Applies sensible defaults for TTS (Edge), agent settings, and tools —
-    the user can customize later via ``eco setup <section>``.
+    the user can customize later via ``hermes setup <section>``.
     """
     # Step 1: Model & Provider (essential — skips rotation/vision/TTS)
     setup_model_provider(config, quick=True)
@@ -3406,7 +3269,7 @@ def _run_first_time_quick_setup(config: dict, eco_home, is_existing: bool):
         "Connect a messaging platform? (Telegram, Discord, etc.)",
         [
             "Set up messaging now (recommended)",
-            "Skip — set up later with 'eco setup gateway'",
+            "Skip — set up later with 'hermes setup gateway'",
         ],
         0,
     )
@@ -3418,17 +3281,17 @@ def _run_first_time_quick_setup(config: dict, eco_home, is_existing: bool):
     print()
     print_success("Setup complete! You're ready to go.")
     print()
-    print_info("  Configure all settings:    eco setup")
+    print_info("  Configure all settings:    hermes setup")
     if gateway_choice != 0:
-        print_info("  Connect Telegram/Discord:  eco setup gateway")
+        print_info("  Connect Telegram/Discord:  hermes setup gateway")
     print()
 
-    _print_setup_summary(config, eco_home)
+    _print_setup_summary(config, hermes_home)
 
 
-def _run_quick_setup(config: dict, eco_home):
+def _run_quick_setup(config: dict, hermes_home):
     """Quick setup — only configure items that are missing."""
-    from eco_cli.config import (
+    from hermes_cli.config import (
         get_missing_env_vars,
         get_missing_config_fields,
         check_config_version,
@@ -3457,7 +3320,7 @@ def _run_quick_setup(config: dict, eco_home):
     if not has_anything_missing:
         print_success("Everything is configured! Nothing to do.")
         print()
-        print_info("Run 'eco setup' and choose 'Full Setup' to reconfigure,")
+        print_info("Run 'hermes setup' and choose 'Full Setup' to reconfigure,")
         print_info("or pick a specific section from the menu.")
         return
 
@@ -3519,8 +3382,8 @@ def _run_quick_setup(config: dict, eco_home):
     if missing_messaging:
         print()
         print_header("Messaging Platforms")
-        print_info("Connect ECO to messaging apps to chat from anywhere.")
-        print_info("You can configure these later with 'eco setup gateway'.")
+        print_info("Connect Hermes to messaging apps to chat from anywhere.")
+        print_info("You can configure these later with 'hermes setup gateway'.")
 
         # Group by platform (preserving order)
         platform_order = []
@@ -3589,4 +3452,4 @@ def _run_quick_setup(config: dict, eco_home):
         save_config(config)
 
     # Jump to summary
-    _print_setup_summary(config, eco_home)
+    _print_setup_summary(config, hermes_home)

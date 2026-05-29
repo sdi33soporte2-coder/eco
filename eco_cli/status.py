@@ -1,25 +1,27 @@
 """
-Status command for eco CLI.
+Status command for hermes CLI.
 
-Shows the status of all ECO Agent components.
+Shows the status of all Hermes Agent components.
 """
 
 import os
 import sys
 import subprocess  # noqa: F401 — re-exported for tests that monkeypatch status.subprocess to guard against regressions
-import importlib.util
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
-from eco_cli.auth import AuthError, resolve_provider
-from eco_cli.colors import Colors, color
-from eco_cli.config import get_env_path, get_env_value, get_eco_home, load_config
-from eco_cli.models import provider_label
-from eco_cli.nous_subscription import get_nous_subscription_features
-from eco_cli.runtime_provider import resolve_requested_provider
-from eco_cli.vercel_auth import describe_vercel_auth
-from eco_constants import OPENROUTER_MODELS_URL
+from hermes_cli.auth import AuthError, resolve_provider
+from hermes_cli.colors import Colors, color
+from hermes_cli.config import get_env_path, get_env_value, get_hermes_home, load_config
+from hermes_cli.models import provider_label
+from hermes_cli.nous_account import (
+    format_nous_portal_entitlement_message,
+    get_nous_portal_account_info,
+)
+from hermes_cli.nous_subscription import get_nous_subscription_features
+from hermes_cli.runtime_provider import resolve_requested_provider
+from hermes_constants import OPENROUTER_MODELS_URL
 from tools.tool_backend_helpers import managed_nous_tools_enabled
 
 def check_mark(ok: bool) -> str:
@@ -31,7 +33,7 @@ def redact_key(key: str) -> str:
     """Redact an API key for display.
 
     Thin wrapper over :func:`agent.redact.mask_secret`. Preserves the
-    "(not set)" placeholder in dim color to match ``eco config``'s
+    "(not set)" placeholder in dim color to match ``hermes config``'s
     output (previously this variant was missing the DIM color —
     consolidated via PR that also introduced ``mask_secret``).
     """
@@ -84,17 +86,17 @@ def _effective_provider_label() -> str:
     return provider_label(effective)
 
 
-from eco_constants import is_termux as _is_termux
+from hermes_constants import is_termux as _is_termux
 
 
 def show_status(args):
-    """Show status of all ECO Agent components."""
+    """Show status of all Hermes Agent components."""
     show_all = getattr(args, 'all', False)
     deep = getattr(args, 'deep', False)
 
     print()
     print(color("┌─────────────────────────────────────────────────────────┐", Colors.CYAN))
-    print(color("│                 ⚕ ECO Agent Status                  │", Colors.CYAN))
+    print(color("│                 ⚕ Hermes Agent Status                  │", Colors.CYAN))
     print(color("└─────────────────────────────────────────────────────────┘", Colors.CYAN))
 
     # =========================================================================
@@ -166,7 +168,7 @@ def show_status(args):
         display = redact_key(value) if not show_all else value
         print(f"  {name:<12}  {check_mark(has_key)} {display}")
 
-    from eco_cli.auth import get_anthropic_key
+    from hermes_cli.auth import get_anthropic_key
     anthropic_value = get_anthropic_key()
     anthropic_display = redact_key(anthropic_value) if not show_all else anthropic_value
     print(f"  {'Anthropic':<12}  {check_mark(bool(anthropic_value))} {anthropic_display}")
@@ -178,7 +180,7 @@ def show_status(args):
     print(color("◆ Auth Providers", Colors.CYAN, Colors.BOLD))
 
     try:
-        from eco_cli.auth import (
+        from hermes_cli.auth import (
             get_nous_auth_status,
             get_codex_auth_status,
             get_qwen_auth_status,
@@ -194,32 +196,63 @@ def show_status(args):
         qwen_status = {}
         minimax_status = {}
 
-    nous_logged_in = bool(nous_status.get("logged_in"))
+    nous_account_info = None
+    if (
+        nous_status.get("logged_in")
+        or nous_status.get("access_token")
+        or nous_status.get("portal_base_url")
+        or nous_status.get("inference_credential_present")
+        or nous_status.get("error_code")
+    ):
+        try:
+            nous_account_info = get_nous_portal_account_info()
+        except Exception:
+            nous_account_info = None
+
+    nous_logged_in = bool(
+        nous_status.get("logged_in")
+        or (nous_account_info and nous_account_info.logged_in)
+    )
+    nous_inference_present = bool(
+        nous_status.get("inference_credential_present")
+        or (nous_account_info and nous_account_info.inference_credential_present)
+    )
     nous_error = nous_status.get("error")
-    nous_label = "logged in" if nous_logged_in else "not logged in (run: eco auth add nous --type oauth)"
+    if nous_logged_in:
+        nous_label = "logged in"
+    elif nous_inference_present:
+        nous_label = "not logged in (Nous inference key configured)"
+    else:
+        nous_label = "not logged in (run: hermes auth add nous --type oauth)"
     print(
         f"  {'Nous Portal':<12}  {check_mark(nous_logged_in)} "
         f"{nous_label}"
     )
     portal_url = nous_status.get("portal_base_url") or "(unknown)"
+    inference_url = (
+        nous_status.get("inference_base_url")
+        or (nous_account_info.inference_base_url if nous_account_info else None)
+    )
     access_exp = _format_iso_timestamp(nous_status.get("access_expires_at"))
     key_exp = _format_iso_timestamp(nous_status.get("agent_key_expires_at"))
     refresh_label = "yes" if nous_status.get("has_refresh_token") else "no"
     if nous_logged_in or portal_url != "(unknown)" or nous_error:
         print(f"    Portal URL: {portal_url}")
+    if nous_inference_present and inference_url:
+        print(f"    Inference:  {inference_url}")
     if nous_logged_in or nous_status.get("access_expires_at"):
         print(f"    Access exp: {access_exp}")
-    if nous_logged_in or nous_status.get("agent_key_expires_at"):
+    if nous_logged_in or nous_inference_present or nous_status.get("agent_key_expires_at"):
         print(f"    Key exp:    {key_exp}")
     if nous_logged_in or nous_status.get("has_refresh_token"):
         print(f"    Refresh:    {refresh_label}")
-    if nous_error and not nous_logged_in:
+    if nous_error:
         print(f"    Error:      {nous_error}")
 
     codex_logged_in = bool(codex_status.get("logged_in"))
     print(
         f"  {'OpenAI Codex':<12}  {check_mark(codex_logged_in)} "
-        f"{'logged in' if codex_logged_in else 'not logged in (run: eco model)'}"
+        f"{'logged in' if codex_logged_in else 'not logged in (run: hermes model)'}"
     )
     codex_auth_file = codex_status.get("auth_store")
     if codex_auth_file:
@@ -248,7 +281,7 @@ def show_status(args):
     minimax_logged_in = bool(minimax_status.get("logged_in"))
     print(
         f"  {'MiniMax OAuth':<12}  {check_mark(minimax_logged_in)} "
-        f"{'logged in' if minimax_logged_in else 'not logged in (run: eco auth add minimax-oauth)'}"
+        f"{'logged in' if minimax_logged_in else 'not logged in (run: hermes auth add minimax-oauth)'}"
     )
     minimax_region = minimax_status.get("region")
     if minimax_logged_in and minimax_region:
@@ -262,7 +295,7 @@ def show_status(args):
     # xAI OAuth — separate try/except so an import failure here cannot
     # disrupt the already-printed Nous/Codex/Qwen/MiniMax rows above.
     try:
-        from eco_cli.auth import get_xai_oauth_auth_status
+        from hermes_cli.auth import get_xai_oauth_auth_status
         xai_oauth_status = get_xai_oauth_auth_status() or {}
     except Exception:
         xai_oauth_status = {}
@@ -270,7 +303,7 @@ def show_status(args):
     xai_oauth_logged_in = bool(xai_oauth_status.get("logged_in"))
     print(
         f"  {'xAI OAuth':<12}  {check_mark(xai_oauth_logged_in)} "
-        f"{'logged in' if xai_oauth_logged_in else 'not logged in (run: eco auth add xai-oauth)'}"
+        f"{'logged in' if xai_oauth_logged_in else 'not logged in (run: hermes auth add xai-oauth)'}"
     )
     xai_auth_file = xai_oauth_status.get("auth_store")
     if xai_auth_file:
@@ -304,18 +337,18 @@ def show_status(args):
             else:
                 state = "not configured"
             print(f"  {feature.label:<15} {check_mark(feature.available or feature.active or feature.managed_by_nous)} {state}")
-    elif nous_logged_in:
-        # Logged into Nous but on the free tier — show upgrade nudge
+    elif nous_logged_in or nous_inference_present:
+        # Nous OAuth without entitlement, or an opaque inference key without
+        # Portal account information, cannot enable the Tool Gateway.
         print()
         print(color("◆ Nous Tool Gateway", Colors.CYAN, Colors.BOLD))
-        print("  Your free-tier Nous account does not include Tool Gateway access.")
-        print("  Upgrade your subscription to unlock managed web, image, TTS, and browser tools.")
-        try:
-            portal_url = nous_status.get("portal_base_url", "").rstrip("/")
-            if portal_url:
-                print(f"  Upgrade: {portal_url}")
-        except Exception:
-            pass
+        message = format_nous_portal_entitlement_message(
+            nous_account_info,
+            capability="managed web, image, TTS, browser, and Modal tools",
+        )
+        if message:
+            for line in message.splitlines():
+                print(f"  {line}")
 
     # =========================================================================
     # API-Key Providers
@@ -337,14 +370,14 @@ def show_status(args):
             if key_val:
                 break
         configured = bool(key_val)
-        label = "configured" if configured else "not configured (run: eco model)"
+        label = "configured" if configured else "not configured (run: hermes model)"
         print(f"  {pname:<16} {check_mark(configured)} {label}")
 
     # LM Studio reachability — only probe when it's the active provider so
     # users with foreign configs don't see noise. Auth rejection vs. silent
     # empty list is the most common LM Studio support case.
     if _effective_provider_label() == "LM Studio":
-        from eco_cli.models import probe_lmstudio_models
+        from hermes_cli.models import probe_lmstudio_models
         model_cfg = config.get("model")
         base = (model_cfg.get("base_url") if isinstance(model_cfg, dict) else None) or get_env_value("LM_BASE_URL") or "http://127.0.0.1:1234/v1"
         try:
@@ -380,23 +413,6 @@ def show_status(args):
     elif terminal_env == "daytona":
         daytona_image = os.getenv("TERMINAL_DAYTONA_IMAGE", "nikolaik/python-nodejs:python3.11-nodejs20")
         print(f"  Daytona Image: {daytona_image}")
-    elif terminal_env == "vercel_sandbox":
-        runtime = os.getenv("TERMINAL_VERCEL_RUNTIME") or terminal_cfg.get("vercel_runtime") or "node24"
-        persist = os.getenv("TERMINAL_CONTAINER_PERSISTENT")
-        if persist is None:
-            persist_enabled = bool(terminal_cfg.get("container_persistent", True))
-        else:
-            persist_enabled = persist.lower() in {"1", "true", "yes", "on"}
-        auth_status = describe_vercel_auth()
-        sdk_ok = importlib.util.find_spec("vercel") is not None
-        sdk_label = "installed" if sdk_ok else "missing (install: pip install 'eco[vercel]')"
-        print(f"  Runtime:      {runtime}")
-        print(f"  SDK:          {check_mark(sdk_ok)} {sdk_label}")
-        print(f"  Auth:         {check_mark(auth_status.ok)} {auth_status.label}")
-        for line in auth_status.detail_lines:
-            print(f"  Auth detail:  {line}")
-        print(f"  Persistence:  {'snapshot filesystem' if persist_enabled else 'ephemeral filesystem'}")
-        print("  Processes:    live processes do not survive cleanup, snapshots, or sandbox recreation")
 
     sudo_password = os.getenv("SUDO_PASSWORD", "")
     print(f"  Sudo:         {check_mark(bool(sudo_password))} {'enabled' if sudo_password else 'disabled'}")
@@ -460,7 +476,7 @@ def show_status(args):
     print(color("◆ Gateway Service", Colors.CYAN, Colors.BOLD))
 
     try:
-        from eco_cli.gateway import get_gateway_runtime_snapshot, _format_gateway_pids
+        from hermes_cli.gateway import get_gateway_runtime_snapshot, _format_gateway_pids
 
         snapshot = get_gateway_runtime_snapshot()
         is_running = snapshot.running
@@ -471,7 +487,7 @@ def show_status(args):
         if snapshot.has_process_service_mismatch:
             print("  Service:      installed but not managing the current running gateway")
         elif _is_termux() and not snapshot.gateway_pids:
-            print("  Start with:   eco gateway")
+            print("  Start with:   hermes gateway")
             print("  Note:         Android may stop background jobs when Termux is suspended")
         elif snapshot.service_installed and not snapshot.service_running:
             print("  Service:      installed but stopped")
@@ -495,7 +511,7 @@ def show_status(args):
     print()
     print(color("◆ Scheduled Jobs", Colors.CYAN, Colors.BOLD))
 
-    jobs_file = get_eco_home() / "cron" / "jobs.json"
+    jobs_file = get_hermes_home() / "cron" / "jobs.json"
     if jobs_file.exists():
         import json
         try:
@@ -515,7 +531,7 @@ def show_status(args):
     print()
     print(color("◆ Sessions", Colors.CYAN, Colors.BOLD))
 
-    sessions_file = get_eco_home() / "sessions" / "sessions.json"
+    sessions_file = get_hermes_home() / "sessions" / "sessions.json"
     if sessions_file.exists():
         import json
         try:
@@ -565,6 +581,6 @@ def show_status(args):
 
     print()
     print(color("─" * 60, Colors.DIM))
-    print(color("  Run 'eco doctor' for detailed diagnostics", Colors.DIM))
-    print(color("  Run 'eco setup' to configure", Colors.DIM))
+    print(color("  Run 'hermes doctor' for detailed diagnostics", Colors.DIM))
+    print(color("  Run 'hermes setup' to configure", Colors.DIM))
     print()

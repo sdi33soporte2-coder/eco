@@ -8,11 +8,11 @@ from those methods, and callers MUST check supports_runtime_registration()
 before invoking them.
 
 Host-side call sites (setup wizard, uninstall, status) continue to use
-the existing module-level functions in eco_cli.gateway and
-eco_cli.gateway_windows directly. This protocol is a thin facade
+the existing module-level functions in hermes_cli.gateway and
+hermes_cli.gateway_windows directly. This protocol is a thin facade
 used by new code that needs to be backend-agnostic — specifically the
 profile create/delete hooks (Phase 4) and the s6 dispatch path in
-``eco gateway start/stop/restart`` when running inside a container.
+``hermes gateway start/stop/restart`` when running inside a container.
 """
 from __future__ import annotations
 
@@ -95,13 +95,13 @@ def detect_service_manager() -> ServiceManagerKind:
     This function does NOT replace ``supports_systemd_services()`` —
     host call sites continue to use that. It exists for new backend-
     agnostic code (profile create/delete hooks, the s6 dispatch path
-    in ``eco gateway start/stop/restart``).
+    in ``hermes gateway start/stop/restart``).
     """
     # Imports deferred so importing this module doesn't drag in the
     # whole gateway dependency graph for callers that only need the
     # Protocol type or validate_profile_name().
-    from eco_constants import is_container
-    from eco_cli.gateway import (
+    from hermes_constants import is_container
+    from hermes_cli.gateway import (
         is_macos,
         is_windows,
         supports_systemd_services,
@@ -121,13 +121,13 @@ def detect_service_manager() -> ServiceManagerKind:
 def _s6_running() -> bool:
     """True when s6-svscan is running as PID 1 in this container.
 
-    Detection has to work for **both** root and the unprivileged eco
+    Detection has to work for **both** root and the unprivileged hermes
     user (UID 10000). The obvious probe — ``Path('/proc/1/exe').resolve()``
     — only works as root: for any other UID, the symlink at
     ``/proc/1/exe`` is unreadable and ``resolve()`` silently returns the
     path unchanged, so the resolved name is the literal ``"exe"`` and
-    detection always fails. Since every ECO runtime call inside the
-    container drops to eco via ``s6-setuidgid``, that silent failure
+    detection always fails. Since every Hermes runtime call inside the
+    container drops to hermes via ``s6-setuidgid``, that silent failure
     made the entire service-manager runtime-registration path inert in
     production (PR #30136 review).
 
@@ -155,10 +155,10 @@ def _s6_running() -> bool:
 # Backend wrappers
 #
 # These adapters are thin facades over the existing module-level functions
-# in ``eco_cli.gateway`` (systemd/launchd) and ``eco_cli.gateway_windows``
+# in ``hermes_cli.gateway`` (systemd/launchd) and ``hermes_cli.gateway_windows``
 # (Windows Scheduled Tasks). The protocol's ``name`` parameter is currently
 # unused for host backends — they operate on whichever profile is currently
-# active (set via the ``eco -p <profile>`` flag before the call). This
+# active (set via the ``hermes -p <profile>`` flag before the call). This
 # matches existing host-side semantics; the parameter shape is designed
 # for s6 where each profile maps to a distinct service directory.
 # ---------------------------------------------------------------------------
@@ -192,7 +192,7 @@ class _RegistrationUnsupportedMixin:
 
 
 class SystemdServiceManager(_RegistrationUnsupportedMixin):
-    """Thin wrapper around the ``systemd_*`` functions in eco_cli.gateway.
+    """Thin wrapper around the ``systemd_*`` functions in hermes_cli.gateway.
 
     Existing host call sites continue to use those functions directly;
     this wrapper exists for new code that needs to be backend-agnostic
@@ -202,47 +202,47 @@ class SystemdServiceManager(_RegistrationUnsupportedMixin):
     kind: ServiceManagerKind = "systemd"
 
     def start(self, name: str) -> None:
-        from eco_cli.gateway import systemd_start
+        from hermes_cli.gateway import systemd_start
         systemd_start()
 
     def stop(self, name: str) -> None:
-        from eco_cli.gateway import systemd_stop
+        from hermes_cli.gateway import systemd_stop
         systemd_stop()
 
     def restart(self, name: str) -> None:
-        from eco_cli.gateway import systemd_restart
+        from hermes_cli.gateway import systemd_restart
         systemd_restart()
 
     def is_running(self, name: str) -> bool:
-        from eco_cli.gateway import _probe_systemd_service_running
+        from hermes_cli.gateway import _probe_systemd_service_running
         _, running = _probe_systemd_service_running()
         return running
 
 
 class LaunchdServiceManager(_RegistrationUnsupportedMixin):
-    """Thin wrapper around the ``launchd_*`` functions in eco_cli.gateway."""
+    """Thin wrapper around the ``launchd_*`` functions in hermes_cli.gateway."""
 
     kind: ServiceManagerKind = "launchd"
 
     def start(self, name: str) -> None:
-        from eco_cli.gateway import launchd_start
+        from hermes_cli.gateway import launchd_start
         launchd_start()
 
     def stop(self, name: str) -> None:
-        from eco_cli.gateway import launchd_stop
+        from hermes_cli.gateway import launchd_stop
         launchd_stop()
 
     def restart(self, name: str) -> None:
-        from eco_cli.gateway import launchd_restart
+        from hermes_cli.gateway import launchd_restart
         launchd_restart()
 
     def is_running(self, name: str) -> bool:
-        from eco_cli.gateway import _probe_launchd_service_running
+        from hermes_cli.gateway import _probe_launchd_service_running
         return _probe_launchd_service_running()
 
 
 class WindowsServiceManager(_RegistrationUnsupportedMixin):
-    """Thin wrapper around ``eco_cli.gateway_windows`` (Scheduled Task /
+    """Thin wrapper around ``hermes_cli.gateway_windows`` (Scheduled Task /
     Startup-folder fallback).
 
     The native Windows backend uses a Scheduled Task rather than a true
@@ -263,7 +263,7 @@ class WindowsServiceManager(_RegistrationUnsupportedMixin):
         start_on_login: bool | None = None,
         elevated_handoff: bool = False,
     ) -> None:
-        from eco_cli import gateway_windows
+        from hermes_cli import gateway_windows
         gateway_windows.install(
             force=force,
             start_now=start_now,
@@ -272,20 +272,20 @@ class WindowsServiceManager(_RegistrationUnsupportedMixin):
         )
 
     def start(self, name: str) -> None:
-        from eco_cli import gateway_windows
+        from hermes_cli import gateway_windows
         gateway_windows.start()
 
     def stop(self, name: str) -> None:
-        from eco_cli import gateway_windows
+        from hermes_cli import gateway_windows
         gateway_windows.stop()
 
     def restart(self, name: str) -> None:
-        from eco_cli import gateway_windows
+        from hermes_cli import gateway_windows
         gateway_windows.restart()
 
     def is_running(self, name: str) -> bool:
-        from eco_cli import gateway_windows
-        from eco_cli.gateway import find_gateway_pids
+        from hermes_cli import gateway_windows
+        from hermes_cli.gateway import find_gateway_pids
         if not gateway_windows.is_installed():
             return False
         return bool(find_gateway_pids())
@@ -312,8 +312,8 @@ def get_service_manager() -> ServiceManager:
 # ---------------------------------------------------------------------------
 # S6ServiceManager (container-only)
 #
-# Per-profile gateways are registered dynamically when `eco profile create`
-# runs inside the container (Phase 4). Static services (main-eco, dashboard)
+# Per-profile gateways are registered dynamically when `hermes profile create`
+# runs inside the container (Phase 4). Static services (main-hermes, dashboard)
 # live in /etc/s6-overlay/s6-rc.d/ and are NOT managed by this class — they're
 # part of the image, not runtime-created.
 # ---------------------------------------------------------------------------
@@ -340,17 +340,17 @@ S6_SERVICE_PREFIX = "gateway-"
 _S6_BIN_DIR = "/command"
 
 
-# UID/GID of the in-image ``eco`` user. Hardcoded to match what
+# UID/GID of the in-image ``hermes`` user. Hardcoded to match what
 # ``stage2-hook.sh`` enforces (the runtime invariant — see also
 # tests/docker/test_uid_remap.py). The container starts s6-supervise
 # under root and immediately drops to this UID via ``s6-setuidgid``.
-_ECO_UID = 10000
-_ECO_GID = 10000
+_HERMES_UID = 10000
+_HERMES_GID = 10000
 
 
 def _seed_supervise_skeleton(svc_dir: Path) -> None:
     """Pre-create the ``supervise/`` and top-level ``event/`` skeleton
-    inside a service directory, owned by the eco user.
+    inside a service directory, owned by the hermes user.
 
     Why this exists
     ---------------
@@ -359,14 +359,14 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
     ``0700``. It also ``mkfifo``s ``<svc>/supervise/control`` with mode
     ``0600``. Because s6-supervise runs as PID 1's effective UID (root)
     these dirs end up root-owned mode 0700, and an unprivileged client
-    (the ``eco`` user — UID 10000 — running every ECO runtime
+    (the ``hermes`` user — UID 10000 — running every Hermes runtime
     operation via ``s6-setuidgid``) gets ``EACCES`` on any ``s6-svc``,
     ``s6-svstat``, or ``s6-svwait`` invocation against the slot.
 
     The PR #30136 review surfaced this as a real product gap: the
     entire S6ServiceManager lifecycle (``register/start/stop/unregister
     _profile_gateway``) was inert in production because every operation
-    is dispatched as the eco user.
+    is dispatched as the hermes user.
 
     Why this works
     --------------
@@ -376,21 +376,21 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
     chown/chmod fix-up that would normally make event/ ``03730
     root:root`` is **skipped** entirely — s6-supervise just opens the
     pre-existing FIFOs and proceeds. So if we lay the skeleton down
-    with eco ownership before triggering ``s6-svscanctl -a``,
+    with hermes ownership before triggering ``s6-svscanctl -a``,
     s6-supervise inherits our layout and never touches it.
 
     Layout produced
     ---------------
-    ``svc_dir/``                           eco:eco, 0755 (parent must already exist)
-    ``svc_dir/event/``                     eco:eco, 03730   (setgid + g+rwx + sticky)
-    ``svc_dir/supervise/``                 eco:eco, 0755
-    ``svc_dir/supervise/event/``           eco:eco, 03730
-    ``svc_dir/supervise/control``          eco:eco, 0660    (FIFO)
+    ``svc_dir/``                           hermes:hermes, 0755 (parent must already exist)
+    ``svc_dir/event/``                     hermes:hermes, 03730   (setgid + g+rwx + sticky)
+    ``svc_dir/supervise/``                 hermes:hermes, 0755
+    ``svc_dir/supervise/event/``           hermes:hermes, 03730
+    ``svc_dir/supervise/control``          hermes:hermes, 0660    (FIFO)
 
     The ``death_tally``, ``lock``, and ``status`` regular files end up
     written by s6-supervise itself (as root), but those land mode 0644 —
     world-readable — and ``s6-svstat`` only needs read access, so the
-    eco user reads them fine.
+    hermes user reads them fine.
 
     If ``svc_dir/log/`` is present (the canonical s6 logger pattern —
     one s6-supervise instance per service, plus a second for its
@@ -398,7 +398,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
     ``log/event/``, ``log/supervise/``, ``log/supervise/event/``,
     ``log/supervise/control``. Without this, unregister teardown
     would EACCES on the logger's supervise dir even after the parent
-    slot's supervise/ was eco-owned.
+    slot's supervise/ was hermes-owned.
 
     Idempotency
     -----------
@@ -424,9 +424,9 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
         path.mkdir(parents=False, exist_ok=False)
         path.chmod(mode)
         try:
-            os.chown(path, _ECO_UID, _ECO_GID)
+            os.chown(path, _HERMES_UID, _HERMES_GID)
         except PermissionError:
-            # Running as the eco user already — directory is eco-
+            # Running as the hermes user already — directory is hermes-
             # owned by default. The chown is a no-op in that case, so
             # swallowing this keeps both root and unprivileged callers
             # on one code path.
@@ -454,7 +454,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
         os.mkfifo(control, 0o660)
         control.chmod(0o660)
         try:
-            os.chown(control, _ECO_UID, _ECO_GID)
+            os.chown(control, _HERMES_UID, _HERMES_GID)
         except PermissionError:
             pass
 
@@ -462,7 +462,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
     # see servicedir(7)), it gets its own s6-supervise instance and
     # needs the same skeleton. Without this, unregister teardown
     # would EACCES on the logger's root-owned supervise/ dir even
-    # when the parent slot's supervise/ is eco-owned.
+    # when the parent slot's supervise/ is hermes-owned.
     log_dir = svc_dir / "log"
     if log_dir.is_dir():
         _mkdir_owned(log_dir / "event", 0o3730)
@@ -474,7 +474,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
             os.mkfifo(log_control, 0o660)
             log_control.chmod(0o660)
             try:
-                os.chown(log_control, _ECO_UID, _ECO_GID)
+                os.chown(log_control, _HERMES_UID, _HERMES_GID)
             except PermissionError:
                 pass
 
@@ -495,7 +495,7 @@ class S6Error(RuntimeError):
 class GatewayNotRegisteredError(S6Error):
     """Raised when a lifecycle method targets a slot that doesn't exist.
 
-    Most commonly: ``eco -p typo gateway start`` when no profile
+    Most commonly: ``hermes -p typo gateway start`` when no profile
     ``typo`` exists. Carries the unprefixed profile name (not the
     full ``gateway-<profile>`` service-dir name) so callers can phrase
     a user-facing message like "no such gateway 'typo'".
@@ -505,7 +505,7 @@ class GatewayNotRegisteredError(S6Error):
         self.profile = profile
         super().__init__(
             f"no such gateway {profile!r}: register it with "
-            f"`eco profile create {profile}` first, or pass "
+            f"`hermes profile create {profile}` first, or pass "
             "an existing profile name via `-p <name>`",
             service=f"gateway-{profile}",
         )
@@ -537,7 +537,7 @@ class S6ServiceManager:
     """Per-profile gateway supervision via s6-overlay.
 
     Only handles runtime-registered services under
-    ``S6_DYNAMIC_SCANDIR``. Static services (main-eco, dashboard)
+    ``S6_DYNAMIC_SCANDIR``. Static services (main-hermes, dashboard)
     are managed by s6-rc at image-build time and are out of scope.
     """
 
@@ -563,23 +563,26 @@ class S6ServiceManager:
         """Generate the run script for a profile-gateway s6 service.
 
         The script:
-          1. Sources ECO_HOME (and any extra env) via with-contenv —
-             so e.g. ``-e ECO_HOME=/data/eco`` is honored at run
+          1. Sources HERMES_HOME (and any extra env) via with-contenv —
+             so e.g. ``-e HERMES_HOME=/data/hermes`` is honored at run
              time, not Python-substituted at registration time (OQ8-C).
-          2. Activates the bundled venv.
-          3. Drops to the eco user and exec's
-             ``eco -p <profile> gateway run`` (or just ``eco
+          2. Resets ``HOME`` to ``/opt/data`` before the privilege drop
+             so with-contenv's root HOME does not leak into the
+             unprivileged gateway process.
+          3. Activates the bundled venv.
+          4. Drops to the hermes user and exec's
+             ``hermes -p <profile> gateway run`` (or just ``hermes
              gateway run`` for the default profile — see below).
 
-        Special case: ``profile == "default"`` emits ``eco gateway
+        Special case: ``profile == "default"`` emits ``hermes gateway
         run`` with **no** ``-p`` flag. This is the sentinel for "the
-        root ECO_HOME profile" (the implicit profile that exists at
-        the top of $ECO_HOME, not under profiles/). It must be
+        root HERMES_HOME profile" (the implicit profile that exists at
+        the top of $HERMES_HOME, not under profiles/). It must be
         spelled this way because ``_profile_suffix()`` returns the
         empty string for the root profile, and the dispatcher in
-        ``eco_cli.gateway`` maps that empty string to the
+        ``hermes_cli.gateway`` maps that empty string to the
         ``gateway-default`` service slot. Passing ``-p default`` here
-        would instead look up ``$ECO_HOME/profiles/default/`` — a
+        would instead look up ``$HERMES_HOME/profiles/default/`` — a
         completely different (and almost always nonexistent) profile.
 
         Port selection: the gateway picks its bind port from the
@@ -588,7 +591,7 @@ class S6ServiceManager:
         ``port`` parameter that was passed in but never substituted
         into the rendered script (it was carried in for "API parity"
         with a deterministic SHA-256 allocator in
-        ``eco_cli.profiles._allocate_gateway_port``). PR #30136
+        ``hermes_cli.profiles._allocate_gateway_port``). PR #30136
         review item I5 retired both the allocator and the parameter
         because they were dead code through the entire stack.
         """
@@ -597,16 +600,25 @@ class S6ServiceManager:
             "#!/command/with-contenv sh",
             "# shellcheck shell=sh",
             "set -e",
+            "export HOME=/opt/data",
             "cd /opt/data",
-            ". /opt/eco/.venv/bin/activate",
+            ". /opt/hermes/.venv/bin/activate",
         ]
         for k, v in sorted(extra_env.items()):
             lines.append(f"export {k}={shlex.quote(v)}")
+        # Sentinel for the supervised-child path. Prevents recursive
+        # redirect when the supervised gateway re-enters
+        # `_gateway_command_inner` with subcmd == "run" — without it the
+        # supervisor would dispatch `gateway start` which would re-exec
+        # `gateway run --replace` which would re-dispatch `gateway
+        # start`, etc. See `_gateway_command_inner` for the matching
+        # guard.
+        lines.append("export HERMES_S6_SUPERVISED_CHILD=1")
         if profile == "default":
-            lines.append("exec s6-setuidgid eco eco gateway run")
+            lines.append("exec s6-setuidgid hermes hermes gateway run")
         else:
             lines.append(
-                f"exec s6-setuidgid eco eco -p {shlex.quote(profile)} gateway run"
+                f"exec s6-setuidgid hermes hermes -p {shlex.quote(profile)} gateway run"
             )
         return "\n".join(lines) + "\n"
 
@@ -614,23 +626,55 @@ class S6ServiceManager:
     def _render_log_run(profile: str) -> str:
         """Generate the log/run script for a profile-gateway service.
 
-        OQ8-C: persist to ``${ECO_HOME}/logs/gateways/<profile>/``.
-        CRITICAL: the ECO_HOME path is sourced from the runtime env
+        OQ8-C: persist to ``${HERMES_HOME}/logs/gateways/<profile>/``.
+        CRITICAL: the HERMES_HOME path is sourced from the runtime env
         via with-contenv — NOT Python-substituted at registration time
-        — so a container started with ``-e ECO_HOME=/data/eco``
-        gets its logs under /data/eco/logs/..., not the build-time
+        — so a container started with ``-e HERMES_HOME=/data/hermes``
+        gets its logs under /data/hermes/logs/..., not the build-time
         default.
+
+        Output routing — the script is two action directives, applied
+        per line, in order:
+
+          1. ``1`` (forward to stdout) — propagates the line up the
+             s6-supervise pipeline to /init's stdout, which is the
+             container's stdout, which is ``docker logs``. Without
+             this, supervised stdout would be terminated inside
+             s6-log and never reach the container's log stream;
+             users would have to ``docker exec`` and ``tail`` the
+             file just to see startup banners. (Python's ``logging``
+             module defaults to stderr, which s6-supervise leaves
+             unfiltered — so warnings/errors already reach docker
+             logs. This change is specifically about the rich-console
+             banner output and other plain stdout writes.)
+          2. ``T <log_dir>`` — also write a timestamped copy to the
+             rotated log directory (``current`` + archived ``@*.s``
+             files). This is what ``hermes logs`` reads and what
+             persists across container restarts via the volume mount.
+
+        ``T`` is non-sticky: it only prefixes lines for the next
+        action directive. We deliberately put ``T`` between ``1``
+        and the log dir (not before ``1``) so:
+
+          * ``docker logs`` shows raw lines — Python's logging
+            formatter has its own timestamps, and ``docker logs
+            --timestamps`` adds a third layer when desired. No
+            double-stamping in the most common reading path.
+          * The persisted file gets s6-log's own ISO 8601 timestamp
+            so even output that lacked a Python-logger timestamp
+            (rich banners, third-party libs' raw prints) is
+            correlatable in ``current``.
         """
         import shlex
         prof = shlex.quote(profile)
         return (
             f"#!/command/with-contenv sh\n"
             f"# shellcheck shell=sh\n"
-            f': "${{ECO_HOME:=/opt/data}}"\n'
-            f'log_dir="$ECO_HOME/logs/gateways/{prof}"\n'
+            f': "${{HERMES_HOME:=/opt/data}}"\n'
+            f'log_dir="$HERMES_HOME/logs/gateways/{prof}"\n'
             f'mkdir -p "$log_dir"\n'
-            f'chown -R eco:eco "$log_dir" 2>/dev/null || true\n'
-            f'exec s6-setuidgid eco s6-log n10 s1000000 T "$log_dir"\n'
+            f'chown -R hermes:hermes "$log_dir" 2>/dev/null || true\n'
+            f'exec s6-setuidgid hermes s6-log 1 n10 s1000000 T "$log_dir"\n'
         )
 
     # -- lifecycle ---------------------------------------------------------
@@ -775,11 +819,11 @@ class S6ServiceManager:
             log_run.write_text(self._render_log_run(profile))
             log_run.chmod(0o755)
 
-            # Pre-create the supervise/ skeleton with eco ownership
+            # Pre-create the supervise/ skeleton with hermes ownership
             # BEFORE we publish the slot. s6-supervise will EEXIST our
             # dirs/FIFOs and inherit the ownership, so the runtime
             # s6-svc / s6-svstat / s6-svwait calls (all dispatched as
-            # the eco user) won't hit EACCES on root-owned 0700
+            # the hermes user) won't hit EACCES on root-owned 0700
             # dirs. See ``_seed_supervise_skeleton`` for the full
             # rationale.
             _seed_supervise_skeleton(tmp_dir)
@@ -861,7 +905,7 @@ class S6ServiceManager:
         # live s6-supervise, so rmtree can remove them. Files inside
         # supervise/ are root-owned (death_tally, lock, status, written
         # by s6-supervise itself) — but the parent supervise/ directory
-        # is eco-owned (see ``_seed_supervise_skeleton``), and on
+        # is hermes-owned (see ``_seed_supervise_skeleton``), and on
         # POSIX you only need write+execute on the parent to remove
         # contained files regardless of file ownership.
         shutil.rmtree(svc_dir, ignore_errors=True)

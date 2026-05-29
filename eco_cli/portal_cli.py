@@ -1,4 +1,4 @@
-"""``eco portal`` — small CLI surface for Nous Portal users.
+"""``hermes portal`` — small CLI surface for Nous Portal users.
 
 Subcommands:
   status   Show Portal auth state + which Tool Gateway tools are routed.
@@ -6,40 +6,26 @@ Subcommands:
   tools    List Tool Gateway tools and which are active in the current config.
 
 This command is intentionally minimal — it does not duplicate functionality
-already in ``eco auth`` or ``eco tools``. It's a discovery + status
+already in ``hermes auth`` or ``hermes tools``. It's a discovery + status
 surface for the Portal subscription itself.
 """
 from __future__ import annotations
 
 import sys
 import webbrowser
-from typing import Optional
 
-from eco_cli.colors import Colors, color
-from eco_cli.config import load_config
+from hermes_cli.colors import Colors, color
+from hermes_cli.config import load_config
 
 DEFAULT_PORTAL_URL = "https://portal.nousresearch.com"
 SUBSCRIPTION_URL = "https://portal.nousresearch.com/manage-subscription"
-DOCS_URL = "https://eco.nousresearch.com/docs/user-guide/features/tool-gateway"
-
-
-def _nous_portal_base_url() -> str:
-    """Resolve the Portal base URL from auth state or default."""
-    try:
-        from eco_cli.auth import get_nous_auth_status
-        status = get_nous_auth_status() or {}
-        url = status.get("portal_base_url")
-        if isinstance(url, str) and url.strip():
-            return url.rstrip("/")
-    except Exception:
-        pass
-    return DEFAULT_PORTAL_URL
+DOCS_URL = "https://hermes-agent.nousresearch.com/docs/user-guide/features/tool-gateway"
 
 
 def _cmd_status(args) -> int:
     """Show Portal auth + Tool Gateway routing summary."""
-    from eco_cli.auth import get_nous_auth_status
-    from eco_cli.nous_subscription import get_nous_subscription_features
+    from hermes_cli.auth import get_nous_auth_status
+    from hermes_cli.nous_subscription import get_nous_subscription_features
 
     config = load_config() or {}
 
@@ -63,7 +49,7 @@ def _cmd_status(args) -> int:
     else:
         print(f"  Auth:    {color('not logged in', Colors.YELLOW)}")
         print(f"  Sign up: {SUBSCRIPTION_URL}")
-        print(f"  Login:   eco auth add nous --type oauth")
+        print(f"  Login:   hermes auth add nous --type oauth")
 
     # Provider selection (independent of auth)
     model_cfg = config.get("model") if isinstance(config.get("model"), dict) else {}
@@ -71,7 +57,7 @@ def _cmd_status(args) -> int:
     if provider == "nous":
         print(f"  Model:   {color('✓ using Nous as inference provider', Colors.GREEN)}")
     elif provider:
-        print(f"  Model:   currently {provider} (switch with `eco model`)")
+        print(f"  Model:   currently {provider} (switch with `hermes model`)")
 
     # Tool Gateway routing
     print()
@@ -125,7 +111,7 @@ def _cmd_open(args) -> int:
 
 def _cmd_tools(args) -> int:
     """List the Tool Gateway catalog + current routing."""
-    from eco_cli.nous_subscription import get_nous_subscription_features
+    from hermes_cli.nous_subscription import get_nous_subscription_features
 
     config = load_config() or {}
     try:
@@ -148,7 +134,7 @@ def _cmd_tools(args) -> int:
     print(color("  ────────────────────", Colors.MAGENTA))
 
     if not features.nous_auth_present:
-        print(color("  Not logged into Nous Portal — sign in with `eco auth add nous --type oauth`.", Colors.YELLOW))
+        print(color("  Not logged into Nous Portal — sign in with `hermes auth add nous --type oauth`.", Colors.YELLOW))
         print()
 
     label_width = max(len(label) for _, label, _ in catalog)
@@ -173,7 +159,7 @@ def _cmd_tools(args) -> int:
 
 
 def portal_command(args) -> int:
-    """Top-level dispatch for `eco portal <subcommand>`."""
+    """Top-level dispatch for `hermes portal <subcommand>`."""
     sub = getattr(args, "portal_command", None)
     if sub in {None, ""}:
         # Default to status — matches gh / kubectl conventions where the
@@ -186,12 +172,12 @@ def portal_command(args) -> int:
     if sub == "tools":
         return _cmd_tools(args)
     print(f"Unknown portal subcommand: {sub}", file=sys.stderr)
-    print("Run `eco portal -h` for usage.", file=sys.stderr)
+    print("Run `hermes portal -h` for usage.", file=sys.stderr)
     return 1
 
 
 def add_parser(subparsers) -> None:
-    """Register `eco portal` on the given argparse subparsers object."""
+    """Register `hermes portal` on the given argparse subparsers object."""
     portal_parser = subparsers.add_parser(
         "portal",
         help="Nous Portal status, subscription, and Tool Gateway routing",

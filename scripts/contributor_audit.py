@@ -17,7 +17,6 @@ Usage:
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -30,7 +29,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from release import AUTHOR_MAP, resolve_author  # noqa: E402
+from release import resolve_author  # noqa: E402
 
 REPO_ROOT = SCRIPT_DIR.parent
 
@@ -42,19 +41,22 @@ IGNORED_PATTERNS = [
     re.compile(r"^Copilot$", re.IGNORECASE),
     re.compile(r"^Cursor(\s+Agent)?$", re.IGNORECASE),
     re.compile(r"^GitHub\s*Actions?$", re.IGNORECASE),
+    re.compile(r"^github-actions(\[bot\])?$", re.IGNORECASE),
     re.compile(r"^dependabot", re.IGNORECASE),
     re.compile(r"^renovate", re.IGNORECASE),
-    re.compile(r"^ECO\s+(Agent|Audit)$", re.IGNORECASE),
+    re.compile(r"^Hermes\s+(Agent|Audit)$", re.IGNORECASE),
     re.compile(r"^Ubuntu$", re.IGNORECASE),
 ]
 
 IGNORED_EMAILS = {
     "noreply@anthropic.com",
     "noreply@github.com",
+    "noreply@nousresearch.com",
     "cursoragent@cursor.com",
-    "eco@nousresearch.com",
-    "eco-audit@example.com",
-    "eco@habibilabs.dev",
+    "hermes@nousresearch.com",
+    "hermes-audit@example.com",
+    "hermes@habibilabs.dev",
+    "omx@oh-my-codex.dev",
 }
 
 
@@ -96,7 +98,7 @@ def gh_pr_list():
         result = subprocess.run(
             [
                 "gh", "pr", "list",
-                "--repo", "NousResearch/eco",
+                "--repo", "NousResearch/hermes-agent",
                 "--state", "merged",
                 "--json", "number,title,body,author,mergedAt",
                 "--limit", "300",

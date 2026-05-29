@@ -1,5 +1,5 @@
 /**
- * ChatPage — embeds `eco --tui` inside the dashboard.
+ * ChatPage — embeds `hermes --tui` inside the dashboard.
  *
  *   <div host> (dashboard chrome)                                         .
  *     └─ <div wrapper> (rounded, dark bg, padded — the "terminal window"  .
@@ -11,7 +11,7 @@
  *              ▼                                                          .
  *     WebSocket /api/pty?token=<session>                                  .
  *          ▼                                                              .
- *     FastAPI pty_ws  (eco_cli/web_server.py)                          .
+ *     FastAPI pty_ws  (hermes_cli/web_server.py)                          .
  *          ▼                                                              .
  *     POSIX PTY → `node ui-tui/dist/entry.js` → tui_gateway + AIAgent     .
  */
@@ -23,8 +23,8 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { Button } from "@nous-research/ui/ui/components/button";
-import { Typography } from "@/components/NouiTypography";
-import { ECO_BASE_PATH } from "@/lib/api";
+import { Typography } from "@nous-research/ui/ui/components/typography/index";
+import { HERMES_BASE_PATH, buildWsAuthParam } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Copy, PanelRight, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -38,14 +38,17 @@ import { api } from "@/lib/api";
 import { PluginSlot } from "@/plugins";
 
 function buildWsUrl(
-  token: string,
+  authParam: [string, string],
   resume: string | null,
   channel: string,
 ): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const qs = new URLSearchParams({ token, channel });
+  // ``authParam`` is ``["token", <session>]`` in loopback mode and
+  // ``["ticket", <minted>]`` in gated mode. The server-side helper
+  // ``_ws_auth_ok`` picks whichever shape matches the current gate state.
+  const qs = new URLSearchParams({ [authParam[0]]: authParam[1], channel });
   if (resume) qs.set("resume", resume);
-  return `${proto}//${window.location.host}${ECO_BASE_PATH}/api/pty?${qs.toString()}`;
+  return `${proto}//${window.location.host}${HERMES_BASE_PATH}/api/pty?${qs.toString()}`;
 }
 
 // Channel id ties this chat tab's PTY child (publisher) to its sidebar
@@ -117,8 +120,8 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
   // Lazy-init: the missing-token check happens at construction so the effect
   // body doesn't have to setState (React 19's set-state-in-effect rule).
   const [banner, setBanner] = useState<string | null>(() =>
-    typeof window !== "undefined" && !window.__ECO_SESSION_TOKEN__
-      ? "Session token unavailable. Open this page through `eco dashboard`, not directly."
+    typeof window !== "undefined" && !window.__HERMES_SESSION_TOKEN__
+      ? "Session token unavailable. Open this page through `hermes dashboard`, not directly."
       : null,
   );
   const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
@@ -269,7 +272,7 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
     const host = hostRef.current;
     if (!host) return;
 
-    const token = window.__ECO_SESSION_TOKEN__;
+    const token = window.__HERMES_SESSION_TOKEN__;
     // Banner already initialised above; just bail before wiring xterm/WS.
     if (!token) {
       return;
@@ -288,7 +291,7 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
       fontWeightBold: "700",
       macOptionIsMeta: true,
       // Hold Option (Alt on Linux/Windows) to force native text selection
-      // even when the inner ECO TUI has enabled xterm mouse-events
+      // even when the inner Hermes TUI has enabled xterm mouse-events
       // mode (CSI ?1000h family). Without this, click-and-drag in the
       // chat canvas selects nothing and Cmd+C falls back to copying the
       // entire visible buffer, which is rarely what the user wants.
@@ -314,7 +317,7 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
     //      terminal has a selection, then emits an OSC 52 escape.  Our
     //      OSC 52 handler below decodes that escape and writes to the
     //      browser clipboard — so the flow works just like it does in
-    //      `eco --tui`.
+    //      `hermes --tui`.
     //
     //   2. **Ctrl/Cmd+Shift+C.**  Belt-and-suspenders shortcut that
     //      operates directly on xterm's selection, useful if the TUI
@@ -440,7 +443,7 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
         term.loadAddon(webgl);
       } catch (err) {
         console.warn(
-          "[eco-chat] WebGL renderer unavailable; falling back to default",
+          "[hermes-chat] WebGL renderer unavailable; falling back to default",
           err,
         );
       }
@@ -544,15 +547,22 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
       });
     });
 
-    // WebSocket
-    const url = buildWsUrl(token, resumeParam, channel);
-    const ws = new WebSocket(url);
-    ws.binaryType = "arraybuffer";
-    wsRef.current = ws;
-    // Suppress banner/terminal side-effects when cleanup() calls `ws.close()`
-    // (React StrictMode remount, route change) so we never write to a
-    // disposed xterm or setState on an unmounted tree.
+    // WebSocket. In gated mode (``window.__HERMES_AUTH_REQUIRED__``) this
+    // awaits a single-use ticket via /api/auth/ws-ticket before opening;
+    // in loopback mode it resolves synchronously against the injected
+    // session token. The IIFE keeps the outer effect synchronous so its
+    // ``return cleanup`` stays at the top level; handlers + disposables
+    // are hoisted to ``let`` bindings the cleanup closes over.
     let unmounting = false;
+    let onDataDisposable: { dispose(): void } | null = null;
+    let onResizeDisposable: { dispose(): void } | null = null;
+    void (async () => {
+      const authParam = await buildWsAuthParam();
+      if (unmounting) return;
+      const url = buildWsUrl(authParam, resumeParam, channel);
+      const ws = new WebSocket(url);
+      ws.binaryType = "arraybuffer";
+      wsRef.current = ws;
 
     ws.onopen = () => {
       setBanner(null);
@@ -603,33 +613,34 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
     //
     // For the browser embed we prefer input stability over terminal-style
     // mouse reporting, so we drop SGR mouse reports entirely instead of
-    // forwarding them into ECO. Keyboard input, paste, and resize still
+    // forwarding them into Hermes. Keyboard input, paste, and resize still
     // behave normally.
-    // eslint-disable-next-line no-control-regex -- intentional ESC byte in xterm SGR mouse report parser
-    const SGR_MOUSE_RE = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/;
-    const onDataDisposable = term.onData((data) => {
-      if (ws.readyState !== WebSocket.OPEN) return;
+      // eslint-disable-next-line no-control-regex -- intentional ESC byte in xterm SGR mouse report parser
+      const SGR_MOUSE_RE = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/;
+      onDataDisposable = term.onData((data) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
 
-      if (SGR_MOUSE_RE.test(data)) {
-        return;
-      }
+        if (SGR_MOUSE_RE.test(data)) {
+          return;
+        }
 
-      ws.send(data);
-    });
+        ws.send(data);
+      });
 
-    const onResizeDisposable = term.onResize(({ cols, rows }) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(`\x1b[RESIZE:${cols};${rows}]`);
-      }
-    });
+      onResizeDisposable = term.onResize(({ cols, rows }) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(`\x1b[RESIZE:${cols};${rows}]`);
+        }
+      });
+    })();
 
     term.focus();
 
     return () => {
       unmounting = true;
       syncMetricsRef.current = null;
-      onDataDisposable.dispose();
-      onResizeDisposable.dispose();
+      onDataDisposable?.dispose();
+      onResizeDisposable?.dispose();
       if (metricsDebounce) clearTimeout(metricsDebounce);
       window.removeEventListener("resize", scheduleSyncTerminalMetrics);
       window.visualViewport?.removeEventListener(
@@ -640,7 +651,12 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
       if (hostSyncRaf) cancelAnimationFrame(hostSyncRaf);
       if (settleRaf1) cancelAnimationFrame(settleRaf1);
       if (settleRaf2) cancelAnimationFrame(settleRaf2);
-      ws.close();
+      // Phase 5.3: ``ws`` is local to the IIFE that opens it (the gated-mode
+      // ticket fetch makes the open async). The cleanup runs at the outer
+      // effect's top level so it can't reach into that scope — close via
+      // the ref instead. ``?.`` covers the race where unmount fires before
+      // the ticket fetch resolves and ``wsRef.current`` was never assigned.
+      wsRef.current?.close();
       wsRef.current = null;
       term.dispose();
       termRef.current = null;
@@ -810,7 +826,7 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
         >
           <div
             ref={hostRef}
-            className="eco-chat-xterm-host min-h-0 min-w-0 flex-1"
+            className="hermes-chat-xterm-host min-h-0 min-w-0 flex-1"
           />
 
           <Button
@@ -859,6 +875,6 @@ export default function ChatPage({ isActive = true }: { isActive?: boolean }) {
 
 declare global {
   interface Window {
-    __ECO_SESSION_TOKEN__?: string;
+    __HERMES_SESSION_TOKEN__?: string;
   }
 }
