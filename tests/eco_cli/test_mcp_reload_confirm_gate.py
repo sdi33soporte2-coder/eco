@@ -11,7 +11,7 @@ run silently.
 from __future__ import annotations
 
 
-from hermes_cli.config import DEFAULT_CONFIG
+from eco_cli.config import DEFAULT_CONFIG
 
 
 class TestMcpReloadConfirmDefault:
@@ -43,7 +43,7 @@ class TestUserConfigMerge:
         import yaml
 
         # Simulate a legacy user config without the new key.
-        home = tmp_path / ".hermes"
+        home = tmp_path / ".eco"
         home.mkdir()
         cfg_path = home / "config.yaml"
         legacy = {
@@ -54,7 +54,7 @@ class TestUserConfigMerge:
         monkeypatch.setenv("HERMES_HOME", str(home))
         # Force a fresh reimport of config.py so the HERMES_HOME is honored.
         import importlib
-        import hermes_cli.config as cfg_mod
+        import eco_cli.config as cfg_mod
         importlib.reload(cfg_mod)
 
         cfg = cfg_mod.load_config()
@@ -68,7 +68,7 @@ class TestUserConfigMerge:
         """
         import yaml
 
-        home = tmp_path / ".hermes"
+        home = tmp_path / ".eco"
         home.mkdir()
         cfg_path = home / "config.yaml"
         user_cfg = {
@@ -83,7 +83,7 @@ class TestUserConfigMerge:
 
         monkeypatch.setenv("HERMES_HOME", str(home))
         import importlib
-        import hermes_cli.config as cfg_mod
+        import eco_cli.config as cfg_mod
         importlib.reload(cfg_mod)
 
         cfg = cfg_mod.load_config()

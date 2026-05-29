@@ -9,7 +9,7 @@ the volume.  HERMES_UID/HERMES_GID must still take precedence when both are
 set.
 
 The s6-overlay rework moved bootstrap from docker/entrypoint.sh (now a shim)
-to docker/stage2-hook.sh, which is installed as /etc/cont-init.d/01-hermes-setup
+to docker/stage2-hook.sh, which is installed as /etc/cont-init.d/01-eco-setup
 by the Dockerfile.  This test targets the post-rework location.
 """
 from __future__ import annotations
@@ -69,11 +69,11 @@ def _resolve(stage2_text: str, env: dict[str, str]) -> str:
     return proc.stdout.strip()
 
 
-def test_puid_pgid_populate_hermes_uid_gid(stage2_text: str) -> None:
+def test_puid_pgid_populate_eco_uid_gid(stage2_text: str) -> None:
     assert _resolve(stage2_text, {"PUID": "1000", "PGID": "10"}) == "1000:10"
 
 
-def test_hermes_uid_gid_take_precedence_over_aliases(stage2_text: str) -> None:
+def test_eco_uid_gid_take_precedence_over_aliases(stage2_text: str) -> None:
     resolved = _resolve(
         stage2_text,
         {"HERMES_UID": "2000", "HERMES_GID": "2001", "PUID": "1000", "PGID": "10"},
@@ -82,5 +82,5 @@ def test_hermes_uid_gid_take_precedence_over_aliases(stage2_text: str) -> None:
 
 
 def test_no_uid_vars_leaves_values_empty(stage2_text: str) -> None:
-    # An empty resolution means the stage2 hook keeps the default hermes user.
+    # An empty resolution means the stage2 hook keeps the default eco user.
     assert _resolve(stage2_text, {}) == ":"

@@ -1,0 +1,4 @@
+[console_scripts]
+eco = eco_cli.main:main
+eco-acp = acp_adapter.entry:main
+eco-agent = run_agent:main

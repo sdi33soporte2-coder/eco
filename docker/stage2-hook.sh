@@ -6,7 +6,7 @@
 # Per-service privilege drop happens inside each service's `run` script
 # (and in main-wrapper.sh) via s6-setuidgid, not here.
 #
-# Wired into the image as /etc/cont-init.d/01-hermes-setup by the
+# Wired into the image as /etc/cont-init.d/01-eco-setup by the
 # Dockerfile. The shim at docker/entrypoint.sh forwards to this script
 # so external references to docker/entrypoint.sh still work.
 #
@@ -18,14 +18,14 @@
 set -eu
 
 HERMES_HOME="${HERMES_HOME:-/opt/data}"
-INSTALL_DIR="/opt/hermes"
+INSTALL_DIR="/opt/eco"
 
 # --- Bootstrap HERMES_HOME as root ---
 # Create the directory (and any missing parents) while we still have root
 # privileges so the chown checks below see real metadata and the later
-# `s6-setuidgid hermes mkdir -p` block doesn't EACCES on root-owned
+# `s6-setuidgid eco mkdir -p` block doesn't EACCES on root-owned
 # ancestors. Without this, custom HERMES_HOME paths whose parents only
-# root can create (e.g. `HERMES_HOME=/home/hermes/.hermes` in a Compose
+# root can create (e.g. `HERMES_HOME=/home/eco/.eco` in a Compose
 # file, or any path under a fresh / not pre-populated by the image)
 # fail on first boot with `mkdir: cannot create directory '/...': Permission
 # denied` and the cont-init hook exits non-zero. Idempotent — `mkdir -p`
@@ -42,22 +42,22 @@ mkdir -p "$HERMES_HOME"
 HERMES_UID="${HERMES_UID:-${PUID:-}}"
 HERMES_GID="${HERMES_GID:-${PGID:-}}"
 
-if [ -n "${HERMES_UID:-}" ] && [ "$HERMES_UID" != "$(id -u hermes)" ]; then
-    echo "[stage2] Changing hermes UID to $HERMES_UID"
-    usermod -u "$HERMES_UID" hermes
+if [ -n "${HERMES_UID:-}" ] && [ "$HERMES_UID" != "$(id -u eco)" ]; then
+    echo "[stage2] Changing eco UID to $HERMES_UID"
+    usermod -u "$HERMES_UID" eco
 fi
-if [ -n "${HERMES_GID:-}" ] && [ "$HERMES_GID" != "$(id -g hermes)" ]; then
-    echo "[stage2] Changing hermes GID to $HERMES_GID"
+if [ -n "${HERMES_GID:-}" ] && [ "$HERMES_GID" != "$(id -g eco)" ]; then
+    echo "[stage2] Changing eco GID to $HERMES_GID"
     # -o allows non-unique GID (e.g. macOS GID 20 "staff" may already
     # exist as "dialout" in the Debian-based container image).
-    groupmod -o -g "$HERMES_GID" hermes 2>/dev/null || true
+    groupmod -o -g "$HERMES_GID" eco 2>/dev/null || true
 fi
 
 # --- Docker socket group membership (docker-in-docker / DooD) ---
 # When the user bind-mounts the host Docker daemon socket
 # (`-v /var/run/docker.sock:/var/run/docker.sock`) to use the `docker`
 # terminal backend from inside the container, the socket is owned by the
-# host's `docker` group (or root). The supervised hermes user (UID 10000)
+# host's `docker` group (or root). The supervised eco user (UID 10000)
 # is not a member of any group that matches the socket's GID, so every
 # `docker` invocation EACCES'es and `check_terminal_requirements()` fails.
 # See #16703.
@@ -69,26 +69,26 @@ fi
 # /etc/group entry whose GID matches the socket, the kernel-granted
 # supp group is silently wiped between PID 1 and the dropped process.
 # Confirmed empirically: `--group-add 998` alone leaves the dropped
-# hermes process with `Groups: 10000` (998 gone); after this hook adds
+# eco process with `Groups: 10000` (998 gone); after this hook adds
 # the entry, the dropped process has `Groups: 998 10000` as expected.
 #
 # Fix: detect the socket's GID at boot and ensure /etc/group has a
-# matching entry that includes hermes. Idempotent across container
+# matching entry that includes eco. Idempotent across container
 # restarts. Skipped silently when no socket is bind-mounted.
 #
 # Handles the awkward corner cases:
 #   - socket owned by GID 0 (root) — some Podman setups; usermod -aG root
 #   - socket GID already used by a known container group (e.g. tty=5):
 #     reuse that group's name rather than creating a duplicate
-#   - hermes is already a member of the right group (idempotent restart)
+#   - eco is already a member of the right group (idempotent restart)
 #   - chown/groupadd failures under rootless containers — non-fatal
 for sock in /var/run/docker.sock /run/docker.sock; do
     [ -S "$sock" ] || continue
     sock_gid=$(stat -c '%g' "$sock" 2>/dev/null) || continue
     [ -n "$sock_gid" ] || continue
     # Already a member? Nothing to do.
-    if id -G hermes 2>/dev/null | tr ' ' '\n' | grep -qx "$sock_gid"; then
-        echo "[stage2] hermes already in group $sock_gid for $sock"
+    if id -G eco 2>/dev/null | tr ' ' '\n' | grep -qx "$sock_gid"; then
+        echo "[stage2] eco already in group $sock_gid for $sock"
         break
     fi
     # Resolve or create a group name for this GID.
@@ -101,24 +101,24 @@ for sock in /var/run/docker.sock /run/docker.sock; do
         fi
         echo "[stage2] Created group $sock_group (GID $sock_gid) for Docker socket"
     fi
-    if usermod -aG "$sock_group" hermes 2>/dev/null; then
-        echo "[stage2] Added hermes to group $sock_group (GID $sock_gid) for $sock"
+    if usermod -aG "$sock_group" eco 2>/dev/null; then
+        echo "[stage2] Added eco to group $sock_group (GID $sock_gid) for $sock"
     else
-        echo "[stage2] Warning: usermod -aG $sock_group hermes failed; docker backend may fail with EACCES"
+        echo "[stage2] Warning: usermod -aG $sock_group eco failed; docker backend may fail with EACCES"
     fi
     break
 done
 
 # --- Fix ownership of data volume ---
 # When HERMES_UID is remapped or the top-level $HERMES_HOME isn't owned by
-# the runtime hermes UID, restore ownership to hermes — but ONLY for the
-# directories hermes actually writes to. The full $HERMES_HOME may be a
+# the runtime eco UID, restore ownership to eco — but ONLY for the
+# directories eco actually writes to. The full $HERMES_HOME may be a
 # host-mounted bind containing unrelated user files; `chown -R` would
 # silently destroy host ownership of those (see issue #19788).
 #
-# The canonical list of hermes-owned subdirs is the same one the s6-setuidgid
+# The canonical list of eco-owned subdirs is the same one the s6-setuidgid
 # mkdir -p block below seeds. Keep them in sync if the seed list changes.
-actual_hermes_uid=$(id -u hermes)
+actual_hermes_uid=$(id -u eco)
 needs_chown=false
 if [ -n "${HERMES_UID:-}" ] && [ "$HERMES_UID" != "10000" ]; then
     needs_chown=true
@@ -126,40 +126,40 @@ elif [ "$(stat -c %u "$HERMES_HOME" 2>/dev/null)" != "$actual_hermes_uid" ]; the
     needs_chown=true
 fi
 if [ "$needs_chown" = true ]; then
-    echo "[stage2] Fixing ownership of $HERMES_HOME (targeted) to hermes ($actual_hermes_uid)"
+    echo "[stage2] Fixing ownership of $HERMES_HOME (targeted) to eco ($actual_hermes_uid)"
     # In rootless Podman the container's "root" is mapped to an
     # unprivileged host UID — chown will fail. That's fine: the volume
     # is already owned by the mapped user on the host side.
     #
     # Top-level $HERMES_HOME: chown the directory itself (not its contents)
-    # so hermes can mkdir new subdirs but bind-mounted host files keep
+    # so eco can mkdir new subdirs but bind-mounted host files keep
     # their existing ownership.
-    chown hermes:hermes "$HERMES_HOME" 2>/dev/null || \
+    chown eco:eco "$HERMES_HOME" 2>/dev/null || \
         echo "[stage2] Warning: chown $HERMES_HOME failed (rootless container?) — continuing"
-    # Hermes-owned subdirs: recursive chown is safe here because these are
-    # created and managed exclusively by hermes (see the s6-setuidgid mkdir
+    # ECO-owned subdirs: recursive chown is safe here because these are
+    # created and managed exclusively by eco (see the s6-setuidgid mkdir
     # -p block below for the canonical list).
     for sub in cron sessions logs hooks memories skills skins plans workspace home profiles; do
         if [ -e "$HERMES_HOME/$sub" ]; then
-            chown -R hermes:hermes "$HERMES_HOME/$sub" 2>/dev/null || \
+            chown -R eco:eco "$HERMES_HOME/$sub" 2>/dev/null || \
                 echo "[stage2] Warning: chown $HERMES_HOME/$sub failed (rootless container?) — continuing"
         fi
     done
-    # Hermes-owned trees under $INSTALL_DIR must be re-chowned when the UID
+    # ECO-owned trees under $INSTALL_DIR must be re-chowned when the UID
     # is remapped — otherwise:
     #   - .venv: lazy_deps.py cannot install platform packages (discord.py,
     #     telegram, slack, etc.) with EACCES (#15012, #21100)
     #   - ui-tui: esbuild rebuilds dist/entry.js on every TUI launch (when
     #     the source mtime is newer than dist/ or when HERMES_TUI_FORCE_BUILD
     #     is set) and writes to ui-tui/dist/. Without this chown the new
-    #     hermes UID can't write the build output (#28851).
+    #     eco UID can't write the build output (#28851).
     #   - node_modules: root-level dependencies (puppeteer, web tooling)
     #     that runtime code may walk/update.
-    # The set mirrors the build-time `chown -R hermes:hermes` line in the
+    # The set mirrors the build-time `chown -R eco:eco` line in the
     # Dockerfile — keep them in sync if the Dockerfile chown set changes.
     # These are under $INSTALL_DIR (not $HERMES_HOME), so the bind-mount
     # concern doesn't apply — recursive is fine.
-    chown -R hermes:hermes \
+    chown -R eco:eco \
         "$INSTALL_DIR/.venv" \
         "$INSTALL_DIR/ui-tui" \
         "$INSTALL_DIR/node_modules" \
@@ -167,33 +167,33 @@ if [ "$needs_chown" = true ]; then
         echo "[stage2] Warning: chown of build trees failed (rootless container?) — continuing"
 fi
 
-# Always reset ownership of $HERMES_HOME/profiles to hermes on every
+# Always reset ownership of $HERMES_HOME/profiles to eco on every
 # boot. Profile dirs and files can land owned by root when commands
-# are invoked via `docker exec <container> hermes …` (which defaults
+# are invoked via `docker exec <container> eco …` (which defaults
 # to root unless `-u` is passed), and that breaks the cont-init
-# reconciler (02-reconcile-profiles) which runs as hermes and walks
+# reconciler (02-reconcile-profiles) which runs as eco and walks
 # the profiles dir. Idempotent; skipped on rootless containers where
 # chown would fail.
 if [ -d "$HERMES_HOME/profiles" ]; then
-    chown -R hermes:hermes "$HERMES_HOME/profiles" 2>/dev/null || true
+    chown -R eco:eco "$HERMES_HOME/profiles" 2>/dev/null || true
 fi
 
 # --- config.yaml permissions ---
-# Ensure config.yaml is readable by the hermes runtime user even if it
+# Ensure config.yaml is readable by the eco runtime user even if it
 # was edited on the host after initial ownership setup.
 if [ -f "$HERMES_HOME/config.yaml" ]; then
-    chown hermes:hermes "$HERMES_HOME/config.yaml" 2>/dev/null || true
+    chown eco:eco "$HERMES_HOME/config.yaml" 2>/dev/null || true
     chmod 640 "$HERMES_HOME/config.yaml" 2>/dev/null || true
 fi
 
-# --- Seed directory structure as hermes user ---
-# Run as hermes via s6-setuidgid so dirs end up owned correctly (matters
+# --- Seed directory structure as eco user ---
+# Run as eco via s6-setuidgid so dirs end up owned correctly (matters
 # under rootless Podman where chown back to root would fail).
 #
 # Use direct `mkdir -p` invocation (no `sh -c "..."` wrapper) so the
 # shell isn't a second interpreter — defends against $HERMES_HOME values
 # containing shell metacharacters. PR #30136 review item O2.
-s6-setuidgid hermes mkdir -p \
+s6-setuidgid eco mkdir -p \
     "$HERMES_HOME/cron" \
     "$HERMES_HOME/sessions" \
     "$HERMES_HOME/logs" \
@@ -205,12 +205,12 @@ s6-setuidgid hermes mkdir -p \
     "$HERMES_HOME/workspace" \
     "$HERMES_HOME/home"
 
-# --- Install-method stamp (read by detect_install_method() in hermes status) ---
+# --- Install-method stamp (read by detect_install_method() in eco status) ---
 # Preserved from the tini-era entrypoint (PR #27843). Must be written as
-# the hermes user so ownership matches the file's documented owner.
+# the eco user so ownership matches the file's documented owner.
 # tee is invoked directly via s6-setuidgid (no `sh -c` wrapper) for the
 # same shell-metacharacter safety described above.
-printf 'docker\n' | s6-setuidgid hermes tee "$HERMES_HOME/.install_method" >/dev/null \
+printf 'docker\n' | s6-setuidgid eco tee "$HERMES_HOME/.install_method" >/dev/null \
     || true
 
 # --- Seed config files (only on first boot) ---
@@ -218,7 +218,7 @@ seed_one() {
     dest=$1
     src=$2
     if [ ! -f "$HERMES_HOME/$dest" ] && [ -f "$INSTALL_DIR/$src" ]; then
-        s6-setuidgid hermes cp "$INSTALL_DIR/$src" "$HERMES_HOME/$dest"
+        s6-setuidgid eco cp "$INSTALL_DIR/$src" "$HERMES_HOME/$dest"
     fi
 }
 seed_one ".env" ".env.example"
@@ -229,7 +229,7 @@ seed_one "SOUL.md" "docker/SOUL.md"
 # unconditionally (not only on first-seed) so a host-mounted .env that was
 # created with a permissive umask gets tightened on every container start.
 if [ -f "$HERMES_HOME/.env" ]; then
-    chown hermes:hermes "$HERMES_HOME/.env" 2>/dev/null || true
+    chown eco:eco "$HERMES_HOME/.env" 2>/dev/null || true
     chmod 600 "$HERMES_HOME/.env" 2>/dev/null || true
 fi
 
@@ -238,7 +238,7 @@ fi
 # rotated refresh tokens on container restart.
 if [ ! -f "$HERMES_HOME/auth.json" ] && [ -n "${HERMES_AUTH_JSON_BOOTSTRAP:-}" ]; then
     printf '%s' "$HERMES_AUTH_JSON_BOOTSTRAP" > "$HERMES_HOME/auth.json"
-    chown hermes:hermes "$HERMES_HOME/auth.json" 2>/dev/null || true
+    chown eco:eco "$HERMES_HOME/auth.json" 2>/dev/null || true
     chmod 600 "$HERMES_HOME/auth.json"
 fi
 
@@ -249,22 +249,22 @@ fi
 # the python binary's own bin-stub already sets up (sys.path is rooted
 # at the venv's site-packages by virtue of running .venv/bin/python).
 if [ -d "$INSTALL_DIR/skills" ]; then
-    s6-setuidgid hermes "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/tools/skills_sync.py" \
+    s6-setuidgid eco "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/tools/skills_sync.py" \
         || echo "[stage2] Warning: skills_sync.py failed; continuing"
 fi
 
 # --- Discover agent-browser's Chromium binary ---
 # The image's Dockerfile runs `npx playwright install chromium`, which
-# populates ``$PLAYWRIGHT_BROWSERS_PATH`` (=/opt/hermes/.playwright) with
+# populates ``$PLAYWRIGHT_BROWSERS_PATH`` (=/opt/eco/.playwright) with
 # a ``chromium_headless_shell-<build>/chrome-headless-shell-linux64/``
-# directory. agent-browser (the runtime CLI Hermes spawns for the
+# directory. agent-browser (the runtime CLI ECO spawns for the
 # browser tool) doesn't recognise this layout in its own cache scan and
 # fails with "Auto-launch failed: Chrome not found" — even though the
 # binary is right there (#15697).
 #
 # Fix: locate the binary at boot and export ``AGENT_BROWSER_EXECUTABLE_PATH``
 # via /run/s6/container_environment so the `with-contenv` shebang on
-# main-wrapper.sh propagates it into the supervised ``hermes`` process
+# main-wrapper.sh propagates it into the supervised ``eco`` process
 # and thence to agent-browser subprocesses.
 #
 # - Skipped when the user has already set ``AGENT_BROWSER_EXECUTABLE_PATH``
@@ -288,7 +288,7 @@ if [ -z "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ] && \
     if [ -n "$browser_bin" ]; then
         echo "[stage2] Found agent-browser Chromium binary: $browser_bin"
         # Write to s6's container_environment so with-contenv picks it
-        # up for all supervised services (main-hermes, dashboard, etc.).
+        # up for all supervised services (main-eco, dashboard, etc.).
         # Idempotent: each boot overwrites with the current path.
         printf '%s' "$browser_bin" > /run/s6/container_environment/AGENT_BROWSER_EXECUTABLE_PATH
     else

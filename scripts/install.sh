@@ -6,7 +6,7 @@
 # Uses uv for desktop/server installs and Python's stdlib venv + pip on Termux.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent-agent/main/scripts/install.sh | bash
 #
 # Or with options:
 #   curl -fsSL ... | bash -s -- --no-venv --skip-setup
@@ -43,9 +43,9 @@ NC='\033[0m' # No Color
 BOLD='\033[1m'
 
 # Configuration
-REPO_URL_SSH="git@github.com:NousResearch/hermes-agent.git"
-REPO_URL_HTTPS="https://github.com/NousResearch/hermes-agent.git"
-HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
+REPO_URL_SSH="git@github.com:NousResearch/hermes-agent-agent.git"
+REPO_URL_HTTPS="https://github.com/NousResearch/hermes-agent-agent.git"
+HERMES_HOME="${HERMES_HOME:-$HOME/.eco}"
 # INSTALL_DIR is resolved AFTER arg parsing and OS detection so we can pick an
 # FHS-style layout for root installs.  Track whether the user gave us an
 # explicit directory — if so we never override it.
@@ -60,8 +60,8 @@ PYTHON_VERSION="3.11"
 NODE_VERSION="22"
 
 # FHS-style root install layout (set by resolve_install_layout when applicable):
-#   code at /usr/local/lib/hermes-agent, command at /usr/local/bin/hermes,
-#   data still at /root/.hermes (HERMES_HOME).  Matches Claude Code / Codex CLI
+#   code at /usr/local/lib/eco-agent, command at /usr/local/bin/eco,
+#   data still at /root/.eco (HERMES_HOME).  Matches Claude Code / Codex CLI
 #   and keeps Docker bind-mounted /root/ volumes lean.
 ROOT_FHS_LAYOUT=false
 DETECTED_BROWSER_EXECUTABLE=""
@@ -107,7 +107,7 @@ while [[ $# -gt 0 ]]; do
             INSTALL_DIR_EXPLICIT=true
             shift 2
             ;;
-        --hermes-home)
+        --eco-home)
             HERMES_HOME="$2"
             shift 2
             ;;
@@ -130,24 +130,24 @@ while [[ $# -gt 0 ]]; do
             echo "  --skip-browser Skip Playwright/Chromium install (browser tools won't work)"
             echo "  --branch NAME  Git branch to install (default: main)"
             echo "  --dir PATH     Installation directory"
-            echo "                   default (non-root):  ~/.hermes/hermes-agent"
-            echo "                   default (root, Linux): /usr/local/lib/hermes-agent"
-            echo "  --hermes-home PATH  Data directory (default: ~/.hermes, or \$HERMES_HOME)"
+            echo "                   default (non-root):  ~/.eco/eco-agent"
+            echo "                   default (root, Linux): /usr/local/lib/eco-agent"
+            echo "  --eco-home PATH  Data directory (default: ~/.eco, or \$HERMES_HOME)"
             echo "  -h, --help     Show this help"
             echo ""
             echo "Notes:"
             echo "  When running as root on Linux, ECO installs the code under"
-            echo "  /usr/local/lib/hermes-agent and links the command into"
-            echo "  /usr/local/bin/hermes (FHS layout — matches Claude Code / Codex CLI)."
+            echo "  /usr/local/lib/eco-agent and links the command into"
+            echo "  /usr/local/bin/eco (FHS layout — matches Claude Code / Codex CLI)."
             echo "  Data, config, sessions, and logs still live in \$HERMES_HOME"
-            echo "  (default /root/.hermes).  This keeps Docker bind-mounted volumes"
+            echo "  (default /root/.eco).  This keeps Docker bind-mounted volumes"
             echo "  small and ensures the command is on PATH for all shells."
-            echo "  Existing installs at \$HERMES_HOME/hermes-agent are preserved in-place."
+            echo "  Existing installs at \$HERMES_HOME/eco-agent are preserved in-place."
             echo "  --ensure DEPS  Install only specified deps (comma-separated)"
             echo "                   Supported: node, browser, ripgrep, ffmpeg"
             echo "                   Does NOT clone repo or create venv"
             echo "  --postinstall  Run post-install setup only (for pip users)"
-            echo "                   Installs optional deps + runs hermes setup"
+            echo "                   Installs optional deps + runs eco setup"
             echo "                   Does NOT clone repo or create venv"
             exit 0
             ;;
@@ -230,18 +230,18 @@ is_termux() {
     [ -n "${TERMUX_VERSION:-}" ] || [[ "${PREFIX:-}" == *"com.termux/files/usr"* ]]
 }
 
-# Decide where the repo checkout + venv live, and where the `hermes` command
+# Decide where the repo checkout + venv live, and where the `eco` command
 # symlink goes.  Called after detect_os so $OS/$DISTRO are known.
 #
 # Defaults:
-#   - Non-root, any OS:       INSTALL_DIR = $HERMES_HOME/hermes-agent
+#   - Non-root, any OS:       INSTALL_DIR = $HERMES_HOME/eco-agent
 #                             command link in $HOME/.local/bin
-#   - Termux (any uid):       INSTALL_DIR = $HERMES_HOME/hermes-agent
+#   - Termux (any uid):       INSTALL_DIR = $HERMES_HOME/eco-agent
 #                             command link in $PREFIX/bin (already on PATH)
-#   - Root on Linux (new):    INSTALL_DIR = /usr/local/lib/hermes-agent
+#   - Root on Linux (new):    INSTALL_DIR = /usr/local/lib/eco-agent
 #                             command link in /usr/local/bin
 #                             (unless a legacy install already exists at
-#                              $HERMES_HOME/hermes-agent — then preserve it)
+#                              $HERMES_HOME/eco-agent — then preserve it)
 #
 # Always no-op when the user set --dir or $HERMES_INSTALL_DIR.
 resolve_install_layout() {
@@ -252,7 +252,7 @@ resolve_install_layout() {
 
     # Termux: package manager manages /data/data/..., keep code in HERMES_HOME.
     if is_termux; then
-        INSTALL_DIR="$HERMES_HOME/hermes-agent"
+        INSTALL_DIR="$HERMES_HOME/eco-agent"
         return 0
     fi
 
@@ -260,31 +260,31 @@ resolve_install_layout() {
     # macOS root installs keep the legacy layout because /usr/local/ on macOS
     # is Homebrew territory and we don't want to fight that.
     if [ "$OS" = "linux" ] && [ "$(id -u)" -eq 0 ]; then
-        if [ -d "$HERMES_HOME/hermes-agent/.git" ]; then
-            INSTALL_DIR="$HERMES_HOME/hermes-agent"
+        if [ -d "$HERMES_HOME/eco-agent/.git" ]; then
+            INSTALL_DIR="$HERMES_HOME/eco-agent"
             log_info "Existing install detected at $INSTALL_DIR — keeping legacy layout"
-            log_info "  (new root installs use /usr/local/lib/hermes-agent)"
+            log_info "  (new root installs use /usr/local/lib/eco-agent)"
             return 0
         fi
-        INSTALL_DIR="/usr/local/lib/hermes-agent"
+        INSTALL_DIR="/usr/local/lib/eco-agent"
         ROOT_FHS_LAYOUT=true
         # Place uv-managed Python under /usr/local/share so the venv interpreter
         # is world-readable.  Default uv paths land in /root/.local/share/uv,
         # which non-root users can't traverse — leaving the shared
-        # /usr/local/bin/hermes wrapper unable to exec the bad-interpreter venv
+        # /usr/local/bin/eco wrapper unable to exec the bad-interpreter venv
         # python.  See #21457.
         export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-/usr/local/share/uv/python}"
         export UV_PYTHON_BIN_DIR="${UV_PYTHON_BIN_DIR:-/usr/local/share/uv/bin}"
         log_info "Root install on Linux — using FHS layout"
         log_info "  Code:    $INSTALL_DIR"
-        log_info "  Command: /usr/local/bin/hermes"
+        log_info "  Command: /usr/local/bin/eco"
         log_info "  Data:    $HERMES_HOME (unchanged)"
         log_info "  uv Python: $UV_PYTHON_INSTALL_DIR (world-readable)"
         return 0
     fi
 
     # Default: non-root, non-Termux → legacy user-scoped layout.
-    INSTALL_DIR="$HERMES_HOME/hermes-agent"
+    INSTALL_DIR="$HERMES_HOME/eco-agent"
 }
 
 get_command_link_dir() {
@@ -310,10 +310,10 @@ get_command_link_display_dir() {
 get_hermes_command_path() {
     local link_dir
     link_dir="$(get_command_link_dir)"
-    if [ -x "$link_dir/hermes" ]; then
-        echo "$link_dir/hermes"
+    if [ -x "$link_dir/eco" ]; then
+        echo "$link_dir/eco"
     else
-        echo "hermes"
+        echo "eco"
     fi
 }
 
@@ -345,7 +345,7 @@ detect_os() {
             OS="windows"
             DISTRO="windows"
             log_error "Windows detected. Please use the PowerShell installer:"
-            log_info "  iex (irm https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.ps1)"
+            log_info "  iex (irm https://raw.githubusercontent.com/NousResearch/hermes-agent-agent/main/scripts/install.ps1)"
             exit 1
             ;;
         *)
@@ -406,8 +406,8 @@ install_uv() {
     # `curl | sh` masks curl failures (sh exits 0 on empty stdin)
     # and conflates network errors with installer errors.
     local _uv_install_log _uv_installer
-    _uv_install_log="$(mktemp 2>/dev/null || echo "/tmp/hermes-uv-install.$$.log")"
-    _uv_installer="$(mktemp 2>/dev/null || echo "/tmp/hermes-uv-installer.$$.sh")"
+    _uv_install_log="$(mktemp 2>/dev/null || echo "/tmp/eco-uv-install.$$.log")"
+    _uv_installer="$(mktemp 2>/dev/null || echo "/tmp/eco-uv-installer.$$.sh")"
     if ! curl -LsSf https://astral.sh/uv/install.sh -o "$_uv_installer" 2>"$_uv_install_log"; then
         log_error "Failed to download uv installer from https://astral.sh/uv/install.sh"
         log_info "curl output:"
@@ -641,7 +641,7 @@ install_node() {
         return 0
     fi
 
-    log_info "Extracting to ~/.hermes/node/..."
+    log_info "Extracting to ~/.eco/node/..."
     if [[ "$tarball_name" == *.tar.xz ]]; then
         tar xf "$tmp_dir/$tarball_name" -C "$tmp_dir"
     else
@@ -658,7 +658,7 @@ install_node() {
         return 0
     fi
 
-    # Place into ~/.hermes/node/ and symlink binaries to ~/.local/bin/
+    # Place into ~/.eco/node/ and symlink binaries to ~/.local/bin/
     rm -rf "$HERMES_HOME/node"
     mkdir -p "$HERMES_HOME"
     mv "$extracted_dir" "$HERMES_HOME/node"
@@ -673,7 +673,7 @@ install_node() {
 
     local installed_ver
     installed_ver=$("$HERMES_HOME/node/bin/node" --version 2>/dev/null)
-    log_success "Node.js $installed_ver installed to ~/.hermes/node/"
+    log_success "Node.js $installed_ver installed to ~/.eco/node/"
     HAS_NODE=true
 }
 
@@ -918,7 +918,7 @@ clone_repo() {
             local autostash_ref=""
             if [ -n "$(git status --porcelain)" ]; then
                 local stash_name
-                stash_name="hermes-install-autostash-$(date -u +%Y%m%d-%H%M%S)"
+                stash_name="eco-install-autostash-$(date -u +%Y%m%d-%H%M%S)"
                 log_info "Local changes detected, stashing before update..."
                 git stash push --include-untracked -m "$stash_name"
                 autostash_ref="stash@{0}"
@@ -1193,7 +1193,7 @@ try:
     specs = data["project"]["optional-dependencies"]["all"]
     extras = []
     for s in specs:
-        m = re.search(r"hermes-agent\[([\w-]+)\]", s)
+        m = re.search(r"eco-agent\[([\w-]+)\]", s)
         if m:
             extras.append(m.group(1))
     print(",".join(extras))
@@ -1266,21 +1266,21 @@ PY
 }
 
 setup_path() {
-    log_info "Setting up hermes command..."
+    log_info "Setting up eco command..."
 
     if [ "$USE_VENV" = true ]; then
-        HERMES_BIN="$INSTALL_DIR/venv/bin/hermes"
+        HERMES_BIN="$INSTALL_DIR/venv/bin/eco"
     else
-        HERMES_BIN="$(which hermes 2>/dev/null || echo "")"
+        HERMES_BIN="$(which eco 2>/dev/null || echo "")"
         if [ -z "$HERMES_BIN" ]; then
-            log_warn "hermes not found on PATH after install"
+            log_warn "eco not found on PATH after install"
             return 0
         fi
     fi
 
     # Verify the entry point script was actually generated
     if [ ! -x "$HERMES_BIN" ]; then
-        log_warn "hermes entry point not found at $HERMES_BIN"
+        log_warn "eco entry point not found at $HERMES_BIN"
         log_info "This usually means the pip install didn't complete successfully."
         if [ "$DISTRO" = "termux" ]; then
             log_info "Try: cd $INSTALL_DIR && python -m pip install -e '.[termux-all]' -c constraints-termux.txt"
@@ -1295,27 +1295,27 @@ setup_path() {
     command_link_dir="$(get_command_link_dir)"
     command_link_display_dir="$(get_command_link_display_dir)"
 
-    # Create a user-facing shim for the hermes command.
+    # Create a user-facing shim for the eco command.
     # We intentionally clear PYTHONPATH/PYTHONHOME here so inherited env vars
     # can't make this launcher import modules from another checkout.
     mkdir -p "$command_link_dir"
     # Older installs created this path as a symlink to $HERMES_BIN. Without
     # the rm, `cat >` follows the symlink and overwrites the venv pip entry
     # point with this shim — making `exec "$HERMES_BIN"` self-recurse. (#21454)
-    rm -f "$command_link_dir/hermes"
-    cat > "$command_link_dir/hermes" <<EOF
+    rm -f "$command_link_dir/eco"
+    cat > "$command_link_dir/eco" <<EOF
 #!/usr/bin/env bash
 unset PYTHONPATH
 unset PYTHONHOME
 exec "$HERMES_BIN" "\$@"
 EOF
-    chmod +x "$command_link_dir/hermes"
-    log_success "Installed hermes launcher → $command_link_display_dir/hermes"
+    chmod +x "$command_link_dir/eco"
+    log_success "Installed eco launcher → $command_link_display_dir/eco"
 
     if [ "$DISTRO" = "termux" ]; then
         export PATH="$command_link_dir:$PATH"
         log_info "$command_link_display_dir is the native Termux command path"
-        log_success "hermes command ready"
+        log_success "eco command ready"
         return 0
     fi
 
@@ -1330,14 +1330,14 @@ EOF
         # Probe a fresh non-login interactive bash the way the user will use it.
         # `bash -i -c` sources ~/.bashrc but NOT ~/.bash_profile or /etc/profile,
         # which is the exact scenario where RHEL root loses /usr/local/bin.
-        if env -i HOME="$HOME" TERM="${TERM:-dumb}" bash -i -c 'command -v hermes' \
+        if env -i HOME="$HOME" TERM="${TERM:-dumb}" bash -i -c 'command -v eco' \
                 >/dev/null 2>&1; then
             log_info "/usr/local/bin is already on PATH for all shells"
-            log_success "hermes command ready"
+            log_success "eco command ready"
             return 0
         fi
 
-        log_info "hermes not on PATH in non-login shells (common on RHEL-family)"
+        log_info "eco not on PATH in non-login shells (common on RHEL-family)"
         PATH_LINE='export PATH="/usr/local/bin:$PATH"'
         PATH_COMMENT='# ECO Agent — ensure /usr/local/bin is on PATH (RHEL non-login shells)'
         for SHELL_CONFIG in "$HOME/.bashrc" "$HOME/.bash_profile"; do
@@ -1350,7 +1350,7 @@ EOF
                 log_success "Added /usr/local/bin to PATH in $SHELL_CONFIG"
             fi
         done
-        log_success "hermes command ready"
+        log_success "eco command ready"
         return 0
     fi
 
@@ -1420,29 +1420,29 @@ EOF
         log_info "~/.local/bin already on PATH"
     fi
 
-    # Export for current session so hermes works immediately
+    # Export for current session so eco works immediately
     export PATH="$command_link_dir:$PATH"
 
-    log_success "hermes command ready"
+    log_success "eco command ready"
 }
 
 copy_config_templates() {
     log_info "Setting up configuration files..."
 
-    # Create ~/.hermes directory structure (config at top level, code in subdir)
+    # Create ~/.eco directory structure (config at top level, code in subdir)
     mkdir -p "$HERMES_HOME"/{cron,sessions,logs,pairing,hooks,image_cache,audio_cache,memories,skills}
 
-    # Create .env at ~/.hermes/.env (top level, easy to find)
+    # Create .env at ~/.eco/.env (top level, easy to find)
     if [ ! -f "$HERMES_HOME/.env" ]; then
         if [ -f "$INSTALL_DIR/.env.example" ]; then
             cp "$INSTALL_DIR/.env.example" "$HERMES_HOME/.env"
-            log_success "Created ~/.hermes/.env from template"
+            log_success "Created ~/.eco/.env from template"
         else
             touch "$HERMES_HOME/.env"
-            log_success "Created ~/.hermes/.env"
+            log_success "Created ~/.eco/.env"
         fi
     else
-        log_info "~/.hermes/.env already exists, keeping it"
+        log_info "~/.eco/.env already exists, keeping it"
     fi
     # Restrict .env permissions — this file holds API keys and tokens.
     # 0600 ensures only the file owner can read/write, matching standard
@@ -1450,14 +1450,14 @@ copy_config_templates() {
     chmod 600 "$HERMES_HOME/.env"
     configure_browser_env_from_system_browser
 
-    # Create config.yaml at ~/.hermes/config.yaml (top level, easy to find)
+    # Create config.yaml at ~/.eco/config.yaml (top level, easy to find)
     if [ ! -f "$HERMES_HOME/config.yaml" ]; then
         if [ -f "$INSTALL_DIR/cli-config.yaml.example" ]; then
             cp "$INSTALL_DIR/cli-config.yaml.example" "$HERMES_HOME/config.yaml"
-            log_success "Created ~/.hermes/config.yaml from template"
+            log_success "Created ~/.eco/config.yaml from template"
         fi
     else
-        log_info "~/.hermes/config.yaml already exists, keeping it"
+        log_info "~/.eco/config.yaml already exists, keeping it"
     fi
 
     # Create SOUL.md if it doesn't exist (global persona file)
@@ -1479,20 +1479,20 @@ This file is loaded fresh each message -- no restart needed.
 Delete the contents (or this file) to use the default personality.
 -->
 SOUL_EOF
-        log_success "Created ~/.hermes/SOUL.md (edit to customize personality)"
+        log_success "Created ~/.eco/SOUL.md (edit to customize personality)"
     fi
 
-    log_success "Configuration directory ready: ~/.hermes/"
+    log_success "Configuration directory ready: ~/.eco/"
 
-    # Seed bundled skills into ~/.hermes/skills/ (manifest-based, one-time per skill)
-    log_info "Syncing bundled skills to ~/.hermes/skills/ ..."
+    # Seed bundled skills into ~/.eco/skills/ (manifest-based, one-time per skill)
+    log_info "Syncing bundled skills to ~/.eco/skills/ ..."
     if "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/tools/skills_sync.py" 2>/dev/null; then
-        log_success "Skills synced to ~/.hermes/skills/"
+        log_success "Skills synced to ~/.eco/skills/"
     else
         # Fallback: simple directory copy if Python sync fails
         if [ -d "$INSTALL_DIR/skills" ] && [ ! "$(ls -A "$HERMES_HOME/skills/" 2>/dev/null | grep -v '.bundled_manifest')" ]; then
             cp -r "$INSTALL_DIR/skills/"* "$HERMES_HOME/skills/" 2>/dev/null || true
-            log_success "Skills copied to ~/.hermes/skills/"
+            log_success "Skills copied to ~/.eco/skills/"
         fi
     fi
 }
@@ -1692,7 +1692,7 @@ install_node_deps() {
         log_info "Installing TUI dependencies..."
         cd "$INSTALL_DIR/ui-tui"
         npm install --silent 2>/dev/null || {
-            log_warn "TUI npm install failed (hermes --tui may not work)"
+            log_warn "TUI npm install failed (eco --tui may not work)"
         }
         log_success "TUI dependencies installed"
     fi
@@ -1715,7 +1715,7 @@ run_setup_wizard() {
     # but opening fails with ENXIO, so the wizard would proceed and
     # then crash on `< /dev/tty` below.
     if ! (: </dev/tty) 2>/dev/null; then
-        log_info "Setup wizard skipped (no terminal available). Run 'hermes setup' after install."
+        log_info "Setup wizard skipped (no terminal available). Run 'eco setup' after install."
         return 0
     fi
 
@@ -1725,12 +1725,12 @@ run_setup_wizard() {
 
     cd "$INSTALL_DIR"
 
-    # Run hermes setup using the venv Python directly (no activation needed).
+    # Run eco setup using the venv Python directly (no activation needed).
     # Redirect stdin from /dev/tty so interactive prompts work when piped from curl.
     if [ "$USE_VENV" = true ]; then
-        "$INSTALL_DIR/venv/bin/python" -m hermes_cli.main setup < /dev/tty
+        "$INSTALL_DIR/venv/bin/python" -m eco_cli.main setup < /dev/tty
     else
-        python -m hermes_cli.main setup < /dev/tty
+        python -m eco_cli.main setup < /dev/tty
     fi
 }
 
@@ -1765,14 +1765,14 @@ maybe_start_gateway() {
         if [ "$IS_INTERACTIVE" = true ]; then
             echo ""
             log_info "WhatsApp is enabled but not yet paired."
-            log_info "Running 'hermes whatsapp' to pair via QR code..."
+            log_info "Running 'eco whatsapp' to pair via QR code..."
             echo ""
             if prompt_yes_no "Pair WhatsApp now?" "yes"; then
                 HERMES_CMD="$(get_hermes_command_path)"
                 $HERMES_CMD whatsapp || true
             fi
         else
-            log_info "WhatsApp pairing skipped (non-interactive). Run 'hermes whatsapp' to pair."
+            log_info "WhatsApp pairing skipped (non-interactive). Run 'eco whatsapp' to pair."
         fi
     fi
 
@@ -1780,7 +1780,7 @@ maybe_start_gateway() {
     # in Docker builds where the device node is in the mount namespace
     # but opening fails with ENXIO. See #16746.
     if ! (: </dev/tty) 2>/dev/null; then
-        log_info "Gateway setup skipped (no terminal available). Run 'hermes gateway install' later."
+        log_info "Gateway setup skipped (no terminal available). Run 'eco gateway install' later."
         return 0
     fi
 
@@ -1806,10 +1806,10 @@ maybe_start_gateway() {
                 if $HERMES_CMD gateway start 2>/dev/null; then
                     log_success "Gateway started! Your bot is now online."
                 else
-                    log_warn "Service installed but failed to start. Try: hermes gateway start"
+                    log_warn "Service installed but failed to start. Try: eco gateway start"
                 fi
             else
-                log_warn "Systemd install failed. You can start manually: hermes gateway"
+                log_warn "Systemd install failed. You can start manually: eco gateway"
             fi
         else
             if [ "$DISTRO" = "termux" ]; then
@@ -1819,15 +1819,15 @@ maybe_start_gateway() {
             fi
             nohup $HERMES_CMD gateway > "$HERMES_HOME/logs/gateway.log" 2>&1 &
             GATEWAY_PID=$!
-            log_success "Gateway started (PID $GATEWAY_PID). Logs: ~/.hermes/logs/gateway.log"
+            log_success "Gateway started (PID $GATEWAY_PID). Logs: ~/.eco/logs/gateway.log"
             log_info "To stop: kill $GATEWAY_PID"
-            log_info "To restart later: hermes gateway"
+            log_info "To restart later: eco gateway"
             if [ "$DISTRO" = "termux" ]; then
                 log_warn "Android may stop background processes when Termux is suspended or the system reclaims resources."
             fi
         fi
     else
-        log_info "Skipped. Start the gateway later with: hermes gateway"
+        log_info "Skipped. Start the gateway later with: eco gateway"
     fi
 }
 
@@ -1853,24 +1853,24 @@ print_success() {
     echo ""
     echo -e "${CYAN}${BOLD}🚀 Commands:${NC}"
     echo ""
-    echo -e "   ${GREEN}hermes${NC}              Start chatting"
-    echo -e "   ${GREEN}hermes setup${NC}        Configure API keys & settings"
-    echo -e "   ${GREEN}hermes config${NC}       View/edit configuration"
-    echo -e "   ${GREEN}hermes config edit${NC}  Open config in editor"
-    echo -e "   ${GREEN}hermes gateway install${NC} Install gateway service (messaging + cron)"
-    echo -e "   ${GREEN}hermes update${NC}       Update to latest version"
+    echo -e "   ${GREEN}eco${NC}              Start chatting"
+    echo -e "   ${GREEN}eco setup${NC}        Configure API keys & settings"
+    echo -e "   ${GREEN}eco config${NC}       View/edit configuration"
+    echo -e "   ${GREEN}eco config edit${NC}  Open config in editor"
+    echo -e "   ${GREEN}eco gateway install${NC} Install gateway service (messaging + cron)"
+    echo -e "   ${GREEN}eco update${NC}       Update to latest version"
     echo ""
 
     echo -e "${CYAN}─────────────────────────────────────────────────────────${NC}"
     echo ""
     if [ "$DISTRO" = "termux" ]; then
-        echo -e "${YELLOW}⚡ 'hermes' was linked into $(get_command_link_display_dir), which is already on PATH in Termux.${NC}"
+        echo -e "${YELLOW}⚡ 'eco' was linked into $(get_command_link_display_dir), which is already on PATH in Termux.${NC}"
         echo ""
     elif [ "$ROOT_FHS_LAYOUT" = true ]; then
-        echo -e "${YELLOW}⚡ 'hermes' was linked into /usr/local/bin and is ready to use — no shell reload needed.${NC}"
+        echo -e "${YELLOW}⚡ 'eco' was linked into /usr/local/bin and is ready to use — no shell reload needed.${NC}"
         echo ""
     else
-        echo -e "${YELLOW}⚡ Reload your shell to use 'hermes' command:${NC}"
+        echo -e "${YELLOW}⚡ Reload your shell to use 'eco' command:${NC}"
         echo ""
         LOGIN_SHELL="$(basename "${SHELL:-/bin/bash}")"
         if [ "$LOGIN_SHELL" = "zsh" ]; then
@@ -2030,13 +2030,13 @@ postinstall_mode() {
         ensure_browser
     fi
 
-    HERMES_CMD="$(command -v hermes 2>/dev/null || echo "")"
+    HERMES_CMD="$(command -v eco 2>/dev/null || echo "")"
     if [ -n "$HERMES_CMD" ]; then
-        log_info "Running hermes setup..."
+        log_info "Running eco setup..."
         "$HERMES_CMD" setup
     else
-        log_warn "hermes command not found on PATH"
-        log_info "Try: python -m hermes_cli.main setup"
+        log_warn "eco command not found on PATH"
+        log_info "Try: python -m eco_cli.main setup"
     fi
 }
 

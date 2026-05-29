@@ -1,4 +1,4 @@
-"""Tests for the kanban CLI surface (hermes_cli.kanban)."""
+"""Tests for the kanban CLI surface (eco_cli.kanban)."""
 
 from __future__ import annotations
 
@@ -9,13 +9,13 @@ from pathlib import Path
 
 import pytest
 
-from hermes_cli import kanban as kc
-from hermes_cli import kanban_db as kb
+from eco_cli import kanban as kc
+from eco_cli import kanban_db as kb
 
 
 @pytest.fixture
 def kanban_home(tmp_path, monkeypatch):
-    home = tmp_path / ".hermes"
+    home = tmp_path / ".eco"
     home.mkdir()
     monkeypatch.setenv("HERMES_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -194,9 +194,9 @@ def test_run_slash_tenant_filter(kanban_home):
 
 
 def test_run_slash_session_filter(kanban_home):
-    """`hermes kanban list --session <id>` filters by the originating
+    """`eco kanban list --session <id>` filters by the originating
     chat session id stamped on tasks created from inside an ACP loop."""
-    from hermes_cli import kanban_db as kb
+    from eco_cli import kanban_db as kb
     with kb.connect() as conn:
         kb.create_task(
             conn, title="from sess-1 a", assignee="alice", session_id="sess-1"
@@ -221,7 +221,7 @@ def test_run_slash_session_filter(kanban_home):
 def test_kanban_list_json_includes_session_id(kanban_home):
     """JSON output exposes `session_id` so external clients (Scarf, web
     dashboards) don't need a side query to filter by chat session."""
-    from hermes_cli import kanban_db as kb
+    from eco_cli import kanban_db as kb
     with kb.connect() as conn:
         kb.create_task(
             conn, title="acp task", assignee="alice", session_id="acp-x"
@@ -268,7 +268,7 @@ def test_run_slash_link_unlink(kanban_home):
 # ---------------------------------------------------------------------------
 
 def test_kanban_is_resolvable():
-    from hermes_cli.commands import resolve_command
+    from eco_cli.commands import resolve_command
 
     cmd = resolve_command("kanban")
     assert cmd is not None
@@ -276,13 +276,13 @@ def test_kanban_is_resolvable():
 
 
 def test_kanban_bypasses_active_session_guard():
-    from hermes_cli.commands import should_bypass_active_session
+    from eco_cli.commands import should_bypass_active_session
 
     assert should_bypass_active_session("kanban")
 
 
 def test_kanban_in_autocomplete_table():
-    from hermes_cli.commands import COMMANDS, SUBCOMMANDS
+    from eco_cli.commands import COMMANDS, SUBCOMMANDS
 
     assert "/kanban" in COMMANDS
     subs = SUBCOMMANDS.get("/kanban") or []
@@ -293,7 +293,7 @@ def test_kanban_in_autocomplete_table():
 def test_kanban_autocomplete_includes_live_subcommands():
     from prompt_toolkit.document import Document
 
-    from hermes_cli.commands import SlashCommandCompleter
+    from eco_cli.commands import SlashCommandCompleter
 
     completer = SlashCommandCompleter()
     doc = Document("/kanban sp", cursor_position=len("/kanban sp"))
@@ -310,7 +310,7 @@ def test_kanban_autocomplete_includes_live_subcommands():
 
 def test_kanban_not_gateway_only():
     # kanban is available in BOTH CLI and gateway surfaces.
-    from hermes_cli.commands import COMMAND_REGISTRY
+    from eco_cli.commands import COMMAND_REGISTRY
 
     cmd = next(c for c in COMMAND_REGISTRY if c.name == "kanban")
     assert not cmd.cli_only
@@ -325,7 +325,7 @@ def test_run_slash_reclaim_running_task(kanban_home):
     import re
     import time
     import secrets
-    from hermes_cli import kanban_db as kb
+    from eco_cli import kanban_db as kb
 
     out1 = kc.run_slash("create 'stuck worker task' --assignee broken-model")
     m = re.search(r"(t_[a-f0-9]+)", out1)
@@ -363,7 +363,7 @@ def test_run_slash_reassign_with_reclaim_flag(kanban_home):
     import re
     import time
     import secrets
-    from hermes_cli import kanban_db as kb
+    from eco_cli import kanban_db as kb
 
     out1 = kc.run_slash("create 'switch model' --assignee orig")
     m = re.search(r"(t_[a-f0-9]+)", out1)

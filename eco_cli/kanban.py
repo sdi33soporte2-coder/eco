@@ -2106,7 +2106,7 @@ def _cmd_dispatch(args: argparse.Namespace) -> int:
     # matches whether the user runs the CLI directly or relies on the
     # gateway-embedded dispatcher.
     try:
-        from hermes_cli.config import load_config
+        from eco_cli.config import load_config
         _cfg = load_config()
         _kanban_cfg = _cfg.get("kanban", {}) if isinstance(_cfg, dict) else {}
         default_assignee = (_kanban_cfg.get("default_assignee") or "").strip() or None

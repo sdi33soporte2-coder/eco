@@ -1,4 +1,4 @@
-"""Tests for hermes_cli configuration management."""
+"""Tests for eco_cli configuration management."""
 
 import os
 from pathlib import Path
@@ -7,10 +7,10 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from hermes_cli.config import (
+from eco_cli.config import (
     DEFAULT_CONFIG,
-    get_hermes_home,
-    ensure_hermes_home,
+    get_eco_home,
+    ensure_eco_home,
     get_compatible_custom_providers,
     load_config,
     load_env,
@@ -24,23 +24,23 @@ from hermes_cli.config import (
 )
 
 
-class TestGetHermesHome:
+class TestGetECOHome:
     def test_default_path(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("HERMES_HOME", None)
-            home = get_hermes_home()
-            assert home == Path.home() / ".hermes"
+            home = get_eco_home()
+            assert home == Path.home() / ".eco"
 
     def test_env_override(self):
         with patch.dict(os.environ, {"HERMES_HOME": "/custom/path"}):
-            home = get_hermes_home()
+            home = get_eco_home()
             assert home == Path("/custom/path")
 
 
-class TestEnsureHermesHome:
+class TestEnsureECOHome:
     def test_creates_subdirs(self, tmp_path):
         with patch.dict(os.environ, {"HERMES_HOME": str(tmp_path)}):
-            ensure_hermes_home()
+            ensure_eco_home()
             assert (tmp_path / "cron").is_dir()
             assert (tmp_path / "sessions").is_dir()
             assert (tmp_path / "logs").is_dir()
@@ -48,7 +48,7 @@ class TestEnsureHermesHome:
 
     def test_creates_default_soul_md_if_missing(self, tmp_path):
         with patch.dict(os.environ, {"HERMES_HOME": str(tmp_path)}):
-            ensure_hermes_home()
+            ensure_eco_home()
             soul_path = tmp_path / "SOUL.md"
             assert soul_path.exists()
             assert soul_path.read_text(encoding="utf-8").strip() != ""
@@ -57,7 +57,7 @@ class TestEnsureHermesHome:
         with patch.dict(os.environ, {"HERMES_HOME": str(tmp_path)}):
             soul_path = tmp_path / "SOUL.md"
             soul_path.write_text("custom soul", encoding="utf-8")
-            ensure_hermes_home()
+            ensure_eco_home()
             assert soul_path.read_text(encoding="utf-8") == "custom soul"
 
 
@@ -88,7 +88,7 @@ class TestLoadConfigParseFailure:
     Before issue #23570 this was a single ``print(...)`` that scrolled past
     on the first invocation — users saw aux-fallback misbehavior with no clue
     their config.yaml was being ignored. The helper must:
-      * log at WARNING (so ``hermes logs`` surfaces it)
+      * log at WARNING (so ``eco logs`` surfaces it)
       * also write to stderr (so it's visible at startup even before
         ``setup_logging()`` has wired up file handlers)
       * dedup on (path, mtime_ns, size) so concurrent loads don't spam
@@ -98,14 +98,14 @@ class TestLoadConfigParseFailure:
     def test_logs_and_warns_on_parse_failure(self, tmp_path, caplog, capsys):
         # Reset the dedup cache so this test isn't affected by other tests
         # that may have warned about a different broken config.
-        from hermes_cli import config as cfg_mod
+        from eco_cli import config as cfg_mod
         cfg_mod._CONFIG_PARSE_WARNED.clear()
 
         with patch.dict(os.environ, {"HERMES_HOME": str(tmp_path)}):
             (tmp_path / "config.yaml").write_text("\tbroken tab indent:\n")
 
             import logging
-            with caplog.at_level(logging.WARNING, logger="hermes_cli.config"):
+            with caplog.at_level(logging.WARNING, logger="eco_cli.config"):
                 config = load_config()
 
             # Falls back to defaults — confirms the silent-fallback we're warning about
@@ -119,13 +119,13 @@ class TestLoadConfigParseFailure:
             ), f"expected WARNING log, got: {[r.message for r in caplog.records]}"
 
             # stderr also got a user-visible message (with the ⚠️ marker so it
-            # stands out at hermes startup before logging is configured)
+            # stands out at eco startup before logging is configured)
             captured = capsys.readouterr()
-            assert "hermes config:" in captured.err
+            assert "eco config:" in captured.err
             assert str(tmp_path / "config.yaml") in captured.err
 
     def test_dedup_on_repeated_load_same_file(self, tmp_path, capsys):
-        from hermes_cli import config as cfg_mod
+        from eco_cli import config as cfg_mod
         cfg_mod._CONFIG_PARSE_WARNED.clear()
 
         with patch.dict(os.environ, {"HERMES_HOME": str(tmp_path)}):
@@ -133,7 +133,7 @@ class TestLoadConfigParseFailure:
 
             load_config()
             first = capsys.readouterr().err
-            assert "hermes config:" in first
+            assert "eco config:" in first
 
             load_config()
             second = capsys.readouterr().err
@@ -141,7 +141,7 @@ class TestLoadConfigParseFailure:
 
     def test_rewarns_after_file_edit(self, tmp_path, capsys):
         import time
-        from hermes_cli import config as cfg_mod
+        from eco_cli import config as cfg_mod
         cfg_mod._CONFIG_PARSE_WARNED.clear()
 
         with patch.dict(os.environ, {"HERMES_HOME": str(tmp_path)}):
@@ -154,7 +154,7 @@ class TestLoadConfigParseFailure:
             (tmp_path / "config.yaml").write_text("\tstill broken differently:\n")
             load_config()
             after_edit = capsys.readouterr().err
-            assert "hermes config:" in after_edit, "edited file should re-warn"
+            assert "eco config:" in after_edit, "edited file should re-warn"
 
 
 class TestSaveAndLoadRoundtrip:
@@ -460,27 +460,27 @@ class TestOptionalEnvVarsRegistry:
 
     def test_tavily_api_key_registered(self):
         """TAVILY_API_KEY is listed in OPTIONAL_ENV_VARS."""
-        from hermes_cli.config import OPTIONAL_ENV_VARS
+        from eco_cli.config import OPTIONAL_ENV_VARS
         assert "TAVILY_API_KEY" in OPTIONAL_ENV_VARS
 
     def test_tavily_api_key_is_tool_category(self):
         """TAVILY_API_KEY is in the 'tool' category."""
-        from hermes_cli.config import OPTIONAL_ENV_VARS
+        from eco_cli.config import OPTIONAL_ENV_VARS
         assert OPTIONAL_ENV_VARS["TAVILY_API_KEY"]["category"] == "tool"
 
     def test_tavily_api_key_is_password(self):
         """TAVILY_API_KEY is marked as password."""
-        from hermes_cli.config import OPTIONAL_ENV_VARS
+        from eco_cli.config import OPTIONAL_ENV_VARS
         assert OPTIONAL_ENV_VARS["TAVILY_API_KEY"]["password"] is True
 
     def test_tavily_api_key_has_url(self):
         """TAVILY_API_KEY has a URL."""
-        from hermes_cli.config import OPTIONAL_ENV_VARS
+        from eco_cli.config import OPTIONAL_ENV_VARS
         assert OPTIONAL_ENV_VARS["TAVILY_API_KEY"]["url"] == "https://app.tavily.com/home"
 
     def test_tavily_in_env_vars_by_version(self):
         """TAVILY_API_KEY is listed in ENV_VARS_BY_VERSION."""
-        from hermes_cli.config import ENV_VARS_BY_VERSION
+        from eco_cli.config import ENV_VARS_BY_VERSION
         all_vars = []
         for vars_list in ENV_VARS_BY_VERSION.values():
             all_vars.extend(vars_list)
@@ -489,7 +489,7 @@ class TestOptionalEnvVarsRegistry:
 
 class TestConfigMigrationSecretPrompts:
     def test_required_secret_env_prompt_uses_masked_prompt(self, tmp_path, monkeypatch):
-        from hermes_cli import config as cfg_mod
+        from eco_cli import config as cfg_mod
 
         saved = {}
 
@@ -595,7 +595,7 @@ class TestCustomProviderCompatibility:
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
-        from hermes_cli.config import DEFAULT_CONFIG
+        from eco_cli.config import DEFAULT_CONFIG
         assert raw["_config_version"] == DEFAULT_CONFIG["_config_version"]
         assert raw["providers"]["openai-direct"] == {
             "api": "https://api.openai.com/v1",
@@ -744,7 +744,7 @@ class TestInterimAssistantMessageConfig:
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
-        from hermes_cli.config import DEFAULT_CONFIG
+        from eco_cli.config import DEFAULT_CONFIG
         assert raw["_config_version"] == DEFAULT_CONFIG["_config_version"]
         assert raw["display"]["tool_progress"] == "off"
         assert raw["display"]["interim_assistant_messages"] is True
@@ -765,7 +765,7 @@ class TestDiscordChannelPromptsConfig:
             migrate_config(interactive=False, quiet=True)
             raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
-        from hermes_cli.config import DEFAULT_CONFIG
+        from eco_cli.config import DEFAULT_CONFIG
         assert raw["_config_version"] == DEFAULT_CONFIG["_config_version"]
         assert raw["discord"]["auto_thread"] is True
         assert raw["discord"]["channel_prompts"] == {}
@@ -787,18 +787,18 @@ class TestEnvWriteDenylist:
     the session token lives in the SPA's HTML where any future plugin
     XSS or local process could exfiltrate it). Without this gate, an
     attacker who steals the token could plant
-    ``LD_PRELOAD=/tmp/evil.so`` in ``.env`` and own the next Hermes
+    ``LD_PRELOAD=/tmp/evil.so`` in ``.env`` and own the next ECO
     process on next startup via the dotenv → ``os.environ`` chain in
-    ``hermes_cli/env_loader.py``.
+    ``eco_cli/env_loader.py``.
 
     Regression test for the dashboard pentest finding filed alongside
     the ``web-pentest`` skill (PR #32265 / issue #32267).
     """
 
     @pytest.fixture(autouse=True)
-    def _hermes_home(self, tmp_path, monkeypatch):
+    def _eco_home(self, tmp_path, monkeypatch):
         monkeypatch.setenv("HERMES_HOME", str(tmp_path))
-        ensure_hermes_home()
+        ensure_eco_home()
 
     @pytest.mark.parametrize(
         "denied_key",
@@ -847,7 +847,7 @@ class TestEnvWriteDenylist:
             "HERMES_MAX_ITERATIONS",
         ],
     )
-    def test_hermes_integration_keys_still_writable(self, allowed_key):
+    def test_eco_integration_keys_still_writable(self, allowed_key):
         """``HERMES_*`` overall is NOT blocked — only the four runtime
         location names (HOME/PROFILE/CONFIG/ENV) are. Integration
         credentials following the ``HERMES_*`` convention must keep

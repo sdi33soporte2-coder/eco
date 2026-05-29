@@ -301,13 +301,13 @@ class TestInactivityTimeout:
 class TestSysPathOrdering:
     """Test that sys.path is set before repo-level imports."""
 
-    def test_hermes_time_importable(self):
-        """hermes_time should be importable when cron.scheduler loads."""
+    def test_eco_time_importable(self):
+        """eco_time should be importable when cron.scheduler loads."""
         # This import would fail if sys.path.insert comes after the import
-        from cron.scheduler import _hermes_now
-        assert callable(_hermes_now)
+        from cron.scheduler import _eco_now
+        assert callable(_eco_now)
 
-    def test_hermes_constants_importable(self):
-        """hermes_constants should be importable from cron context."""
-        from hermes_constants import get_hermes_home
-        assert callable(get_hermes_home)
+    def test_eco_constants_importable(self):
+        """eco_constants should be importable from cron context."""
+        from eco_constants import get_eco_home
+        assert callable(get_eco_home)

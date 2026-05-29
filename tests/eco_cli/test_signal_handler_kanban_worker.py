@@ -2,7 +2,7 @@
 
 The single-query signal handler in cli.py (``_signal_handler_q``) raises
 ``KeyboardInterrupt`` to unwind the main thread on SIGTERM/SIGHUP. That works
-for interactive ``hermes chat -q`` invocations, but kanban workers spawned by
+for interactive ``eco chat -q`` invocations, but kanban workers spawned by
 the dispatcher are likely to have a non-daemon thread alive (terminal_tool's
 ``_wait_for_process``, custom plugin background workers, etc.). With
 ``KeyboardInterrupt`` only the main thread unwinds; the non-daemon thread
@@ -35,7 +35,7 @@ def _synthetic_worker_script() -> str:
     """A standalone script that mirrors cli.py's single-query SIGTERM handler.
 
     Keeping the synthetic copy here means the test exercises the exact handler
-    shape without needing the full hermes_cli boot path (config, providers,
+    shape without needing the full eco_cli boot path (config, providers,
     skills, etc.). If the production handler in cli.py drifts, the test
     that loads the real handler (test_real_handler_uses_os_exit) will catch it.
     """
@@ -79,7 +79,7 @@ def _synthetic_worker_script() -> str:
 
 
 def _is_alive_like_dispatcher(pid: int) -> bool:
-    """Mirrors hermes_cli/kanban_db.py:_pid_alive on Linux.
+    """Mirrors eco_cli/kanban_db.py:_pid_alive on Linux.
 
     A zombie is treated as dead — the dispatcher's _pid_alive checks
     /proc/<pid>/status for State: Z. We replicate that here so a clean
@@ -175,7 +175,7 @@ def test_sigterm_without_kanban_task_env_uses_keyboard_interrupt_path():
     """Without HERMES_KANBAN_TASK, the original KeyboardInterrupt path runs.
 
     This is the contrast case proving the fix is gated on the env var: in
-    interactive ``hermes chat -q`` (no env var), behavior is unchanged. The
+    interactive ``eco chat -q`` (no env var), behavior is unchanged. The
     process MAY hang under non-daemon threads, but that's not a kanban-worker
     concern. We just verify the handler logs the KeyboardInterrupt branch
     rather than os._exit'ing.

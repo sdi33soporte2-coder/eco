@@ -1,20 +1,20 @@
 # Langfuse Observability Plugin
 
-This plugin ships bundled with Hermes but is **opt-in** — it only loads when
+This plugin ships bundled with ECO but is **opt-in** — it only loads when
 you explicitly enable it.
 
 ## Enable
 
 ```bash
 pip install langfuse
-hermes plugins enable observability/langfuse
+eco plugins enable observability/langfuse
 ```
 
-Or check the box in the interactive `hermes plugins` UI.
+Or check the box in the interactive `eco plugins` UI.
 
 ## Required credentials
 
-Set these in `~/.hermes/.env`:
+Set these in `~/.eco/.env`:
 
 ```bash
 HERMES_LANGFUSE_PUBLIC_KEY=pk-lf-...
@@ -28,8 +28,8 @@ open.
 ## Verify
 
 ```bash
-hermes plugins list                 # observability/langfuse should show "enabled"
-hermes chat -q "hello"              # then check Langfuse for a "Hermes turn" trace
+eco plugins list                 # observability/langfuse should show "enabled"
+eco chat -q "hello"              # then check Langfuse for a "ECO turn" trace
 ```
 
 ## Optional tuning
@@ -45,5 +45,5 @@ HERMES_LANGFUSE_DEBUG=true           # verbose plugin logging
 ## Disable
 
 ```bash
-hermes plugins disable observability/langfuse
+eco plugins disable observability/langfuse
 ```

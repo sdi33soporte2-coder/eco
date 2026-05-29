@@ -36,9 +36,9 @@ from acp.schema import (
     UserMessageChunk,
 )
 from acp_adapter.auth import TERMINAL_SETUP_AUTH_METHOD_ID
-from acp_adapter.server import HermesACPAgent, HERMES_VERSION
+from acp_adapter.server import HermesACPAgent, ECO_VERSION
 from acp_adapter.session import SessionManager
-from hermes_state import SessionDB
+from eco_state import SessionDB
 
 
 @pytest.fixture()
@@ -99,8 +99,8 @@ class TestInitialize:
         resp = await agent.initialize(protocol_version=1)
         assert resp.agent_info is not None
         assert isinstance(resp.agent_info, Implementation)
-        assert resp.agent_info.name == "hermes-agent"
-        assert resp.agent_info.version == HERMES_VERSION
+        assert resp.agent_info.name == "eco-agent"
+        assert resp.agent_info.version == ECO_VERSION
 
     @pytest.mark.asyncio
     async def test_initialize_returns_capabilities(self, agent):
@@ -150,11 +150,11 @@ class TestInitialize:
             {
                 "args": ["--setup"],
                 "description": (
-                    "Open Hermes' interactive model/provider setup in a terminal. "
-                    "Use this when Hermes has not been configured on this machine yet."
+                    "Open ECO' interactive model/provider setup in a terminal. "
+                    "Use this when ECO has not been configured on this machine yet."
                 ),
                 "id": TERMINAL_SETUP_AUTH_METHOD_ID,
-                "name": "Configure Hermes provider",
+                "name": "Configure ECO provider",
                 "type": "terminal",
             }
         ]
@@ -245,7 +245,7 @@ class TestSessionOps:
         acp_agent = HermesACPAgent(session_manager=manager)
 
         with patch(
-            "hermes_cli.models.curated_models_for_provider",
+            "eco_cli.models.curated_models_for_provider",
             return_value=[("gpt-5.4", "recommended"), ("gpt-5.4-mini", "")],
         ):
             resp = await acp_agent.new_session(cwd="/tmp")
@@ -962,11 +962,11 @@ class TestSessionConfiguration:
                 api_mode=kwargs.get("api_mode"),
             )
 
-        monkeypatch.setattr("hermes_cli.config.load_config", lambda: {
+        monkeypatch.setattr("eco_cli.config.load_config", lambda: {
             "model": {"provider": "openrouter", "default": "openrouter/gpt-5"}
         })
         monkeypatch.setattr(
-            "hermes_cli.runtime_provider.resolve_runtime_provider",
+            "eco_cli.runtime_provider.resolve_runtime_provider",
             fake_resolve_runtime_provider,
         )
         # Pin the parser so this test doesn't depend on live
@@ -974,11 +974,11 @@ class TestSessionConfiguration:
         # (sibling of the same hardening on
         # ``test_model_switch_uses_requested_provider``).
         monkeypatch.setattr(
-            "hermes_cli.models.parse_model_input",
+            "eco_cli.models.parse_model_input",
             lambda raw, current: ("anthropic", "claude-sonnet-4-6"),
         )
         monkeypatch.setattr(
-            "hermes_cli.models.detect_provider_for_model",
+            "eco_cli.models.detect_provider_for_model",
             lambda model, current: None,
         )
         manager = SessionManager(db=SessionDB(tmp_path / "state.db"))
@@ -1101,7 +1101,7 @@ class TestPrompt:
         assert any(update.session_update == "agent_message_chunk" for update in updates)
 
     @pytest.mark.asyncio
-    async def test_prompt_propagates_hermes_session_id_env(self, agent, monkeypatch):
+    async def test_prompt_propagates_eco_session_id_env(self, agent, monkeypatch):
         """ACP must propagate the originating session id to the agent loop
         via ``HERMES_SESSION_ID`` so tools that want to stamp side-effects
         with it (e.g. ``kanban_create``) can read the env var inside
@@ -1146,7 +1146,7 @@ class TestPrompt:
         )
 
     @pytest.mark.asyncio
-    async def test_prompt_restores_prior_hermes_session_id(self, agent, monkeypatch):
+    async def test_prompt_restores_prior_eco_session_id(self, agent, monkeypatch):
         """If the env already had HERMES_SESSION_ID set (e.g. nested
         agent loops), the prior value must be restored after the inner
         prompt completes — not popped, not left at the inner id."""
@@ -1468,7 +1468,7 @@ class TestSlashCommands:
     def test_version(self, agent, mock_manager):
         state = self._make_state(mock_manager)
         result = agent._handle_slash_command("/version", state)
-        assert HERMES_VERSION in result
+        assert ECO_VERSION in result
 
     def test_compact_compresses_context(self, agent, mock_manager):
         state = self._make_state(mock_manager)
@@ -1588,11 +1588,11 @@ class TestSlashCommands:
                 api_mode=kwargs.get("api_mode"),
             )
 
-        monkeypatch.setattr("hermes_cli.config.load_config", lambda: {
+        monkeypatch.setattr("eco_cli.config.load_config", lambda: {
             "model": {"provider": "openrouter", "default": "openrouter/gpt-5"}
         })
         monkeypatch.setattr(
-            "hermes_cli.runtime_provider.resolve_runtime_provider",
+            "eco_cli.runtime_provider.resolve_runtime_provider",
             fake_resolve_runtime_provider,
         )
         # Pin the model-string parser independently of the live
@@ -1602,11 +1602,11 @@ class TestSlashCommands:
         # ``anthropic``) flakes this one — observed once in CI as
         # ``'custom' == 'anthropic'``.
         monkeypatch.setattr(
-            "hermes_cli.models.parse_model_input",
+            "eco_cli.models.parse_model_input",
             lambda raw, current: ("anthropic", "claude-sonnet-4-6"),
         )
         monkeypatch.setattr(
-            "hermes_cli.models.detect_provider_for_model",
+            "eco_cli.models.detect_provider_for_model",
             lambda model, current: None,
         )
         manager = SessionManager(db=SessionDB(tmp_path / "state.db"))
@@ -1652,7 +1652,7 @@ class TestRegisterSessionMcpServers:
 
         state = mock_manager.create_session(cwd="/tmp")
         # Give the mock agent the attributes _register_session_mcp_servers reads
-        state.agent.enabled_toolsets = ["hermes-acp"]
+        state.agent.enabled_toolsets = ["eco-acp"]
         state.agent.disabled_toolsets = None
         state.agent.tools = []
         state.agent.valid_tool_names = set()
@@ -1685,7 +1685,7 @@ class TestRegisterSessionMcpServers:
         from acp.schema import McpServerHttp, HttpHeader
 
         state = mock_manager.create_session(cwd="/tmp")
-        state.agent.enabled_toolsets = ["hermes-acp"]
+        state.agent.enabled_toolsets = ["eco-acp"]
         state.agent.disabled_toolsets = None
         state.agent.tools = []
         state.agent.valid_tool_names = set()
@@ -1716,7 +1716,7 @@ class TestRegisterSessionMcpServers:
         from acp.schema import McpServerStdio
 
         state = mock_manager.create_session(cwd="/tmp")
-        state.agent.enabled_toolsets = ["hermes-acp"]
+        state.agent.enabled_toolsets = ["eco-acp"]
         state.agent.disabled_toolsets = None
         state.agent.tools = []
         state.agent.valid_tool_names = set()
@@ -1739,11 +1739,11 @@ class TestRegisterSessionMcpServers:
             await agent._register_session_mcp_servers(state, [server])
 
         mock_defs.assert_called_once_with(
-            enabled_toolsets=["hermes-acp", "mcp-srv"],
+            enabled_toolsets=["eco-acp", "mcp-srv"],
             disabled_toolsets=None,
             quiet_mode=True,
         )
-        assert state.agent.enabled_toolsets == ["hermes-acp", "mcp-srv"]
+        assert state.agent.enabled_toolsets == ["eco-acp", "mcp-srv"]
         assert state.agent.tools == fake_tools
         assert state.agent.valid_tool_names == {"mcp_srv_search", "terminal"}
         # _invalidate_system_prompt should have been called

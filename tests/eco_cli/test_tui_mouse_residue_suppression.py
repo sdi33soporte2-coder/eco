@@ -1,7 +1,7 @@
 """Tests for the TUI-hot-path mouse-residue suppression.
 
-The Python launcher (`hermes --tui …`) has a ~100–300ms cold-start window
-where stdin is still in cooked + echo mode. If a previous Hermes session
+The Python launcher (`eco --tui …`) has a ~100–300ms cold-start window
+where stdin is still in cooked + echo mode. If a previous ECO session
 left DEC mouse-tracking asserted, any mouse motion during that window
 echoes literal ``^[[<…M`` text into the user's scrollback.
 
@@ -18,7 +18,7 @@ from unittest.mock import patch
 # scope. Under the test runner argv (`pytest …`) it's a no-op, but we import
 # at file scope so individual tests don't race the import side-effect with
 # their `patch("os.write")` context.
-from hermes_cli.main import _suppress_mouse_residue_early
+from eco_cli.main import _suppress_mouse_residue_early
 
 EXPECTED = (
     b"\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?9l"
@@ -28,7 +28,7 @@ EXPECTED = (
 
 class TestEarlyMouseDisable:
     def test_writes_disable_sequence_when_tui_flag_in_argv(self, monkeypatch):
-        monkeypatch.setattr(sys, "argv", ["hermes", "--tui", "-c", "abc"])
+        monkeypatch.setattr(sys, "argv", ["eco", "--tui", "-c", "abc"])
         monkeypatch.delenv("HERMES_TUI", raising=False)
         monkeypatch.delenv("HERMES_TUI_NO_EARLY_DISABLE", raising=False)
 
@@ -37,8 +37,8 @@ class TestEarlyMouseDisable:
 
         mock_write.assert_called_once_with(1, EXPECTED)
 
-    def test_writes_disable_sequence_when_hermes_tui_env_set(self, monkeypatch):
-        monkeypatch.setattr(sys, "argv", ["hermes"])
+    def test_writes_disable_sequence_when_eco_tui_env_set(self, monkeypatch):
+        monkeypatch.setattr(sys, "argv", ["eco"])
         monkeypatch.setenv("HERMES_TUI", "1")
         monkeypatch.delenv("HERMES_TUI_NO_EARLY_DISABLE", raising=False)
 
@@ -48,7 +48,7 @@ class TestEarlyMouseDisable:
         mock_write.assert_called_once_with(1, EXPECTED)
 
     def test_no_op_on_non_tui_invocation(self, monkeypatch):
-        monkeypatch.setattr(sys, "argv", ["hermes", "--version"])
+        monkeypatch.setattr(sys, "argv", ["eco", "--version"])
         monkeypatch.delenv("HERMES_TUI", raising=False)
         monkeypatch.delenv("HERMES_TUI_NO_EARLY_DISABLE", raising=False)
 
@@ -58,7 +58,7 @@ class TestEarlyMouseDisable:
         mock_write.assert_not_called()
 
     def test_respects_diagnostic_escape_hatch(self, monkeypatch):
-        monkeypatch.setattr(sys, "argv", ["hermes", "--tui"])
+        monkeypatch.setattr(sys, "argv", ["eco", "--tui"])
         monkeypatch.delenv("HERMES_TUI", raising=False)
         monkeypatch.setenv("HERMES_TUI_NO_EARLY_DISABLE", "1")
 
@@ -68,9 +68,9 @@ class TestEarlyMouseDisable:
         mock_write.assert_not_called()
 
     def test_skips_when_stdout_is_not_a_tty(self, monkeypatch):
-        # `hermes --tui … >log` or CI capture: pipe is fd 1, not a TTY. The
+        # `eco --tui … >log` or CI capture: pipe is fd 1, not a TTY. The
         # bytes can't reach a terminal and would just pollute the log.
-        monkeypatch.setattr(sys, "argv", ["hermes", "--tui"])
+        monkeypatch.setattr(sys, "argv", ["eco", "--tui"])
         monkeypatch.delenv("HERMES_TUI", raising=False)
         monkeypatch.delenv("HERMES_TUI_NO_EARLY_DISABLE", raising=False)
 
@@ -80,7 +80,7 @@ class TestEarlyMouseDisable:
         mock_write.assert_not_called()
 
     def test_oserror_is_swallowed(self, monkeypatch):
-        monkeypatch.setattr(sys, "argv", ["hermes", "--tui"])
+        monkeypatch.setattr(sys, "argv", ["eco", "--tui"])
         monkeypatch.delenv("HERMES_TUI", raising=False)
         monkeypatch.delenv("HERMES_TUI_NO_EARLY_DISABLE", raising=False)
 

@@ -312,7 +312,7 @@ function buildRoutes(
   return routes;
 }
 
-const SIDEBAR_COLLAPSED_KEY = "hermes-sidebar-collapsed";
+const SIDEBAR_COLLAPSED_KEY = "eco-sidebar-collapsed";
 
 export default function App() {
   const { t } = useI18n();

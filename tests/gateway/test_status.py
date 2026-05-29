@@ -16,7 +16,7 @@ class TestGatewayPidState:
 
         payload = json.loads((tmp_path / "gateway.pid").read_text())
         assert payload["pid"] == os.getpid()
-        assert payload["kind"] == "hermes-gateway"
+        assert payload["kind"] == "eco-gateway"
         assert isinstance(payload["argv"], list)
         assert payload["argv"]
 
@@ -62,8 +62,8 @@ class TestGatewayPidState:
         dead_pid = 999999  # not our pid, and below we simulate it's dead
         pid_path.write_text(json.dumps({
             "pid": dead_pid,
-            "kind": "hermes-gateway",
-            "argv": ["python", "-m", "hermes_cli.main", "gateway", "run"],
+            "kind": "eco-gateway",
+            "argv": ["python", "-m", "eco_cli.main", "gateway", "run"],
             "start_time": 111,
         }))
 
@@ -80,8 +80,8 @@ class TestGatewayPidState:
         pid_path = tmp_path / "gateway.pid"
         pid_path.write_text(json.dumps({
             "pid": os.getpid(),
-            "kind": "hermes-gateway",
-            "argv": ["python", "-m", "hermes_cli.main", "gateway"],
+            "kind": "eco-gateway",
+            "argv": ["python", "-m", "eco_cli.main", "gateway"],
             "start_time": 123,
         }))
 
@@ -100,8 +100,8 @@ class TestGatewayPidState:
         pid_path = tmp_path / "gateway.pid"
         pid_path.write_text(json.dumps({
             "pid": os.getpid(),
-            "kind": "hermes-gateway",
-            "argv": ["/venv/bin/python", "/repo/hermes_cli/main.py", "gateway", "run", "--replace"],
+            "kind": "eco-gateway",
+            "argv": ["/venv/bin/python", "/repo/eco_cli/main.py", "gateway", "run", "--replace"],
             "start_time": 123,
         }))
 
@@ -110,7 +110,7 @@ class TestGatewayPidState:
         monkeypatch.setattr(
             status,
             "_read_process_cmdline",
-            lambda pid: "/venv/bin/python /repo/hermes_cli/main.py gateway run --replace",
+            lambda pid: "/venv/bin/python /repo/eco_cli/main.py gateway run --replace",
         )
 
         assert status.acquire_gateway_runtime_lock() is True
@@ -125,8 +125,8 @@ class TestGatewayPidState:
         pid_path = other_home / "gateway.pid"
         pid_path.write_text(json.dumps({
             "pid": os.getpid(),
-            "kind": "hermes-gateway",
-            "argv": ["python", "-m", "hermes_cli.main", "gateway"],
+            "kind": "eco-gateway",
+            "argv": ["python", "-m", "eco_cli.main", "gateway"],
             "start_time": 123,
         }))
 
@@ -137,8 +137,8 @@ class TestGatewayPidState:
         lock_path = other_home / "gateway.lock"
         lock_path.write_text(json.dumps({
             "pid": os.getpid(),
-            "kind": "hermes-gateway",
-            "argv": ["python", "-m", "hermes_cli.main", "gateway"],
+            "kind": "eco-gateway",
+            "argv": ["python", "-m", "eco_cli.main", "gateway"],
             "start_time": 123,
         }))
         monkeypatch.setattr(status, "is_gateway_runtime_lock_active", lambda lock_path=None: True)
@@ -162,8 +162,8 @@ class TestGatewayPidState:
         pid_path = tmp_path / "gateway.pid"
         pid_path.write_text(json.dumps({
             "pid": os.getpid(),
-            "kind": "hermes-gateway",
-            "argv": ["python", "-m", "hermes_cli.main", "gateway"],
+            "kind": "eco-gateway",
+            "argv": ["python", "-m", "eco_cli.main", "gateway"],
             "start_time": 123,
         }))
 
@@ -192,14 +192,14 @@ class TestGatewayPidState:
 
         pid_path.write_text(json.dumps({
             "pid": dead_foreign_pid,
-            "kind": "hermes-gateway",
-            "argv": ["python", "-m", "hermes_cli.main", "gateway"],
+            "kind": "eco-gateway",
+            "argv": ["python", "-m", "eco_cli.main", "gateway"],
             "start_time": 123,
         }))
         lock_path.write_text(json.dumps({
             "pid": dead_foreign_pid,
-            "kind": "hermes-gateway",
-            "argv": ["python", "-m", "hermes_cli.main", "gateway"],
+            "kind": "eco-gateway",
+            "argv": ["python", "-m", "eco_cli.main", "gateway"],
             "start_time": 123,
         }))
 
@@ -213,8 +213,8 @@ class TestGatewayPidState:
         pid_path = tmp_path / "gateway.pid"
         pid_path.write_text(json.dumps({
             "pid": 99999,
-            "kind": "hermes-gateway",
-            "argv": ["python", "-m", "hermes_cli.main", "gateway"],
+            "kind": "eco-gateway",
+            "argv": ["python", "-m", "eco_cli.main", "gateway"],
             "start_time": 123,
         }))
 
@@ -225,8 +225,8 @@ class TestGatewayPidState:
             "_build_pid_record",
             lambda: {
                 "pid": os.getpid(),
-                "kind": "hermes-gateway",
-                "argv": ["python", "-m", "hermes_cli.main", "gateway"],
+                "kind": "eco-gateway",
+                "argv": ["python", "-m", "eco_cli.main", "gateway"],
                 "start_time": 123,
             },
         )
@@ -276,7 +276,7 @@ class TestGatewayRuntimeStatus:
         state_path.write_text(json.dumps({
             "pid": 99999,
             "start_time": 1000.0,
-            "kind": "hermes-gateway",
+            "kind": "eco-gateway",
             "platforms": {},
             "updated_at": "2025-01-01T00:00:00Z",
         }))
@@ -295,19 +295,19 @@ class TestGatewayRuntimeStatus:
         state_path.write_text(json.dumps({
             "pid": 99999,
             "start_time": 1000.0,
-            "kind": "hermes-gateway",
-            "argv": ["/old/path/hermes", "gateway", "run"],
+            "kind": "eco-gateway",
+            "argv": ["/old/path/eco", "gateway", "run"],
             "platforms": {},
             "updated_at": "2025-01-01T00:00:00Z",
         }))
 
-        monkeypatch.setattr(status.sys, "argv", ["/new/path/hermes", "gateway", "run"])
+        monkeypatch.setattr(status.sys, "argv", ["/new/path/eco", "gateway", "run"])
         monkeypatch.setattr(status, "_get_process_start_time", lambda pid: 2000)
 
         status.write_runtime_status(gateway_state="running")
 
         payload = status.read_runtime_status()
-        assert payload["argv"] == ["/new/path/hermes", "gateway", "run"]
+        assert payload["argv"] == ["/new/path/eco", "gateway", "run"]
         assert payload["pid"] == os.getpid()
         assert payload["start_time"] == 2000
 
@@ -431,7 +431,7 @@ class TestScopedLocks:
         lock_path.write_text(json.dumps({
             "pid": 99999,
             "start_time": 123,
-            "kind": "hermes-gateway",
+            "kind": "eco-gateway",
         }))
 
         # Post-#21561 the liveness probe routes through
@@ -458,8 +458,8 @@ class TestScopedLocks:
         lock_path.write_text(json.dumps({
             "pid": 873,
             "start_time": None,
-            "kind": "hermes-gateway",
-            "argv": ["/Users/user/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"],
+            "kind": "eco-gateway",
+            "argv": ["/Users/user/.eco/eco-agent/eco_cli/main.py", "gateway", "run", "--replace"],
         }))
 
         # Post-#21561 the liveness probe routes through
@@ -494,8 +494,8 @@ class TestScopedLocks:
         lock_path.write_text(json.dumps({
             "pid": 99999,
             "start_time": None,
-            "kind": "hermes-gateway",
-            "argv": ["hermes_cli/main.py", "gateway", "run"],
+            "kind": "eco-gateway",
+            "argv": ["eco_cli/main.py", "gateway", "run"],
         }))
 
         monkeypatch.setattr(status, "_pid_exists", lambda pid: True)
@@ -518,8 +518,8 @@ class TestScopedLocks:
         lock_path.write_text(json.dumps({
             "pid": 99999,
             "start_time": None,
-            "kind": "hermes-gateway",
-            "argv": ["/Users/user/.hermes/hermes-agent/hermes_cli/main.py", "gateway", "run", "--replace"],
+            "kind": "eco-gateway",
+            "argv": ["/Users/user/.eco/eco-agent/eco_cli/main.py", "gateway", "run", "--replace"],
         }))
 
         monkeypatch.setattr(status, "_pid_exists", lambda pid: True)
@@ -538,7 +538,7 @@ class TestScopedLocks:
         lock_path.write_text(json.dumps({
             "pid": 99999,
             "start_time": 123,
-            "kind": "hermes-gateway",
+            "kind": "eco-gateway",
         }))
 
         # Post-#21561: simulate "PID gone" via _pid_exists returning False.
@@ -599,12 +599,12 @@ class TestScopedLocks:
         target_lock.write_text(json.dumps({
             "pid": 111,
             "start_time": 222,
-            "kind": "hermes-gateway",
+            "kind": "eco-gateway",
         }))
         other_lock.write_text(json.dumps({
             "pid": 999,
             "start_time": 333,
-            "kind": "hermes-gateway",
+            "kind": "eco-gateway",
         }))
 
         removed = status.release_all_scoped_locks(
@@ -625,7 +625,7 @@ class TestScopedLocks:
         reused_pid_lock.write_text(json.dumps({
             "pid": 111,
             "start_time": 999,
-            "kind": "hermes-gateway",
+            "kind": "eco-gateway",
         }))
 
         removed = status.release_all_scoped_locks(
@@ -930,14 +930,14 @@ class TestReadProcessCmdlinePsFallback:
 
         monkeypatch.setattr(status.Path, "read_bytes", fake_read_bytes)
         result = status._read_process_cmdline(12345)
-        assert "hermes_cli/main.py" in result
+        assert "eco_cli/main.py" in result
         assert calls == ["proc"]
 
     def test_ps_fallback_used_when_proc_returns_empty(self, monkeypatch):
         monkeypatch.setattr(status.Path, "read_bytes", lambda self: b"")
         monkeypatch.setattr(
             status.subprocess, "run",
-            lambda args, **kwargs: SimpleNamespace(returncode=0, stdout="python hermes_cli/main.py gateway run\n"),
+            lambda args, **kwargs: SimpleNamespace(returncode=0, stdout="python eco_cli/main.py gateway run\n"),
         )
         result = status._read_process_cmdline(12345)
-        assert "hermes_cli/main.py" in result
+        assert "eco_cli/main.py" in result

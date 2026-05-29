@@ -1,12 +1,12 @@
 """
-Hermes Agent — Web UI server.
+ECO Agent — Web UI server.
 
 Provides a FastAPI backend serving the Vite/React frontend and REST API
 endpoints for managing configuration, environment variables, and sessions.
 
 Usage:
-    python -m hermes_cli.main web          # Start on http://127.0.0.1:9119
-    python -m hermes_cli.main web --port 8080
+    python -m eco_cli.main web          # Start on http://127.0.0.1:9119
+    python -m eco_cli.main web --port 8080
 """
 
 import asyncio
@@ -32,14 +32,14 @@ PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from hermes_cli import __version__, __release_date__
-from hermes_cli.config import (
+from eco_cli import __version__, __release_date__
+from eco_cli.config import (
     cfg_get,
     DEFAULT_CONFIG,
     OPTIONAL_ENV_VARS,
     get_config_path,
     get_env_path,
-    get_hermes_home,
+    get_eco_home,
     load_config,
     load_env,
     save_config,
@@ -59,7 +59,7 @@ try:
     from pydantic import BaseModel
 except ImportError:
     # First try lazy-installing the dashboard extras. Only the user actually
-    # running `hermes dashboard` needs fastapi+uvicorn; lazy install keeps
+    # running `eco dashboard` needs fastapi+uvicorn; lazy install keeps
     # them out of every other install path. After install, re-import.
     try:
         from tools.lazy_deps import ensure as _lazy_ensure
@@ -78,7 +78,7 @@ except ImportError:
 WEB_DIST = Path(os.environ["HERMES_WEB_DIST"]) if "HERMES_WEB_DIST" in os.environ else Path(__file__).parent / "web_dist"
 _log = logging.getLogger(__name__)
 
-app = FastAPI(title="Hermes Agent", version=__version__)
+app = FastAPI(title="ECO Agent", version=__version__)
 
 # ---------------------------------------------------------------------------
 # Session token for protecting sensitive endpoints (reveal).
@@ -86,9 +86,9 @@ app = FastAPI(title="Hermes Agent", version=__version__)
 # Injected into the SPA HTML so only the legitimate web UI can use it.
 # ---------------------------------------------------------------------------
 _SESSION_TOKEN = secrets.token_urlsafe(32)
-_SESSION_HEADER_NAME = "X-Hermes-Session-Token"
+_SESSION_HEADER_NAME = "X-ECO-Session-Token"
 
-# In-browser Chat tab (/chat, /api/pty, …).  Off unless ``hermes dashboard --tui``
+# In-browser Chat tab (/chat, /api/pty, …).  Off unless ``eco dashboard --tui``
 # or HERMES_DASHBOARD_TUI=1.  Set from :func:`start_server`.
 _DASHBOARD_EMBEDDED_CHAT_ENABLED = False
 
@@ -112,7 +112,7 @@ app.add_middleware(
 # Endpoints that do NOT require the session token.  Everything else under
 # /api/ is gated by the auth middleware below.
 #
-# This list is defined in ``hermes_cli.dashboard_auth.public_paths`` so the
+# This list is defined in ``eco_cli.dashboard_auth.public_paths`` so the
 # OAuth gate middleware can honour the same allowlist — keeping the two
 # gates in lockstep avoids drift like the wildcard-subdomain regression
 # where ``/api/status`` was public under the legacy gate but 401'd under
@@ -121,7 +121,7 @@ app.add_middleware(
 # Keep the upstream list minimal — only truly non-sensitive, read-only
 # endpoints belong there.
 # ---------------------------------------------------------------------------
-from hermes_cli.dashboard_auth.public_paths import (
+from eco_cli.dashboard_auth.public_paths import (
     PUBLIC_API_PATHS as _PUBLIC_API_PATHS,
 )
 
@@ -264,7 +264,7 @@ async def host_header_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def _dashboard_auth_gate(request: Request, call_next):
-    from hermes_cli.dashboard_auth.middleware import gated_auth_middleware
+    from eco_cli.dashboard_auth.middleware import gated_auth_middleware
     return await gated_auth_middleware(request, call_next)
 
 
@@ -641,7 +641,7 @@ async def get_status():
 
     active_sessions = 0
     try:
-        from hermes_state import SessionDB
+        from eco_state import SessionDB
         db = SessionDB()
         try:
             sessions = db.list_sessions_rich(limit=50)
@@ -657,13 +657,13 @@ async def get_status():
         pass
 
     # Dashboard auth gate (Phase 7): surface whether the gate is engaged
-    # and which providers are registered so ``hermes status`` and the
+    # and which providers are registered so ``eco status`` and the
     # SPA's StatusPage can show "OAuth gate ON via Nous Research" or
     # "loopback only — no auth gate" with no extra round trips.
     auth_required = bool(getattr(app.state, "auth_required", False))
     auth_providers: list[str] = []
     try:
-        from hermes_cli.dashboard_auth import list_providers as _list_providers
+        from eco_cli.dashboard_auth import list_providers as _list_providers
         auth_providers = [p.name for p in _list_providers()]
     except Exception:
         # Module not importable yet (early startup) — leave as [].
@@ -672,7 +672,7 @@ async def get_status():
     return {
         "version": __version__,
         "release_date": __release_date__,
-        "hermes_home": str(get_hermes_home()),
+        "eco_home": str(get_eco_home()),
         "config_path": str(get_config_path()),
         "env_path": str(get_env_path()),
         "config_version": current_ver,
@@ -696,16 +696,16 @@ async def get_status():
 # Both commands are spawned as detached subprocesses so the HTTP request
 # returns immediately.  stdin is closed (``DEVNULL``) so any stray ``input()``
 # calls fail fast with EOF rather than hanging forever.  stdout/stderr are
-# streamed to a per-action log file under ``~/.hermes/logs/<action>.log`` so
+# streamed to a per-action log file under ``~/.eco/logs/<action>.log`` so
 # the dashboard can tail them back to the user.
 # ---------------------------------------------------------------------------
 
-_ACTION_LOG_DIR: Path = get_hermes_home() / "logs"
+_ACTION_LOG_DIR: Path = get_eco_home() / "logs"
 
 # Short ``name`` (from the URL) → absolute log file path.
 _ACTION_LOG_FILES: Dict[str, str] = {
     "gateway-restart": "gateway-restart.log",
-    "hermes-update": "hermes-update.log",
+    "eco-update": "eco-update.log",
 }
 
 # ``name`` → most recently spawned Popen handle.  Used so ``status`` can
@@ -713,10 +713,10 @@ _ACTION_LOG_FILES: Dict[str, str] = {
 _ACTION_PROCS: Dict[str, subprocess.Popen] = {}
 
 
-def _spawn_hermes_action(subcommand: List[str], name: str) -> subprocess.Popen:
-    """Spawn ``hermes <subcommand>`` detached and record the Popen handle.
+def _spawn_eco_action(subcommand: List[str], name: str) -> subprocess.Popen:
+    """Spawn ``eco <subcommand>`` detached and record the Popen handle.
 
-    Uses the running interpreter's ``hermes_cli.main`` module so the action
+    Uses the running interpreter's ``eco_cli.main`` module so the action
     inherits the same venv/PYTHONPATH the web server is using.
     """
     log_file_name = _ACTION_LOG_FILES[name]
@@ -727,7 +727,7 @@ def _spawn_hermes_action(subcommand: List[str], name: str) -> subprocess.Popen:
         f"\n=== {name} started {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n".encode()
     )
 
-    cmd = [sys.executable, "-m", "hermes_cli.main", *subcommand]
+    cmd = [sys.executable, "-m", "eco_cli.main", *subcommand]
 
     popen_kwargs: Dict[str, Any] = {
         "cwd": str(PROJECT_ROOT),
@@ -765,9 +765,9 @@ def _tail_lines(path: Path, n: int) -> List[str]:
 
 @app.post("/api/gateway/restart")
 async def restart_gateway():
-    """Kick off a ``hermes gateway restart`` in the background."""
+    """Kick off a ``eco gateway restart`` in the background."""
     try:
-        proc = _spawn_hermes_action(["gateway", "restart"], "gateway-restart")
+        proc = _spawn_eco_action(["gateway", "restart"], "gateway-restart")
     except Exception as exc:
         _log.exception("Failed to spawn gateway restart")
         raise HTTPException(status_code=500, detail=f"Failed to restart gateway: {exc}")
@@ -778,18 +778,18 @@ async def restart_gateway():
     }
 
 
-@app.post("/api/hermes/update")
+@app.post("/api/eco/update")
 async def update_hermes():
-    """Kick off ``hermes update`` in the background."""
+    """Kick off ``eco update`` in the background."""
     try:
-        proc = _spawn_hermes_action(["update"], "hermes-update")
+        proc = _spawn_eco_action(["update"], "eco-update")
     except Exception as exc:
-        _log.exception("Failed to spawn hermes update")
+        _log.exception("Failed to spawn eco update")
         raise HTTPException(status_code=500, detail=f"Failed to start update: {exc}")
     return {
         "ok": True,
         "pid": proc.pid,
-        "name": "hermes-update",
+        "name": "eco-update",
     }
 
 
@@ -825,7 +825,7 @@ async def get_action_status(name: str, lines: int = 200):
 @app.get("/api/sessions")
 async def get_sessions(limit: int = 20, offset: int = 0):
     try:
-        from hermes_state import SessionDB
+        from eco_state import SessionDB
         db = SessionDB()
         try:
             sessions = db.list_sessions_rich(limit=limit, offset=offset)
@@ -850,7 +850,7 @@ async def search_sessions(q: str = "", limit: int = 20):
     if not q or not q.strip():
         return {"results": []}
     try:
-        from hermes_state import SessionDB
+        from eco_state import SessionDB
         db = SessionDB()
         try:
             # Auto-add prefix wildcards so partial words match
@@ -889,7 +889,7 @@ async def search_sessions(q: str = "", limit: int = 20):
 def _normalize_config_for_web(config: Dict[str, Any]) -> Dict[str, Any]:
     """Normalize config for the web UI.
 
-    Hermes supports ``model`` as either a bare string (``"anthropic/claude-sonnet-4"``)
+    ECO supports ``model`` as either a bare string (``"anthropic/claude-sonnet-4"``)
     or a dict (``{default: ..., provider: ..., base_url: ...}``).  The schema is built
     from DEFAULT_CONFIG where ``model`` is a string, but user configs often have the
     dict form.  Normalize to the string form so the frontend schema matches.
@@ -1020,7 +1020,7 @@ def get_model_info():
 # ---------------------------------------------------------------------------
 
 # Canonical auxiliary task slots. Keep in sync with DEFAULT_CONFIG["auxiliary"]
-# in hermes_cli/config.py — listed here for deterministic ordering in the UI.
+# in eco_cli/config.py — listed here for deterministic ordering in the UI.
 _AUX_TASK_SLOTS: Tuple[str, ...] = (
     "vision",
     "web_extract",
@@ -1046,7 +1046,7 @@ def get_model_options():
     can share the same types.
     """
     try:
-        from hermes_cli.inventory import build_models_payload, load_picker_context
+        from eco_cli.inventory import build_models_payload, load_picker_context
 
         return build_models_payload(load_picker_context(), max_models=50)
     except Exception:
@@ -1102,7 +1102,7 @@ def get_auxiliary_models():
 async def set_model_assignment(body: ModelAssignment):
     """Assign a model to the main slot or an auxiliary task slot.
 
-    Writes to ``~/.hermes/config.yaml`` — applies to **new** sessions only.
+    Writes to ``~/.eco/config.yaml`` — applies to **new** sessions only.
     The currently running chat PTY (if any) is not affected; use the
     ``/model`` slash command inside a chat to hot-swap that specific session.
     """
@@ -1335,7 +1335,7 @@ async def reveal_env_var(body: EnvVarReveal, request: Request):
 # connected, plus a disconnect button. The actual login flow (PKCE for
 # Anthropic, device-code for Nous/Codex) still runs in the CLI for now;
 # Phase 2 will add in-browser flows. For unconnected providers we return
-# the canonical ``hermes auth add <provider>`` command so the dashboard
+# the canonical ``eco auth add <provider>`` command so the dashboard
 # can surface a one-click copy.
 
 
@@ -1367,37 +1367,37 @@ def _truncate_token(value: Optional[str], visible: int = 6) -> str:
 def _anthropic_oauth_status() -> Dict[str, Any]:
     """Combined status across the three Anthropic credential sources we read.
 
-    Hermes resolves Anthropic creds in this order at runtime:
-    1. ``~/.hermes/.anthropic_oauth.json`` — Hermes-managed PKCE flow
+    ECO resolves Anthropic creds in this order at runtime:
+    1. ``~/.eco/.anthropic_oauth.json`` — ECO-managed PKCE flow
     2. ``~/.claude/.credentials.json`` — Claude Code CLI credentials (auto)
     3. ``ANTHROPIC_TOKEN`` / ``ANTHROPIC_API_KEY`` env vars
     The dashboard reports the highest-priority source that's actually present.
     """
     try:
         from agent.anthropic_adapter import (
-            read_hermes_oauth_credentials,
+            read_eco_oauth_credentials,
             read_claude_code_credentials,
             _HERMES_OAUTH_FILE,
         )
     except ImportError:
         read_claude_code_credentials = None  # type: ignore
-        read_hermes_oauth_credentials = None  # type: ignore
+        read_eco_oauth_credentials = None  # type: ignore
         _HERMES_OAUTH_FILE = None  # type: ignore
 
-    hermes_creds = None
-    if read_hermes_oauth_credentials:
+    eco_creds = None
+    if read_eco_oauth_credentials:
         try:
-            hermes_creds = read_hermes_oauth_credentials()
+            eco_creds = read_eco_oauth_credentials()
         except Exception:
-            hermes_creds = None
-    if hermes_creds and hermes_creds.get("accessToken"):
+            eco_creds = None
+    if eco_creds and eco_creds.get("accessToken"):
         return {
             "logged_in": True,
-            "source": "hermes_pkce",
-            "source_label": f"Hermes PKCE ({_HERMES_OAUTH_FILE})",
-            "token_preview": _truncate_token(hermes_creds.get("accessToken")),
-            "expires_at": hermes_creds.get("expiresAt"),
-            "has_refresh_token": bool(hermes_creds.get("refreshToken")),
+            "source": "eco_pkce",
+            "source_label": f"ECO PKCE ({_HERMES_OAUTH_FILE})",
+            "token_preview": _truncate_token(eco_creds.get("accessToken")),
+            "expires_at": eco_creds.get("expiresAt"),
+            "has_refresh_token": bool(eco_creds.get("refreshToken")),
         }
 
     cc_creds = None
@@ -1433,8 +1433,8 @@ def _claude_code_only_status() -> Dict[str, Any]:
     """Surface Claude Code CLI credentials as their own provider entry.
 
     Independent of the Anthropic entry above so users can see whether their
-    Claude Code subscription tokens are actively flowing into Hermes even
-    when they also have a separate Hermes-managed PKCE login.
+    Claude Code subscription tokens are actively flowing into ECO even
+    when they also have a separate ECO-managed PKCE login.
     """
     try:
         from agent.anthropic_adapter import read_claude_code_credentials
@@ -1465,7 +1465,7 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
         "id": "anthropic",
         "name": "Anthropic (Claude API)",
         "flow": "pkce",
-        "cli_command": "hermes auth add anthropic",
+        "cli_command": "eco auth add anthropic",
         "docs_url": "https://docs.claude.com/en/api/getting-started",
         "status_fn": _anthropic_oauth_status,
     },
@@ -1481,7 +1481,7 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
         "id": "nous",
         "name": "Nous Portal",
         "flow": "device_code",
-        "cli_command": "hermes auth add nous",
+        "cli_command": "eco auth add nous",
         "docs_url": "https://portal.nousresearch.com",
         "status_fn": None,  # dispatched via auth.get_nous_auth_status
     },
@@ -1489,7 +1489,7 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
         "id": "openai-codex",
         "name": "OpenAI Codex (ChatGPT)",
         "flow": "device_code",
-        "cli_command": "hermes auth add openai-codex",
+        "cli_command": "eco auth add openai-codex",
         "docs_url": "https://platform.openai.com/docs",
         "status_fn": None,  # dispatched via auth.get_codex_auth_status
     },
@@ -1497,7 +1497,7 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
         "id": "qwen-oauth",
         "name": "Qwen (via Qwen CLI)",
         "flow": "external",
-        "cli_command": "hermes auth add qwen-oauth",
+        "cli_command": "eco auth add qwen-oauth",
         "docs_url": "https://github.com/QwenLM/qwen-code",
         "status_fn": None,  # dispatched via auth.get_qwen_auth_status
     },
@@ -1510,7 +1510,7 @@ _OAUTH_PROVIDER_CATALOG: tuple[Dict[str, Any], ...] = (
         # as Nous's device-code flow; the PKCE bit is a security
         # extension that doesn't change the operator experience.
         "flow": "device_code",
-        "cli_command": "hermes auth add minimax-oauth",
+        "cli_command": "eco auth add minimax-oauth",
         "docs_url": "https://www.minimax.io",
         "status_fn": None,  # dispatched via auth.get_minimax_oauth_auth_status
     },
@@ -1525,7 +1525,7 @@ def _resolve_provider_status(provider_id: str, status_fn) -> Dict[str, Any]:
         except Exception as e:
             return {"logged_in": False, "error": str(e)}
     try:
-        from hermes_cli import auth as hauth
+        from eco_cli import auth as hauth
         if provider_id == "nous":
             raw = hauth.get_nous_auth_status()
             return {
@@ -1584,7 +1584,7 @@ async def list_oauth_providers():
         docs_url        external docs/portal link for the "Learn more" link
         status:
           logged_in        bool — currently has usable creds
-          source           short slug ("hermes_pkce", "claude_code", ...)
+          source           short slug ("eco_pkce", "claude_code", ...)
           source_label     human-readable origin (file path, env var name)
           token_preview    last N chars of the token, never the full token
           expires_at       ISO timestamp string or null
@@ -1617,7 +1617,7 @@ async def disconnect_oauth_provider(provider_id: str, request: Request):
                    f"Available: {', '.join(sorted(valid_ids))}",
         )
 
-    # Anthropic and claude-code clear the same Hermes-managed PKCE file
+    # Anthropic and claude-code clear the same ECO-managed PKCE file
     # AND forget the Claude Code import. We don't touch ~/.claude/* directly
     # — that's owned by the Claude Code CLI; users can re-auth there if they
     # want to undo a disconnect.
@@ -1630,7 +1630,7 @@ async def disconnect_oauth_provider(provider_id: str, request: Request):
             pass
         # Also clear the credential pool entry if present.
         try:
-            from hermes_cli.auth import clear_provider_auth
+            from eco_cli.auth import clear_provider_auth
             clear_provider_auth("anthropic")
         except Exception:
             pass
@@ -1638,7 +1638,7 @@ async def disconnect_oauth_provider(provider_id: str, request: Request):
         return {"ok": True, "provider": provider_id}
 
     try:
-        from hermes_cli.auth import clear_provider_auth
+        from eco_cli.auth import clear_provider_auth
         cleared = clear_provider_auth(provider_id)
         _log.info("oauth/disconnect: %s (cleared=%s)", provider_id, cleared)
         return {"ok": bool(cleared), "provider": provider_id}
@@ -1661,7 +1661,7 @@ async def disconnect_oauth_provider(provider_id: str, request: Request):
 #     2. UI opens auth_url in a new tab. User authorizes, copies code.
 #     3. POST /api/providers/oauth/anthropic/submit { session_id, code }
 #          → server exchanges (code + verifier) → tokens at console.anthropic.com
-#          → persists to ~/.hermes/.anthropic_oauth.json AND credential pool
+#          → persists to ~/.eco/.anthropic_oauth.json AND credential pool
 #          → returns { ok: true, status: "approved" }
 #
 #   Device code (Nous, OpenAI Codex):
@@ -1688,7 +1688,7 @@ _oauth_sessions: Dict[str, Dict[str, Any]] = {}
 _oauth_sessions_lock = threading.Lock()
 
 # Import OAuth constants from canonical source instead of duplicating.
-# Guarded so hermes web still starts if anthropic_adapter is unavailable;
+# Guarded so eco web still starts if anthropic_adapter is unavailable;
 # Phase 2 endpoints will return 501 in that case.
 try:
     from agent.anthropic_adapter import (
@@ -1730,10 +1730,10 @@ def _new_oauth_session(provider_id: str, flow: str) -> tuple[str, Dict[str, Any]
 
 
 def _save_anthropic_oauth_creds(access_token: str, refresh_token: str, expires_at_ms: int) -> None:
-    """Persist Anthropic PKCE creds to both Hermes file AND credential pool.
+    """Persist Anthropic PKCE creds to both ECO file AND credential pool.
 
     Mirrors what auth_commands.add_command does so the dashboard flow leaves
-    the system in the same state as ``hermes auth add anthropic``.
+    the system in the same state as ``eco auth add anthropic``.
     """
     from agent.anthropic_adapter import _HERMES_OAUTH_FILE
     payload = {
@@ -1853,7 +1853,7 @@ def _submit_anthropic_pkce(session_id: str, code_input: str) -> Dict[str, Any]:
         data=exchange_data,
         headers={
             "Content-Type": "application/json",
-            "User-Agent": "hermes-dashboard/1.0",
+            "User-Agent": "eco-dashboard/1.0",
         },
         method="POST",
     )
@@ -1897,7 +1897,7 @@ async def _start_device_code_flow(provider_id: str) -> Dict[str, Any]:
     so the UI can render the verification page link + user code.
     """
     if provider_id == "nous":
-        from hermes_cli.auth import (
+        from eco_cli.auth import (
             _request_device_code,
             PROVIDER_REGISTRY,
         )
@@ -1990,7 +1990,7 @@ async def _start_device_code_flow(provider_id: str) -> Dict[str, Any]:
         # flow; the PKCE bit (verifier + challenge from
         # _minimax_pkce_pair) is a security extension that binds the
         # token exchange to the original session.
-        from hermes_cli.auth import (
+        from eco_cli.auth import (
             _minimax_pkce_pair,
             _minimax_request_user_code,
             MINIMAX_OAUTH_CLIENT_ID,
@@ -2064,7 +2064,7 @@ async def _start_device_code_flow(provider_id: str) -> Dict[str, Any]:
 
 def _nous_poller(session_id: str) -> None:
     """Background poller that drives a Nous device-code flow to completion."""
-    from hermes_cli.auth import (
+    from eco_cli.auth import (
         _poll_for_token,
         refresh_nous_oauth_from_state,
     )
@@ -2113,7 +2113,7 @@ def _nous_poller(session_id: str) -> None:
             timeout_seconds=15.0,
             force_refresh=False,
         )
-        from hermes_cli.auth import persist_nous_credentials
+        from eco_cli.auth import persist_nous_credentials
         persist_nous_credentials(full_state)
         with _oauth_sessions_lock:
             sess["status"] = "approved"
@@ -2134,9 +2134,9 @@ def _minimax_poller(session_id: str) -> None:
     auth_state dict that ``_minimax_oauth_login`` (the CLI flow) builds
     and persists via ``_minimax_save_auth_state`` — so the dashboard
     path leaves the system in the same state as
-    ``hermes auth add minimax-oauth``.
+    ``eco auth add minimax-oauth``.
     """
-    from hermes_cli.auth import (
+    from eco_cli.auth import (
         _minimax_poll_token,
         _minimax_resolve_token_expiry_unix,
         _minimax_save_auth_state,
@@ -2225,7 +2225,7 @@ def _codex_full_login_worker(session_id: str) -> None:
     """
     try:
         import httpx
-        from hermes_cli.auth import (
+        from eco_cli.auth import (
             CODEX_OAUTH_CLIENT_ID,
             CODEX_OAUTH_TOKEN_URL,
             DEFAULT_CODEX_BASE_URL,
@@ -2434,7 +2434,7 @@ def _session_latest_descendant(session_id: str):
     /model may create child sessions. Dashboard refresh should continue the
     newest child instead of reopening the old parent.
     """
-    from hermes_state import SessionDB
+    from eco_state import SessionDB
 
     def row_get(row, key, index):
         if isinstance(row, dict):
@@ -2506,7 +2506,7 @@ def _session_latest_descendant(session_id: str):
 
 @app.get("/api/sessions/{session_id}")
 async def get_session_detail(session_id: str):
-    from hermes_state import SessionDB
+    from eco_state import SessionDB
     db = SessionDB()
     try:
         sid = db.resolve_session_id(session_id)
@@ -2533,7 +2533,7 @@ async def get_session_latest_descendant(session_id: str):
 
 @app.get("/api/sessions/{session_id}/messages")
 async def get_session_messages(session_id: str):
-    from hermes_state import SessionDB
+    from eco_state import SessionDB
     db = SessionDB()
     try:
         sid = db.resolve_session_id(session_id)
@@ -2547,7 +2547,7 @@ async def get_session_messages(session_id: str):
 
 @app.delete("/api/sessions/{session_id}")
 async def delete_session_endpoint(session_id: str):
-    from hermes_state import SessionDB
+    from eco_state import SessionDB
     db = SessionDB()
     try:
         if not db.delete_session(session_id):
@@ -2570,17 +2570,17 @@ async def get_logs(
     component: Optional[str] = None,
     search: Optional[str] = None,
 ):
-    from hermes_cli.logs import _read_tail, LOG_FILES
+    from eco_cli.logs import _read_tail, LOG_FILES
 
     log_name = LOG_FILES.get(file)
     if not log_name:
         raise HTTPException(status_code=400, detail=f"Unknown log file: {file}")
-    log_path = get_hermes_home() / "logs" / log_name
+    log_path = get_eco_home() / "logs" / log_name
     if not log_path.exists():
         return {"file": file, "lines": []}
 
     try:
-        from hermes_logging import COMPONENT_PREFIXES
+        from eco_logging import COMPONENT_PREFIXES
     except ImportError:
         COMPONENT_PREFIXES = {}
 
@@ -2636,7 +2636,7 @@ _CRON_PROFILE_LOCK = threading.RLock()
 
 def _cron_profile_dicts() -> List[Dict[str, Any]]:
     """Return dashboard profile records, falling back to a directory scan."""
-    from hermes_cli import profiles as profiles_mod
+    from eco_cli import profiles as profiles_mod
     try:
         return [_profile_to_dict(p) for p in profiles_mod.list_profiles()]
     except Exception:
@@ -2646,7 +2646,7 @@ def _cron_profile_dicts() -> List[Dict[str, Any]]:
 
 def _cron_profile_home(profile: Optional[str]) -> Tuple[str, Path]:
     """Resolve a profile query value to (profile_name, HERMES_HOME)."""
-    from hermes_cli import profiles as profiles_mod
+    from eco_cli import profiles as profiles_mod
 
     raw = (profile or "default").strip() or "default"
     try:
@@ -2663,7 +2663,7 @@ def _annotate_cron_job(job: Dict[str, Any], profile: str, home: Path) -> Dict[st
     annotated = dict(job)
     annotated["profile"] = profile
     annotated["profile_name"] = profile
-    annotated["hermes_home"] = str(home)
+    annotated["eco_home"] = str(home)
     annotated["is_default_profile"] = profile == "default"
     return annotated
 
@@ -2863,7 +2863,7 @@ def _fallback_profile_dicts(profiles_mod) -> List[Dict[str, Any]]:
             return default
 
     profiles: List[Dict[str, Any]] = []
-    default_home = profiles_mod._get_default_hermes_home()
+    default_home = profiles_mod._get_default_eco_home()
     if default_home.is_dir():
         model, provider = _safe(lambda: profiles_mod._read_config_model(default_home), (None, None))
         profiles.append({
@@ -2897,7 +2897,7 @@ def _fallback_profile_dicts(profiles_mod) -> List[Dict[str, Any]]:
 
 def _resolve_profile_dir(name: str) -> Path:
     """Validate ``name`` and resolve to its directory or raise an HTTPException."""
-    from hermes_cli import profiles as profiles_mod
+    from eco_cli import profiles as profiles_mod
     try:
         profiles_mod.validate_profile_name(name)
     except ValueError as e:
@@ -2910,12 +2910,12 @@ def _resolve_profile_dir(name: str) -> Path:
 def _profile_setup_command(name: str) -> str:
     """Return the shell command used to configure a profile in the CLI."""
     _resolve_profile_dir(name)
-    return "hermes setup" if name == "default" else f"{name} setup"
+    return "eco setup" if name == "default" else f"{name} setup"
 
 
 @app.get("/api/profiles")
 async def list_profiles_endpoint():
-    from hermes_cli import profiles as profiles_mod
+    from eco_cli import profiles as profiles_mod
     try:
         return {"profiles": [_profile_to_dict(p) for p in profiles_mod.list_profiles()]}
     except Exception:
@@ -2925,7 +2925,7 @@ async def list_profiles_endpoint():
 
 @app.post("/api/profiles")
 async def create_profile_endpoint(body: ProfileCreate):
-    from hermes_cli import profiles as profiles_mod
+    from eco_cli import profiles as profiles_mod
     try:
         path = profiles_mod.create_profile(
             name=body.name,
@@ -3015,7 +3015,7 @@ async def open_profile_terminal_endpoint(name: str):
 
 @app.patch("/api/profiles/{name}")
 async def rename_profile_endpoint(name: str, body: ProfileRename):
-    from hermes_cli import profiles as profiles_mod
+    from eco_cli import profiles as profiles_mod
     try:
         path = profiles_mod.rename_profile(name, body.new_name)
     except FileNotFoundError as e:
@@ -3033,7 +3033,7 @@ async def delete_profile_endpoint(name: str):
     """Delete a profile. The dashboard collects the user's confirmation in
     its own dialog before this request, so we always pass ``yes=True`` to
     skip the CLI's interactive prompt."""
-    from hermes_cli import profiles as profiles_mod
+    from eco_cli import profiles as profiles_mod
     try:
         path = profiles_mod.delete_profile(name, yes=True)
     except FileNotFoundError as e:
@@ -3081,7 +3081,7 @@ class SkillToggle(BaseModel):
 @app.get("/api/skills")
 async def get_skills():
     from tools.skills_tool import _find_all_skills
-    from hermes_cli.skills_config import get_disabled_skills
+    from eco_cli.skills_config import get_disabled_skills
     config = load_config()
     disabled = get_disabled_skills(config)
     skills = _find_all_skills(skip_disabled=True)
@@ -3092,7 +3092,7 @@ async def get_skills():
 
 @app.put("/api/skills/toggle")
 async def toggle_skill(body: SkillToggle):
-    from hermes_cli.skills_config import get_disabled_skills, save_disabled_skills
+    from eco_cli.skills_config import get_disabled_skills, save_disabled_skills
     config = load_config()
     disabled = get_disabled_skills(config)
     if body.enabled:
@@ -3105,7 +3105,7 @@ async def toggle_skill(body: SkillToggle):
 
 @app.get("/api/tools/toolsets")
 async def get_toolsets():
-    from hermes_cli.tools_config import (
+    from eco_cli.tools_config import (
         _get_effective_configurable_toolsets,
         _get_platform_tools,
         _toolset_has_keys,
@@ -3171,7 +3171,7 @@ async def update_config_raw(body: RawConfigUpdate):
 
 @app.get("/api/analytics/usage")
 async def get_usage_analytics(days: int = 30):
-    from hermes_state import SessionDB
+    from eco_state import SessionDB
     from agent.insights import InsightsEngine
 
     db = SessionDB()
@@ -3245,7 +3245,7 @@ async def get_models_analytics(days: int = 30):
     Returns token/cost/session breakdown per model plus capability metadata
     from models.dev (context window, vision, tools, reasoning, etc.).
     """
-    from hermes_state import SessionDB
+    from eco_state import SessionDB
 
     db = SessionDB()
     try:
@@ -3334,7 +3334,7 @@ async def get_models_analytics(days: int = 30):
 # ---------------------------------------------------------------------------
 # /api/pty — PTY-over-WebSocket bridge for the dashboard "Chat" tab.
 #
-# The endpoint spawns the same ``hermes --tui`` binary the CLI uses, behind
+# The endpoint spawns the same ``eco --tui`` binary the CLI uses, behind
 # a POSIX pseudo-terminal, and forwards bytes + resize escapes across a
 # WebSocket.  The browser renders the ANSI through xterm.js (see
 # web/src/pages/ChatPage.tsx).
@@ -3352,7 +3352,7 @@ import re
 # the dashboard (sessions, jobs, metrics, config editor) still loads and the
 # /api/pty endpoint cleanly refuses with a WSL-suggested message.
 try:
-    from hermes_cli.pty_bridge import PtyBridge, PtyUnavailableError
+    from eco_cli.pty_bridge import PtyBridge, PtyUnavailableError
     _PTY_BRIDGE_AVAILABLE = True
 except ImportError as _pty_import_err:  # pragma: no cover - Windows-only path
     PtyBridge = None  # type: ignore[assignment]
@@ -3448,8 +3448,8 @@ def _ws_auth_ok(ws: "WebSocket") -> bool:
             return False
         # Lazy import — keeps this function importable in test harnesses
         # that don't bring in the dashboard_auth layer.
-        from hermes_cli.dashboard_auth.audit import AuditEvent, audit_log
-        from hermes_cli.dashboard_auth.ws_tickets import (
+        from eco_cli.dashboard_auth.audit import AuditEvent, audit_log
+        from eco_cli.dashboard_auth.ws_tickets import (
             TicketInvalid,
             consume_ticket,
         )
@@ -3483,12 +3483,12 @@ def _resolve_chat_argv(
 ) -> tuple[list[str], Optional[str], Optional[dict]]:
     """Resolve the argv + cwd + env for the chat PTY.
 
-    Default: whatever ``hermes --tui`` would run.  Tests monkeypatch this
+    Default: whatever ``eco --tui`` would run.  Tests monkeypatch this
     function to inject a tiny fake command (``cat``, ``sh -c 'printf …'``)
     so nothing has to build Node or the TUI bundle.
 
     Session resume is propagated via the ``HERMES_TUI_RESUME`` env var —
-    matching what ``hermes_cli.main._launch_tui`` does for the CLI path.
+    matching what ``eco_cli.main._launch_tui`` does for the CLI path.
     Appending ``--resume <id>`` to argv doesn't work because ``ui-tui`` does
     not parse its argv.
 
@@ -3496,7 +3496,7 @@ def _resolve_chat_argv(
     the spawned ``tui_gateway.entry`` can mirror dispatcher emits to the
     dashboard's ``/api/pub`` endpoint (see :func:`pub_ws`).
     """
-    from hermes_cli.main import PROJECT_ROOT, _make_tui_argv
+    from eco_cli.main import PROJECT_ROOT, _make_tui_argv
 
     argv, cwd = _make_tui_argv(PROJECT_ROOT / "ui-tui", tui_dev=False)
     env = os.environ.copy()
@@ -3548,7 +3548,7 @@ def _build_sidecar_url(channel: str) -> Optional[str]:
 
     if getattr(app.state, "auth_required", False):
         # Gated mode — mint a ticket so the WS upgrade survives _ws_auth_ok.
-        from hermes_cli.dashboard_auth.ws_tickets import mint_ticket
+        from eco_cli.dashboard_auth.ws_tickets import mint_ticket
 
         ticket = mint_ticket(user_id="pty-sidecar", provider="server-internal")
         qs = urllib.parse.urlencode({"ticket": ticket, "channel": channel})
@@ -3602,7 +3602,7 @@ async def pty_ws(ws: WebSocket) -> None:
         await ws.send_text(
             "\r\n\x1b[31mChat unavailable: the embedded terminal requires a "
             "POSIX PTY, which native Windows Python doesn't provide.\x1b[0m\r\n"
-            "\x1b[33mInstall Hermes inside WSL2 to use the dashboard's /chat "
+            "\x1b[33mInstall ECO inside WSL2 to use the dashboard's /chat "
             "tab — the rest of the dashboard works here.\x1b[0m\r\n"
         )
         await ws.close(code=1011)
@@ -3803,12 +3803,12 @@ async def events_ws(ws: WebSocket) -> None:
 def _normalise_prefix(raw: Optional[str]) -> str:
     """Normalise an X-Forwarded-Prefix header value.
 
-    Thin re-export of :func:`hermes_cli.dashboard_auth.prefix.normalise_prefix`
+    Thin re-export of :func:`eco_cli.dashboard_auth.prefix.normalise_prefix`
     — the single source of truth lives in the dashboard_auth package so
     the gate middleware, the OAuth routes, the cookie helpers, and the
     SPA mount all agree on validation rules.
     """
-    from hermes_cli.dashboard_auth.prefix import normalise_prefix
+    from eco_cli.dashboard_auth.prefix import normalise_prefix
     return normalise_prefix(raw)
 
 
@@ -3820,8 +3820,8 @@ def mount_spa(application: FastAPI):
     separate (unauthenticated) token-dispensing endpoint.
 
     When served behind a path-prefix reverse proxy (e.g.
-    ``mission-control.tilos.com/hermes/*`` -> local Caddy -> :9119), the
-    proxy injects ``X-Forwarded-Prefix: /hermes`` on every request. We
+    ``mission-control.tilos.com/eco/*`` -> local Caddy -> :9119), the
+    proxy injects ``X-Forwarded-Prefix: /eco`` on every request. We
     rewrite the served ``index.html`` so absolute asset URLs (``/assets/...``)
     and the SPA's runtime ``__HERMES_BASE_PATH__`` honour that prefix
     without rebuilding the bundle.
@@ -3840,7 +3840,7 @@ def mount_spa(application: FastAPI):
     def _serve_index(prefix: str = ""):
         """Return index.html with the session token + base-path injected.
 
-        ``prefix`` is the normalised ``X-Forwarded-Prefix`` (e.g. ``/hermes``)
+        ``prefix`` is the normalised ``X-Forwarded-Prefix`` (e.g. ``/eco``)
         or empty string when served at root.
 
         When the OAuth auth gate is active (``app.state.auth_required``),
@@ -3887,8 +3887,8 @@ def mount_spa(application: FastAPI):
     # When served behind a path-prefix proxy, the built CSS contains
     # absolute ``url(/fonts/...)`` and ``url(/ds-assets/...)`` references.
     # Browsers resolve those against the document origin, which means
-    # under ``/hermes`` they'd hit ``mission-control.tilos.com/fonts/...``
-    # (the MC Pages app), not the Hermes backend. Intercept CSS asset
+    # under ``/eco`` they'd hit ``mission-control.tilos.com/fonts/...``
+    # (the MC Pages app), not the ECO backend. Intercept CSS asset
     # requests BEFORE the StaticFiles mount and rewrite the absolute paths
     # when a prefix is in play.
     @application.get("/assets/{filename}.css")
@@ -3931,8 +3931,8 @@ def mount_spa(application: FastAPI):
 # Built-in dashboard themes — label + description only.  The actual color
 # definitions live in the frontend (web/src/themes/presets.ts).
 _BUILTIN_DASHBOARD_THEMES = [
-    {"name": "default",       "label": "Hermes Teal",         "description": "Classic dark teal — the canonical Hermes look"},
-    {"name": "default-large", "label": "Hermes Teal (Large)", "description": "Hermes Teal with bigger fonts and roomier spacing"},
+    {"name": "default",       "label": "ECO Teal",         "description": "Classic dark teal — the canonical ECO look"},
+    {"name": "default-large", "label": "ECO Teal (Large)", "description": "ECO Teal with bigger fonts and roomier spacing"},
     {"name": "midnight",      "label": "Midnight",            "description": "Deep blue-violet with cool accents"},
     {"name": "ember",     "label": "Ember",          "description": "Warm crimson and bronze — forge vibes"},
     {"name": "mono",      "label": "Mono",           "description": "Clean grayscale — minimal and focused"},
@@ -4101,7 +4101,7 @@ def _normalise_theme_definition(data: Dict[str, Any]) -> Optional[Dict[str, Any]
     # tag on theme apply.  Clipped to _THEME_CUSTOM_CSS_MAX to keep the
     # payload bounded.  We intentionally do NOT parse/sanitise the CSS
     # here — the dashboard is localhost-only and themes are user-authored
-    # YAML in ~/.hermes/, same trust level as the config file itself.
+    # YAML in ~/.eco/, same trust level as the config file itself.
     custom_css_val = data.get("customCSS")
     custom_css: Optional[str] = None
     if isinstance(custom_css_val, str) and custom_css_val.strip():
@@ -4156,13 +4156,13 @@ def _normalise_theme_definition(data: Dict[str, Any]) -> Optional[Dict[str, Any]
 
 
 def _discover_user_themes() -> list:
-    """Scan ~/.hermes/dashboard-themes/*.yaml for user-created themes.
+    """Scan ~/.eco/dashboard-themes/*.yaml for user-created themes.
 
     Returns a list of fully-normalised theme definitions ready to ship
     to the frontend, so the client can apply them without a secondary
     round-trip or a built-in stub.
     """
-    themes_dir = get_hermes_home() / "dashboard-themes"
+    themes_dir = get_eco_home() / "dashboard-themes"
     if not themes_dir.is_dir():
         return []
     result = []
@@ -4183,7 +4183,7 @@ async def get_dashboard_themes():
 
     Built-in entries ship name/label/description only (the frontend owns
     their full definitions in `web/src/themes/presets.ts`).  User themes
-    from `~/.hermes/dashboard-themes/*.yaml` ship with their full
+    from `~/.eco/dashboard-themes/*.yaml` ship with their full
     normalised definition under `definition`, so the client can apply
     them without a stub.
     """
@@ -4267,18 +4267,18 @@ def _safe_plugin_api_relpath(api_field: Any, *, dashboard_dir: Path) -> Optional
 def _discover_dashboard_plugins() -> list:
     """Scan plugins/*/dashboard/manifest.json for dashboard extensions.
 
-    Checks three plugin sources (same as hermes_cli.plugins):
-    1. User plugins:    ~/.hermes/plugins/<name>/dashboard/manifest.json
+    Checks three plugin sources (same as eco_cli.plugins):
+    1. User plugins:    ~/.eco/plugins/<name>/dashboard/manifest.json
     2. Bundled plugins: <repo>/plugins/<name>/dashboard/manifest.json  (memory/, etc.)
-    3. Project plugins: ./.hermes/plugins/  (only if HERMES_ENABLE_PROJECT_PLUGINS)
+    3. Project plugins: ./.eco/plugins/  (only if HERMES_ENABLE_PROJECT_PLUGINS)
     """
     plugins = []
     seen_names: set = set()
 
-    from hermes_cli.plugins import get_bundled_plugins_dir
+    from eco_cli.plugins import get_bundled_plugins_dir
     bundled_root = get_bundled_plugins_dir()
     search_dirs = [
-        (get_hermes_home() / "plugins", "user"),
+        (get_eco_home() / "plugins", "user"),
         (bundled_root / "memory", "bundled"),
         (bundled_root, "bundled"),
     ]
@@ -4290,9 +4290,9 @@ def _discover_dashboard_plugins() -> list:
     # the manifest's ``api`` field (now patched below), this turned the
     # opt-in into a sticky always-on switch.  Use the shared truthy
     # semantics (``1`` / ``true`` / ``yes`` / ``on``) so the gate matches
-    # ``hermes_cli/plugins.py`` and the documented user contract.
+    # ``eco_cli/plugins.py`` and the documented user contract.
     if env_var_enabled("HERMES_ENABLE_PROJECT_PLUGINS"):
-        search_dirs.append((Path.cwd() / ".hermes" / "plugins", "project"))
+        search_dirs.append((Path.cwd() / ".eco" / "plugins", "project"))
 
     for plugins_root, source in search_dirs:
         if not plugins_root.is_dir():
@@ -4416,7 +4416,7 @@ def _strip_dashboard_manifest(p: Dict[str, Any]) -> Dict[str, Any]:
 
 def _merged_plugins_hub() -> Dict[str, Any]:
     """Agent discovery + dashboard manifests + optional provider picker metadata."""
-    from hermes_cli.plugins_cmd import (
+    from eco_cli.plugins_cmd import (
         _discover_all_plugins,
         _get_current_context_engine,
         _get_current_memory_provider,
@@ -4437,7 +4437,7 @@ def _merged_plugins_hub() -> Dict[str, Any]:
     config = load_config()
     hidden_plugins: list = cfg_get(config, "dashboard", "hidden_plugins", default=[]) or []
 
-    plugins_root_resolved = (get_hermes_home() / "plugins").resolve()
+    plugins_root_resolved = (get_eco_home() / "plugins").resolve()
     rows: List[Dict[str, Any]] = []
 
     for name, version, description, source, dir_str in _discover_all_plugins():
@@ -4475,7 +4475,7 @@ def _merged_plugins_hub() -> Dict[str, Any]:
                     entry = registry.get_entry(tname)
                     if entry and entry.check_fn and not entry.check_fn():
                         auth_required = True
-                        auth_command = f"hermes auth {name}"
+                        auth_command = f"eco auth {name}"
                         break
             except Exception:
                 pass
@@ -4543,7 +4543,7 @@ async def get_plugins_hub(request: Request):
 @app.post("/api/dashboard/agent-plugins/install")
 async def post_agent_plugin_install(request: Request, body: _AgentPluginInstallBody):
     _require_token(request)
-    from hermes_cli.plugins_cmd import dashboard_install_plugin
+    from eco_cli.plugins_cmd import dashboard_install_plugin
 
     result = dashboard_install_plugin(
         body.identifier.strip(),
@@ -4573,7 +4573,7 @@ def _validate_plugin_name(name: str) -> str:
 async def post_agent_plugin_enable(request: Request, name: str):
     _require_token(request)
     name = _validate_plugin_name(name)
-    from hermes_cli.plugins_cmd import dashboard_set_agent_plugin_enabled
+    from eco_cli.plugins_cmd import dashboard_set_agent_plugin_enabled
 
     result = dashboard_set_agent_plugin_enabled(name, enabled=True)
     if not result.get("ok"):
@@ -4585,7 +4585,7 @@ async def post_agent_plugin_enable(request: Request, name: str):
 async def post_agent_plugin_disable(request: Request, name: str):
     _require_token(request)
     name = _validate_plugin_name(name)
-    from hermes_cli.plugins_cmd import dashboard_set_agent_plugin_enabled
+    from eco_cli.plugins_cmd import dashboard_set_agent_plugin_enabled
 
     result = dashboard_set_agent_plugin_enabled(name, enabled=False)
     if not result.get("ok"):
@@ -4597,7 +4597,7 @@ async def post_agent_plugin_disable(request: Request, name: str):
 async def post_agent_plugin_update(request: Request, name: str):
     _require_token(request)
     name = _validate_plugin_name(name)
-    from hermes_cli.plugins_cmd import dashboard_update_user_plugin
+    from eco_cli.plugins_cmd import dashboard_update_user_plugin
 
     result = dashboard_update_user_plugin(name)
     if not result.get("ok"):
@@ -4610,7 +4610,7 @@ async def post_agent_plugin_update(request: Request, name: str):
 async def delete_agent_plugin(request: Request, name: str):
     _require_token(request)
     name = _validate_plugin_name(name)
-    from hermes_cli.plugins_cmd import dashboard_remove_user_plugin
+    from eco_cli.plugins_cmd import dashboard_remove_user_plugin
 
     result = dashboard_remove_user_plugin(name)
     if not result.get("ok"):
@@ -4628,7 +4628,7 @@ class _PluginProvidersPutBody(BaseModel):
 async def put_plugin_providers(request: Request, body: _PluginProvidersPutBody):
     """Persist memory provider / context engine selection (writes config.yaml)."""
     _require_token(request)
-    from hermes_cli.plugins_cmd import (
+    from eco_cli.plugins_cmd import (
         _save_context_engine,
         _save_memory_provider,
     )
@@ -4744,7 +4744,7 @@ def _mount_plugin_api_routes():
     ``/api/plugins/<name>/``.
 
     Backend import is restricted to ``bundled`` and ``user`` sources.
-    Project plugins (``./.hermes/plugins/``) ship with the CWD and are
+    Project plugins (``./.eco/plugins/``) ship with the CWD and are
     therefore attacker-controlled in any threat model where the user
     opens a malicious repo; they can extend the dashboard UI via
     static JS/CSS but their Python ``api`` file is never auto-imported
@@ -4758,7 +4758,7 @@ def _mount_plugin_api_routes():
             _log.warning(
                 "Plugin %s: ignoring backend api=%s (project plugins may "
                 "not auto-import Python code; move the plugin to "
-                "~/.hermes/plugins/ if you trust it)",
+                "~/.eco/plugins/ if you trust it)",
                 plugin["name"], api_file_name,
             )
             continue
@@ -4782,7 +4782,7 @@ def _mount_plugin_api_routes():
             _log.warning("Plugin %s declares api=%s but file not found", plugin["name"], api_file_name)
             continue
         try:
-            module_name = f"hermes_dashboard_plugin_{plugin['name']}"
+            module_name = f"eco_dashboard_plugin_{plugin['name']}"
             spec = importlib.util.spec_from_file_location(module_name, api_path)
             if spec is None or spec.loader is None:
                 continue
@@ -4816,7 +4816,7 @@ _mount_plugin_api_routes()
 # SPA catch-all so /{full_path:path} doesn't swallow them.  These are
 # always mounted — the gate middleware decides whether to enforce auth,
 # not whether the routes exist.
-from hermes_cli.dashboard_auth.routes import router as _dashboard_auth_router  # noqa: E402
+from eco_cli.dashboard_auth.routes import router as _dashboard_auth_router  # noqa: E402
 app.include_router(_dashboard_auth_router)
 
 mount_spa(app)
@@ -4846,11 +4846,11 @@ def start_server(
         # Phase 3.5: the gate engages on non-loopback binds.  The legacy
         # "refusing to bind" guard is replaced by "require at least one
         # provider to be registered, else fail closed".
-        from hermes_cli.dashboard_auth import list_providers
+        from eco_cli.dashboard_auth import list_providers
         if not list_providers():
             # Surface the *specific* reason any bundled provider declined
             # to register (e.g. missing HERMES_DASHBOARD_OAUTH_CLIENT_ID).
-            # Each provider plugin that ships with Hermes Agent exposes a
+            # Each provider plugin that ships with ECO Agent exposes a
             # module-level ``LAST_SKIP_REASON`` string for this purpose;
             # without it the operator would only see "no providers" which
             # is misleading when the provider IS installed but unconfigured.
@@ -4938,7 +4938,7 @@ def start_server(
                 "(headless Linux). Pass --no-open to suppress this detection."
             )
 
-    print(f"  Hermes Web UI → http://{host}:{port}")
+    print(f"  ECO Web UI → http://{host}:{port}")
     # proxy_headers defaults to False so _ws_client_is_allowed sees the real
     # connection peer rather than X-Forwarded-For's rewritten value (which
     # would defeat the loopback gate when behind a reverse proxy).  When the

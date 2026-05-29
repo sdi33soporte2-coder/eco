@@ -1,4 +1,4 @@
-"""Unit tests for hermes_cli.pty_bridge — PTY spawning + byte forwarding.
+"""Unit tests for eco_cli.pty_bridge — PTY spawning + byte forwarding.
 
 These tests drive the bridge with minimal POSIX processes (echo, env, sleep,
 printf) to verify it behaves like a PTY you can read/write/resize/close.
@@ -15,7 +15,7 @@ import pytest
 
 pytest.importorskip("ptyprocess", reason="ptyprocess not installed")
 
-from hermes_cli.pty_bridge import PtyBridge, PtyUnavailableError
+from eco_cli.pty_bridge import PtyBridge, PtyUnavailableError
 
 
 skip_on_windows = pytest.mark.skipif(
@@ -57,10 +57,10 @@ class TestPtyBridgeSpawn:
 @skip_on_windows
 class TestPtyBridgeIO:
     def test_reads_child_stdout(self):
-        bridge = PtyBridge.spawn(["/bin/sh", "-c", "printf hermes-ok"])
+        bridge = PtyBridge.spawn(["/bin/sh", "-c", "printf eco-ok"])
         try:
-            output = _read_until(bridge, b"hermes-ok")
-            assert b"hermes-ok" in output
+            output = _read_until(bridge, b"eco-ok")
+            assert b"eco-ok" in output
         finally:
             bridge.close()
 

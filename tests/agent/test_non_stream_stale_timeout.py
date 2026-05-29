@@ -16,8 +16,8 @@ from pathlib import Path
 
 
 def _write_config(tmp_path: Path, body: str) -> None:
-    hermes_home = tmp_path
-    (hermes_home / "config.yaml").write_text(body or "{}\n", encoding="utf-8")
+    eco_home = tmp_path
+    (eco_home / "config.yaml").write_text(body or "{}\n", encoding="utf-8")
 
 
 def _make_agent(tmp_path: Path, **overrides):
@@ -183,7 +183,7 @@ providers:
     monkeypatch.delenv("HERMES_API_CALL_STALE_TIMEOUT", raising=False)
 
     import importlib
-    from hermes_cli import timeouts as to_mod
+    from eco_cli import timeouts as to_mod
     importlib.reload(to_mod)
 
     agent = _make_agent(tmp_path)

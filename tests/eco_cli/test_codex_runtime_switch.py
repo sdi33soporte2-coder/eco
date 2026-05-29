@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from hermes_cli import codex_runtime_switch as crs
+from eco_cli import codex_runtime_switch as crs
 
 
 class TestParseArgs:
@@ -23,7 +23,7 @@ class TestParseArgs:
         ("off", "auto"),
         ("codex", "codex_app_server"),
         ("default", "auto"),
-        ("hermes", "auto"),
+        ("eco", "auto"),
         ("ENABLE", "codex_app_server"),  # case-insensitive
         ("DiSaBlE", "auto"),
     ])
@@ -122,13 +122,13 @@ class TestApply:
         # codex config.
         with patch.object(crs, "check_codex_binary_ok",
                           return_value=(True, "0.130.0")), \
-             patch("hermes_cli.codex_runtime_plugin_migration.migrate"):
+             patch("eco_cli.codex_runtime_plugin_migration.migrate"):
             r = crs.apply(cfg, "codex_app_server", persist_callback=persist)
         assert r.success
         assert r.new_value == "codex_app_server"
         assert r.old_value == "auto"
         assert r.requires_new_session is True
-        assert "via MCP" in r.message  # hermes-tools callback message
+        assert "via MCP" in r.message  # eco-tools callback message
         assert cfg["model"]["openai_runtime"] == "codex_app_server"
         assert persisted["model"]["openai_runtime"] == "codex_app_server"
 
@@ -156,7 +156,7 @@ class TestApply:
         assert "disk full" in r.message
 
     def test_enable_triggers_mcp_migration(self):
-        """Enabling codex_app_server should auto-migrate Hermes mcp_servers
+        """Enabling codex_app_server should auto-migrate ECO mcp_servers
         to ~/.codex/config.toml so the spawned subprocess sees them."""
         cfg = {
             "mcp_servers": {
@@ -166,8 +166,8 @@ class TestApply:
 
         with patch.object(crs, "check_codex_binary_ok",
                           return_value=(True, "0.130.0")), \
-             patch("hermes_cli.codex_runtime_plugin_migration.migrate") as mig:
-            mig.return_value.migrated = ["filesystem", "hermes-tools"]
+             patch("eco_cli.codex_runtime_plugin_migration.migrate") as mig:
+            mig.return_value.migrated = ["filesystem", "eco-tools"]
             mig.return_value.migrated_plugins = []
             mig.return_value.plugin_query_error = None
             mig.return_value.wrote_permissions_default = ":workspace"
@@ -176,12 +176,12 @@ class TestApply:
             r = crs.apply(cfg, "codex_app_server")
         assert r.success
         assert mig.called  # migration was triggered
-        # User MCP servers are reported (excluding internal hermes-tools)
+        # User MCP servers are reported (excluding internal eco-tools)
         assert "Migrated 1 MCP server" in r.message
         assert "filesystem" in r.message
         # Permissions default surfaces
         assert "Default sandbox: :workspace" in r.message
-        # Hermes tool callback announcement
+        # ECO tool callback announcement
         assert "via MCP" in r.message
 
     def test_disable_does_not_trigger_migration(self):
@@ -190,7 +190,7 @@ class TestApply:
             "model": {"openai_runtime": "codex_app_server"},
             "mcp_servers": {"x": {"command": "y"}},
         }
-        with patch("hermes_cli.codex_runtime_plugin_migration.migrate") as mig:
+        with patch("eco_cli.codex_runtime_plugin_migration.migrate") as mig:
             r = crs.apply(cfg, "auto")
         assert r.success
         assert not mig.called  # disabling does not migrate
@@ -201,7 +201,7 @@ class TestApply:
         cfg = {"mcp_servers": {"x": {"command": "y"}}}
         with patch.object(crs, "check_codex_binary_ok",
                           return_value=(True, "0.130.0")), \
-             patch("hermes_cli.codex_runtime_plugin_migration.migrate",
+             patch("eco_cli.codex_runtime_plugin_migration.migrate",
                    side_effect=RuntimeError("disk full")):
             r = crs.apply(cfg, "codex_app_server")
         assert r.success  # change still applied
@@ -220,7 +220,7 @@ class TestApply:
         cfg = {}
         with patch.object(crs, "check_codex_binary_ok",
                           return_value=(True, "0.130.0")) as bin_check, \
-             patch("hermes_cli.codex_runtime_plugin_migration.migrate"):
+             patch("eco_cli.codex_runtime_plugin_migration.migrate"):
             r = crs.apply(cfg, "codex_app_server")
         assert r.success
         assert bin_check.call_count == 1, (

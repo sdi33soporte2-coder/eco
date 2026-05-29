@@ -1,6 +1,6 @@
 """Tests for the bundled Nous dashboard-auth plugin.
 
-Covers four shapes from Phase 4 of ``.hermes/plans/2026-05-21-dashboard-oauth-auth.md``:
+Covers four shapes from Phase 4 of ``.eco/plans/2026-05-21-dashboard-oauth-auth.md``:
 
 1. Plugin entry-point registration gating (env var checks).
 2. ``start_login`` shape (PKCE/state, authorize URL parameters).
@@ -31,7 +31,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 import plugins.dashboard_auth.nous as nous_plugin
-from hermes_cli.dashboard_auth import (
+from eco_cli.dashboard_auth import (
     InvalidCodeError,
     LoginStart,
     ProviderError,
@@ -159,7 +159,7 @@ class TestConstruction:
     def test_rejects_malformed_client_id(self):
         with pytest.raises(ValueError, match="agent:"):
             nous_plugin.NousDashboardAuthProvider(
-                client_id="hermes-dashboard", portal_url="https://x"
+                client_id="eco-dashboard", portal_url="https://x"
             )
 
 
@@ -196,14 +196,14 @@ class TestPluginRegister:
         assert nous_plugin.LAST_SKIP_REASON == ""
 
     def test_skips_when_client_id_malformed(self, monkeypatch):
-        monkeypatch.setenv("HERMES_DASHBOARD_OAUTH_CLIENT_ID", "hermes-dashboard")
+        monkeypatch.setenv("HERMES_DASHBOARD_OAUTH_CLIENT_ID", "eco-dashboard")
         monkeypatch.setenv("HERMES_DASHBOARD_PORTAL_URL", "https://p.example")
         ctx = MagicMock()
         nous_plugin.register(ctx)
         ctx.register_dashboard_auth_provider.assert_not_called()
         # Skip reason names the offending value + contract shape.
         assert "agent:" in nous_plugin.LAST_SKIP_REASON
-        assert "hermes-dashboard" in nous_plugin.LAST_SKIP_REASON
+        assert "eco-dashboard" in nous_plugin.LAST_SKIP_REASON
 
     def test_registers_with_explicit_portal_url(self, monkeypatch):
         monkeypatch.setenv("HERMES_DASHBOARD_OAUTH_CLIENT_ID", "agent:inst1")
@@ -255,7 +255,7 @@ class TestConfigYamlSource:
 
     @pytest.fixture
     def patch_config(self, monkeypatch):
-        """Yield a callable that replaces ``hermes_cli.config.load_config``
+        """Yield a callable that replaces ``eco_cli.config.load_config``
         with a stub returning the given dict. Tests pass the intended
         ``dashboard.oauth`` block; the stub returns the wrapping structure."""
 
@@ -264,7 +264,7 @@ class TestConfigYamlSource:
             if oauth_block is not None:
                 cfg = {"dashboard": {"oauth": oauth_block}}
             monkeypatch.setattr(
-                "hermes_cli.config.load_config", lambda: cfg
+                "eco_cli.config.load_config", lambda: cfg
             )
 
         return _set
@@ -374,7 +374,7 @@ class TestConfigYamlSource:
             raise OSError("config.yaml not readable")
 
         monkeypatch.setattr(
-            "hermes_cli.config.load_config", _broken_load
+            "eco_cli.config.load_config", _broken_load
         )
         ctx = MagicMock()
         # Must not raise.
@@ -389,7 +389,7 @@ class TestConfigYamlSource:
         so a malformed user config doesn't crash startup."""
         monkeypatch.delenv("HERMES_DASHBOARD_OAUTH_CLIENT_ID", raising=False)
         monkeypatch.setattr(
-            "hermes_cli.config.load_config",
+            "eco_cli.config.load_config",
             lambda: {"dashboard": {"oauth": "wrong type"}},
         )
         ctx = MagicMock()
@@ -412,13 +412,13 @@ class TestStartLogin:
 
     def test_returns_login_start(self, provider):
         result = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
+            redirect_uri="https://eco.fly.dev/auth/callback"
         )
         assert isinstance(result, LoginStart)
 
     def test_redirect_url_targets_portal_authorize(self, provider):
         result = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
+            redirect_uri="https://eco.fly.dev/auth/callback"
         )
         assert result.redirect_url.startswith(
             "https://portal.example.com/oauth/authorize?"
@@ -426,13 +426,13 @@ class TestStartLogin:
 
     def test_authorize_url_has_required_params(self, provider):
         result = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
+            redirect_uri="https://eco.fly.dev/auth/callback"
         )
         parsed = urllib.parse.urlparse(result.redirect_url)
         params = dict(urllib.parse.parse_qsl(parsed.query))
         assert params["response_type"] == "code"
         assert params["client_id"] == "agent:inst1"
-        assert params["redirect_uri"] == "https://hermes.fly.dev/auth/callback"
+        assert params["redirect_uri"] == "https://eco.fly.dev/auth/callback"
         assert params["scope"] == "agent_dashboard:access"
         assert params["code_challenge_method"] == "S256"
         assert "state" in params
@@ -440,10 +440,10 @@ class TestStartLogin:
 
     def test_code_verifier_in_cookie_payload_43_to_128_chars(self, provider):
         result = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
+            redirect_uri="https://eco.fly.dev/auth/callback"
         )
-        assert "hermes_session_pkce" in result.cookie_payload
-        pkce = result.cookie_payload["hermes_session_pkce"]
+        assert "eco_session_pkce" in result.cookie_payload
+        pkce = result.cookie_payload["eco_session_pkce"]
         # Shape: ``state=…;verifier=…`` (matches stub-provider convention so
         # the auth-route layer's parser works uniformly across providers).
         parts = dict(seg.split("=", 1) for seg in pkce.split(";") if "=" in seg)
@@ -453,21 +453,21 @@ class TestStartLogin:
 
     def test_state_in_cookie_payload_matches_url_param(self, provider):
         result = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
+            redirect_uri="https://eco.fly.dev/auth/callback"
         )
         parsed = urllib.parse.urlparse(result.redirect_url)
         params = dict(urllib.parse.parse_qsl(parsed.query))
-        pkce = result.cookie_payload["hermes_session_pkce"]
+        pkce = result.cookie_payload["eco_session_pkce"]
         parts = dict(seg.split("=", 1) for seg in pkce.split(";") if "=" in seg)
         assert parts["state"] == params["state"]
 
     def test_code_challenge_is_s256_of_verifier(self, provider):
         result = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
+            redirect_uri="https://eco.fly.dev/auth/callback"
         )
         parsed = urllib.parse.urlparse(result.redirect_url)
         params = dict(urllib.parse.parse_qsl(parsed.query))
-        pkce = result.cookie_payload["hermes_session_pkce"]
+        pkce = result.cookie_payload["eco_session_pkce"]
         parts = dict(seg.split("=", 1) for seg in pkce.split(";") if "=" in seg)
         verifier = parts["verifier"]
         expected_challenge = (
@@ -481,13 +481,13 @@ class TestStartLogin:
 
     def test_two_calls_produce_different_state_and_verifier(self, provider):
         a = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
+            redirect_uri="https://eco.fly.dev/auth/callback"
         )
         b = provider.start_login(
-            redirect_uri="https://hermes.fly.dev/auth/callback"
+            redirect_uri="https://eco.fly.dev/auth/callback"
         )
-        assert a.cookie_payload["hermes_session_pkce"] != b.cookie_payload[
-            "hermes_session_pkce"
+        assert a.cookie_payload["eco_session_pkce"] != b.cookie_payload[
+            "eco_session_pkce"
         ]
 
     def test_rejects_non_http_scheme(self, provider):
@@ -497,7 +497,7 @@ class TestStartLogin:
     def test_rejects_http_with_non_localhost(self, provider):
         with pytest.raises(ProviderError, match="localhost"):
             provider.start_login(
-                redirect_uri="http://hermes.fly.dev/auth/callback"
+                redirect_uri="http://eco.fly.dev/auth/callback"
             )
 
     def test_allows_http_localhost(self, provider):
@@ -549,7 +549,7 @@ class TestCompleteLogin:
                 code="abc",
                 state="state-val",
                 code_verifier="vfy",
-                redirect_uri="https://hermes.fly.dev/auth/callback",
+                redirect_uri="https://eco.fly.dev/auth/callback",
             )
         assert isinstance(session, Session)
         assert session.user_id == "usr_abc"
@@ -566,7 +566,7 @@ class TestCompleteLogin:
             with pytest.raises(InvalidCodeError, match="invalid_grant"):
                 provider.complete_login(
                     code="bad", state="s", code_verifier="v",
-                    redirect_uri="https://hermes.fly.dev/auth/callback",
+                    redirect_uri="https://eco.fly.dev/auth/callback",
                 )
 
     def test_500_raises_provider_error(self, provider):
@@ -576,7 +576,7 @@ class TestCompleteLogin:
             with pytest.raises(ProviderError, match="500"):
                 provider.complete_login(
                     code="x", state="s", code_verifier="v",
-                    redirect_uri="https://hermes.fly.dev/auth/callback",
+                    redirect_uri="https://eco.fly.dev/auth/callback",
                 )
 
     def test_missing_access_token_raises(self, provider):
@@ -585,7 +585,7 @@ class TestCompleteLogin:
             with pytest.raises(ProviderError, match="access_token"):
                 provider.complete_login(
                     code="x", state="s", code_verifier="v",
-                    redirect_uri="https://hermes.fly.dev/auth/callback",
+                    redirect_uri="https://eco.fly.dev/auth/callback",
                 )
 
     def test_unexpected_token_type_raises(self, provider, rsa_keypair):
@@ -597,7 +597,7 @@ class TestCompleteLogin:
             with pytest.raises(ProviderError, match="token_type"):
                 provider.complete_login(
                     code="x", state="s", code_verifier="v",
-                    redirect_uri="https://hermes.fly.dev/auth/callback",
+                    redirect_uri="https://eco.fly.dev/auth/callback",
                 )
 
     def test_network_error_raises_provider_error(self, provider):
@@ -608,7 +608,7 @@ class TestCompleteLogin:
             with pytest.raises(ProviderError, match="unreachable"):
                 provider.complete_login(
                     code="x", state="s", code_verifier="v",
-                    redirect_uri="https://hermes.fly.dev/auth/callback",
+                    redirect_uri="https://eco.fly.dev/auth/callback",
                 )
 
     def test_captures_refresh_token_if_present_forward_compat(
@@ -628,7 +628,7 @@ class TestCompleteLogin:
         with patch("plugins.dashboard_auth.nous.httpx.post", return_value=mock_resp):
             session = provider.complete_login(
                 code="x", state="s", code_verifier="v",
-                redirect_uri="https://hermes.fly.dev/auth/callback",
+                redirect_uri="https://eco.fly.dev/auth/callback",
             )
         assert session.refresh_token == "rt-opaque"
 

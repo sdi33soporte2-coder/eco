@@ -75,9 +75,9 @@ def _resolve_safe_cwd(cwd: str) -> str:
 # ECO-internal env vars that should NOT leak into terminal subprocesses.
 _ECO_PROVIDER_ENV_FORCE_PREFIX = "_ECO_FORCE_"
 
-# Hermes-managed AWS *inference* credentials for ``auth_type="aws_sdk"``
+# ECO-managed AWS *inference* credentials for ``auth_type="aws_sdk"``
 # providers (Bedrock).  Scoped DELIBERATELY NARROW: this lists only the
-# Bedrock-specific bearer token, which is a Hermes inference secret exactly
+# Bedrock-specific bearer token, which is a ECO inference secret exactly
 # analogous to ``OPENAI_API_KEY`` — nobody drives the ``aws``/``terraform``/
 # ``boto3`` toolchain off it, so stripping it from terminal/execute_code
 # subprocesses costs no user capability.

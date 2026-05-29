@@ -373,7 +373,7 @@ class OpenAICodexImageGenProvider(ImageGenProvider):
             return error_response(
                 error=(
                     "No Codex/ChatGPT OAuth credentials available. Run "
-                    "`hermes auth codex` (or `hermes setup` → Codex) to sign in."
+                    "`eco auth codex` (or `eco setup` → Codex) to sign in."
                 ),
                 error_type="auth_required",
                 provider="openai-codex",

@@ -6,7 +6,7 @@ Usage (via cron with --no-agent):
     eco cron create eco-issues \\
       --schedule "*/5 * * * *" --no-agent \\
       --script "$ECO_HOME/skills/devops/watchers/scripts/watch_github.py" \\
-      --script-args "--name eco-issues --repo NousResearch/eco --scope issues"
+      --script-args "--name eco-issues --repo NousResearch/hermes-agent-agent --scope issues"
 
 Set GITHUB_TOKEN (or GH_TOKEN) in ~/.eco/.env to avoid the 60 req/hr
 anonymous rate limit.

@@ -103,7 +103,7 @@ def _manager_provider_with_context(storage: HermesTokenStorage, **context_attrs)
     if _HERMES_PROVIDER_CLS is None:
         pytest.skip("MCP SDK auth not available")
     provider = _HERMES_PROVIDER_CLS.__new__(_HERMES_PROVIDER_CLS)
-    provider._hermes_server_name = context_attrs.get("server_name", "srv")
+    provider._eco_server_name = context_attrs.get("server_name", "srv")
     context = MagicMock()
     context.storage = storage
     context.oauth_metadata = context_attrs.get("oauth_metadata")

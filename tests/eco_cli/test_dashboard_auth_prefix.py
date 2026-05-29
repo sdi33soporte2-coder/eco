@@ -1,23 +1,23 @@
 """Path-prefix (X-Forwarded-Prefix) awareness for the dashboard-auth gate.
 
 Mission-control style deployments reverse-proxy the dashboard at a path
-prefix (e.g. ``mission-control.tilos.com/hermes/*`` -> local Caddy ->
-:9119), injecting ``X-Forwarded-Prefix: /hermes`` on every request.
+prefix (e.g. ``mission-control.tilos.com/eco/*`` -> local Caddy ->
+:9119), injecting ``X-Forwarded-Prefix: /eco`` on every request.
 
 The dashboard already honours this for the SPA bundle (rewriting asset
 URLs and the bootstrap ``__HERMES_BASE_PATH__``). The OAuth gate must
 honour it too:
 
   1. The gate's ``Location:`` redirect to /login (in
-     ``_unauth_response``) needs to be ``/hermes/login`` so the browser
+     ``_unauth_response``) needs to be ``/eco/login`` so the browser
      follows it through the proxy.
   2. The 401 JSON envelope's ``login_url`` needs the same prefix so the
      SPA's full-page navigation lands at the proxied login page.
   3. ``_redirect_uri`` (the OAuth callback URL handed to the IDP) must
      reconstruct the public URL including the prefix, otherwise the IDP
      redirects back to ``/auth/callback`` instead of
-     ``/hermes/auth/callback`` and the user gets 404.
-  4. Cookies must use ``Path=/hermes`` when behind a prefix so they
+     ``/eco/auth/callback`` and the user gets 404.
+  4. Cookies must use ``Path=/eco`` when behind a prefix so they
      don't leak to other apps on the same origin AND so they get sent
      back to the dashboard on subsequent requests under the prefix.
   5. The ``__Host-`` cookie prefix requires ``Path=/`` — when behind an
@@ -38,9 +38,9 @@ pytestmark = pytest.mark.xdist_group("dashboard_auth_app_state")
 
 from fastapi.testclient import TestClient
 
-from hermes_cli import web_server
-from hermes_cli.dashboard_auth import clear_providers, register_provider
-from tests.hermes_cli.conftest_dashboard_auth import StubAuthProvider
+from eco_cli import web_server
+from eco_cli.dashboard_auth import clear_providers, register_provider
+from tests.eco_cli.conftest_dashboard_auth import StubAuthProvider
 
 
 @pytest.fixture
@@ -105,28 +105,28 @@ class TestGateRedirectsCarryPrefix:
     def test_html_redirect_to_login_carries_prefix(self, gated_app_proxied):
         r = gated_app_proxied.get(
             "/sessions",
-            headers={"x-forwarded-prefix": "/hermes"},
+            headers={"x-forwarded-prefix": "/eco"},
             follow_redirects=False,
         )
         assert r.status_code == 302
         # /login redirect must include the prefix or the browser will
         # follow it to mission-control.tilos.com/login (which the proxy
         # doesn't route to the dashboard).
-        assert r.headers["location"].startswith("/hermes/login"), (
+        assert r.headers["location"].startswith("/eco/login"), (
             f"Location header lost prefix: {r.headers['location']!r}"
         )
 
     def test_api_401_envelope_login_url_carries_prefix(self, gated_app_proxied):
         r = gated_app_proxied.get(
             "/api/sessions",
-            headers={"x-forwarded-prefix": "/hermes"},
+            headers={"x-forwarded-prefix": "/eco"},
             follow_redirects=False,
         )
         assert r.status_code == 401
         body = r.json()
         # SPA does window.location.assign(body.login_url); this MUST
         # include the prefix.
-        assert body["login_url"].startswith("/hermes/login"), (
+        assert body["login_url"].startswith("/eco/login"), (
             f"401 envelope login_url lost prefix: {body['login_url']!r}"
         )
 
@@ -164,12 +164,12 @@ class TestOAuthRedirectUriRespectsPrefix:
         """The IDP returns the user to the redirect_uri we sent. If we
         don't include the prefix, the IDP redirects to
         ``https://mission-control.tilos.com/auth/callback`` instead of
-        ``https://mission-control.tilos.com/hermes/auth/callback`` — the
+        ``https://mission-control.tilos.com/eco/auth/callback`` — the
         former routes to the MC frontend, not the dashboard, so the
         user gets 404."""
         r = gated_app_proxied.get(
             "/auth/login?provider=stub",
-            headers={"x-forwarded-prefix": "/hermes"},
+            headers={"x-forwarded-prefix": "/eco"},
             follow_redirects=False,
         )
         assert r.status_code == 302
@@ -185,7 +185,7 @@ class TestOAuthRedirectUriRespectsPrefix:
         parsed = urlparse(redirect_uri)
         assert parsed.scheme == "https"
         assert parsed.netloc == "mission-control.tilos.com"
-        assert parsed.path == "/hermes/auth/callback", (
+        assert parsed.path == "/eco/auth/callback", (
             f"redirect_uri dropped prefix: {redirect_uri!r}"
         )
 
@@ -234,7 +234,7 @@ class TestPublicUrlOverride:
 
     @pytest.fixture
     def patch_config(self, monkeypatch):
-        """Replace ``hermes_cli.config.load_config`` with a stub
+        """Replace ``eco_cli.config.load_config`` with a stub
         returning the given ``public_url``. Pass ``None`` to set no
         config-side value."""
 
@@ -243,7 +243,7 @@ class TestPublicUrlOverride:
             if public_url is not None:
                 cfg = {"dashboard": {"public_url": public_url}}
             monkeypatch.setattr(
-                "hermes_cli.config.load_config", lambda: cfg
+                "eco_cli.config.load_config", lambda: cfg
             )
 
         return _set
@@ -303,15 +303,15 @@ class TestPublicUrlOverride:
         self, gated_app_direct, patch_config, monkeypatch
     ):
         """When public_url already carries a path prefix
-        (``https://example.com/hermes``), the OAuth callback URL is
+        (``https://example.com/eco``), the OAuth callback URL is
         the path appended verbatim. The operator is declaring the
         whole authority; we trust them."""
         patch_config(None)
         monkeypatch.setenv(
-            "HERMES_DASHBOARD_PUBLIC_URL", "https://example.com/hermes",
+            "HERMES_DASHBOARD_PUBLIC_URL", "https://example.com/eco",
         )
         redirect_uri = self._redirect_uri(gated_app_direct)
-        assert redirect_uri == "https://example.com/hermes/auth/callback"
+        assert redirect_uri == "https://example.com/eco/auth/callback"
 
     def test_public_url_ignores_x_forwarded_prefix(
         self, gated_app_proxied, patch_config, monkeypatch
@@ -410,16 +410,16 @@ class TestCookiePathRespectsPrefix:
     def test_pkce_cookie_uses_prefix_path(self, gated_app_proxied):
         r = gated_app_proxied.get(
             "/auth/login?provider=stub",
-            headers={"x-forwarded-prefix": "/hermes"},
+            headers={"x-forwarded-prefix": "/eco"},
             follow_redirects=False,
         )
         cookies = r.headers.get_list("set-cookie")
-        pkce = next(c for c in cookies if "hermes_session_pkce" in c)
+        pkce = next(c for c in cookies if "eco_session_pkce" in c)
         # Browser only sends cookie back if the request path is under
-        # the cookie's Path attribute, so we need /hermes here. Bare
+        # the cookie's Path attribute, so we need /eco here. Bare
         # /-rooted cookies would still be sent but would also be sent
         # to /billing/... etc.
-        assert "Path=/hermes" in pkce, (
+        assert "Path=/eco" in pkce, (
             f"PKCE cookie has wrong Path: {pkce!r}"
         )
 
@@ -432,14 +432,14 @@ class TestCookiePathRespectsPrefix:
         """
         r = gated_app_proxied.get(
             "/auth/login?provider=stub",
-            headers={"x-forwarded-prefix": "/hermes"},
+            headers={"x-forwarded-prefix": "/eco"},
             follow_redirects=False,
         )
         cookies = r.headers.get_list("set-cookie")
         # The PKCE cookie name carries the __Secure- prefix.
         pkce_candidates = [
             c for c in cookies
-            if c.startswith("__Secure-hermes_session_pkce=")
+            if c.startswith("__Secure-eco_session_pkce=")
         ]
         assert pkce_candidates, (
             f"PKCE cookie missing __Secure- prefix: {cookies!r}"
@@ -458,7 +458,7 @@ class TestCookiePathRespectsPrefix:
         cookies = r.headers.get_list("set-cookie")
         pkce_candidates = [
             c for c in cookies
-            if c.startswith("__Host-hermes_session_pkce=")
+            if c.startswith("__Host-eco_session_pkce=")
         ]
         assert pkce_candidates, (
             f"PKCE cookie missing __Host- prefix on direct deploy: "
@@ -476,7 +476,7 @@ class TestCookiePathRespectsPrefix:
         spec-compatible without Secure."""
         from fastapi import FastAPI
         from fastapi.responses import Response
-        from hermes_cli.dashboard_auth.cookies import set_pkce_cookie
+        from eco_cli.dashboard_auth.cookies import set_pkce_cookie
 
         app = FastAPI()
 
@@ -490,7 +490,7 @@ class TestCookiePathRespectsPrefix:
         r = client.get("/set")
         cookies = r.headers.get_list("set-cookie")
         # Bare cookie name, no prefix.
-        assert any(c.startswith("hermes_session_pkce=") for c in cookies), (
+        assert any(c.startswith("eco_session_pkce=") for c in cookies), (
             f"Loopback cookie should be bare-named: {cookies!r}"
         )
         # And no __Host- / __Secure- variant accidentally emitted.
@@ -504,16 +504,16 @@ class TestCookiePathRespectsPrefix:
     ):
         """The end-to-end property: after a successful OAuth round
         trip via the proxy, the session-AT cookie carries the
-        __Secure- prefix AND Path=/hermes, so the next request under
+        __Secure- prefix AND Path=/eco, so the next request under
         the same prefix is authenticated.
 
         Note on TestClient semantics: starlette's TestClient sees the
         literal request path (``/auth/login``, ``/auth/callback``) —
         not the public path the proxy displays to the browser
-        (``/hermes/auth/login``, ``/hermes/auth/callback``). A cookie
-        set with ``Path=/hermes`` would therefore NOT be sent back on
+        (``/eco/auth/login``, ``/eco/auth/callback``). A cookie
+        set with ``Path=/eco`` would therefore NOT be sent back on
         the second request through TestClient even though it WOULD be
-        sent by a real browser hitting ``/hermes/auth/callback``. To
+        sent by a real browser hitting ``/eco/auth/callback``. To
         avoid baking that mismatch into the test, we inspect the
         ``Set-Cookie`` header on the callback's response WITHOUT
         depending on the PKCE cookie round-tripping through
@@ -523,24 +523,24 @@ class TestCookiePathRespectsPrefix:
         # /auth/login sets the PKCE cookie. Capture it from Set-Cookie.
         r1 = gated_app_proxied.get(
             "/auth/login?provider=stub",
-            headers={"x-forwarded-prefix": "/hermes"},
+            headers={"x-forwarded-prefix": "/eco"},
             follow_redirects=False,
         )
         pkce_set = next(
             c for c in r1.headers.get_list("set-cookie")
-            if "hermes_session_pkce" in c
+            if "eco_session_pkce" in c
         )
-        # Parse "__Secure-hermes_session_pkce=...; HttpOnly; ...".
-        pkce_kv = pkce_set.split(";", 1)[0]  # "__Secure-hermes_session_pkce=value"
+        # Parse "__Secure-eco_session_pkce=...; HttpOnly; ...".
+        pkce_kv = pkce_set.split(";", 1)[0]  # "__Secure-eco_session_pkce=value"
         state = r1.headers["location"].split("state=")[1]
 
         # Round-trip the cookie by hand because TestClient's jar won't
-        # automatically send a Path=/hermes cookie to a /auth/callback
+        # automatically send a Path=/eco cookie to a /auth/callback
         # request path.
         r2 = gated_app_proxied.get(
             f"/auth/callback?code=stub_code&state={state}",
             headers={
-                "x-forwarded-prefix": "/hermes",
+                "x-forwarded-prefix": "/eco",
                 "cookie": pkce_kv,
             },
             follow_redirects=False,
@@ -549,11 +549,11 @@ class TestCookiePathRespectsPrefix:
         cookies = r2.headers.get_list("set-cookie")
         at_cookies = [
             c for c in cookies
-            if c.startswith("__Secure-hermes_session_at=")
+            if c.startswith("__Secure-eco_session_at=")
         ]
         assert at_cookies, (
             f"session_at missing __Secure- prefix: {cookies!r}"
         )
-        assert "Path=/hermes" in at_cookies[0]
+        assert "Path=/eco" in at_cookies[0]
         assert "Secure" in at_cookies[0]
         assert "HttpOnly" in at_cookies[0]

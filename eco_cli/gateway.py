@@ -5150,10 +5150,10 @@ def _maybe_redirect_run_to_s6_supervision(args) -> bool:
 
       1. ``_dispatch_via_service_manager_if_s6`` returns False unless
          we're in a container with s6 as PID 1. Host runs of
-         ``hermes gateway run`` are unaffected.
+         ``eco gateway run`` are unaffected.
       2. ``HERMES_S6_SUPERVISED_CHILD`` is exported by
          ``S6ServiceManager._render_run_script`` for the supervised
-         process itself — i.e. when s6-supervise execs ``hermes gateway
+         process itself — i.e. when s6-supervise execs ``eco gateway
          run --replace`` as a longrun, this guard short-circuits the
          redirect so the supervised gateway actually runs in
          foreground (otherwise we'd recurse: run → start → run → start
@@ -5194,8 +5194,8 @@ def _maybe_redirect_run_to_s6_supervision(args) -> bool:
     # Block until the container is signalled. The supervised gateway's
     # lifetime is independent of this process — s6-supervise restarts
     # it on crash, and we don't want the container to exit when the
-    # gateway flaps. `sleep infinity` matches the static main-hermes
-    # service's pattern (see docker/s6-rc.d/main-hermes/run): the CMD
+    # gateway flaps. `sleep infinity` matches the static main-eco
+    # service's pattern (see docker/s6-rc.d/main-eco/run): the CMD
     # process is a no-op heartbeat that keeps /init alive until
     # `docker stop` sends SIGTERM, at which point /init runs stage 3
     # shutdown (which tears down the supervised gateway cleanly).

@@ -1,8 +1,8 @@
-"""Centralized logging setup for Hermes Agent.
+"""Centralized logging setup for ECO Agent.
 
 Provides a single ``setup_logging()`` entry point that both the CLI and
 gateway call early in their startup path.  All log files live under
-``~/.hermes/logs/`` (profile-aware via ``get_hermes_home()``).
+``~/.eco/logs/`` (profile-aware via ``get_eco_home()``).
 
 Log files produced:
     agent.log   — INFO+, all agent/tool/session activity (the main log)
@@ -30,7 +30,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional, Sequence
 
-from hermes_constants import get_config_path, get_hermes_home
+from eco_constants import get_config_path, get_eco_home
 
 # Sentinel to track whether setup_logging() has already run.  The function
 # is idempotent — calling it twice is safe but the second call is a no-op
@@ -101,7 +101,7 @@ def _install_session_record_factory() -> None:
     the module is reloaded.
     """
     current_factory = logging.getLogRecordFactory()
-    if getattr(current_factory, "_hermes_session_injector", False):
+    if getattr(current_factory, "_eco_session_injector", False):
         return  # already installed
 
     def _session_record_factory(*args, **kwargs):
@@ -110,7 +110,7 @@ def _install_session_record_factory() -> None:
         record.session_tag = f" [{sid}]" if sid else ""  # type: ignore[attr-defined]
         return record
 
-    _session_record_factory._hermes_session_injector = True  # type: ignore[attr-defined]
+    _session_record_factory._eco_session_injector = True  # type: ignore[attr-defined]
     logging.setLogRecordFactory(_session_record_factory)
 
 
@@ -139,12 +139,12 @@ class _ComponentFilter(logging.Filter):
 
 
 # Logger name prefixes that belong to each component.
-# Used by _ComponentFilter and exposed for ``hermes logs --component``.
+# Used by _ComponentFilter and exposed for ``eco logs --component``.
 COMPONENT_PREFIXES = {
-    "gateway": ("gateway", "hermes_plugins"),
+    "gateway": ("gateway", "eco_plugins"),
     "agent": ("agent", "run_agent", "model_tools", "batch_runner"),
     "tools": ("tools",),
-    "cli": ("hermes_cli", "cli"),
+    "cli": ("eco_cli", "cli"),
     "cron": ("cron",),
 }
 
@@ -155,23 +155,23 @@ COMPONENT_PREFIXES = {
 
 def setup_logging(
     *,
-    hermes_home: Optional[Path] = None,
+    eco_home: Optional[Path] = None,
     log_level: Optional[str] = None,
     max_size_mb: Optional[int] = None,
     backup_count: Optional[int] = None,
     mode: Optional[str] = None,
     force: bool = False,
 ) -> Path:
-    """Configure the Hermes logging subsystem.
+    """Configure the ECO logging subsystem.
 
     Safe to call multiple times — the second call is a no-op unless
     *force* is ``True``.
 
     Parameters
     ----------
-    hermes_home
-        Override for the Hermes home directory.  Falls back to
-        ``get_hermes_home()`` (profile-aware).
+    eco_home
+        Override for the ECO home directory.  Falls back to
+        ``get_eco_home()`` (profile-aware).
     log_level
         Minimum level for the ``agent.log`` file handler.  Accepts any
         standard Python level name (``"DEBUG"``, ``"INFO"``, ``"WARNING"``).
@@ -195,7 +195,7 @@ def setup_logging(
         The ``logs/`` directory where files are written.
     """
     global _logging_initialized
-    home = hermes_home or get_hermes_home()
+    home = eco_home or get_eco_home()
     log_dir = home / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -271,13 +271,13 @@ def setup_verbose_logging() -> None:
     # Avoid adding duplicate stream handlers.
     for h in root.handlers:
         if isinstance(h, logging.StreamHandler) and not isinstance(h, RotatingFileHandler):
-            if getattr(h, "_hermes_verbose", False):
+            if getattr(h, "_eco_verbose", False):
                 return
 
     handler = logging.StreamHandler()
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(RedactingFormatter(_LOG_FORMAT_VERBOSE, datefmt="%H:%M:%S"))
-    handler._hermes_verbose = True  # type: ignore[attr-defined]
+    handler._eco_verbose = True  # type: ignore[attr-defined]
     root.addHandler(handler)
 
     # Lower root logger level so DEBUG records reach all handlers.
@@ -302,7 +302,7 @@ class _ManagedRotatingFileHandler(RotatingFileHandler):
     Two responsibilities:
 
     1.  In managed mode (NixOS), the stateDir uses setgid (2770) so new files
-        inherit the hermes group. However, both ``_open()`` (initial creation)
+        inherit the eco group. However, both ``_open()`` (initial creation)
         and ``doRollover()`` create files via ``open()``, which uses the
         process umask — typically 0022, producing 0644. This subclass applies
         ``chmod 0660`` after both operations so the gateway and interactive
@@ -321,7 +321,7 @@ class _ManagedRotatingFileHandler(RotatingFileHandler):
     """
 
     def __init__(self, *args, **kwargs):
-        from hermes_cli.config import is_managed
+        from eco_cli.config import is_managed
         self._managed = is_managed()
         super().__init__(*args, **kwargs)
         # Snapshot the inode of the currently open stream so emit() can

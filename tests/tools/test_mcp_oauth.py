@@ -30,7 +30,7 @@ from tools.mcp_oauth import (
 # HermesTokenStorage
 # ---------------------------------------------------------------------------
 
-class TestHermesTokenStorage:
+class TestECOTokenStorage:
     def test_roundtrip_tokens(self, tmp_path, monkeypatch):
         monkeypatch.setenv("HERMES_HOME", str(tmp_path))
         storage = HermesTokenStorage("test-server")
@@ -95,7 +95,7 @@ class TestHermesTokenStorage:
 
         mock_client = MagicMock()
         mock_client.model_dump.return_value = {
-            "client_id": "hermes-123",
+            "client_id": "eco-123",
             "client_secret": "secret",
         }
         asyncio.run(storage.set_client_info(mock_client))
@@ -596,7 +596,7 @@ def test_build_oauth_auth_preserves_server_url_path():
     breaking RFC 9728 protected-resource validation against servers whose PRM
     advertises a path-scoped resource (Notion). The MCP SDK strips the path
     itself for authorization-server discovery via
-    ``OAuthContext.get_authorization_base_url``; Hermes must not pre-strip.
+    ``OAuthContext.get_authorization_base_url``; ECO must not pre-strip.
     """
     from tools import mcp_oauth
 
@@ -776,7 +776,7 @@ class TestPasteCallbackSkipToken:
         _paste_callback_reader(result)
         err = capsys.readouterr().err
         assert "OAuth skipped" in err
-        assert "hermes mcp login" in err
+        assert "eco mcp login" in err
 
     def test_skip_does_not_overwrite_http_winner(self, monkeypatch):
         """If HTTP listener already wrote a code, `skip` must not stomp it."""

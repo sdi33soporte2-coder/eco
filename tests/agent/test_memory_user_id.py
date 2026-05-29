@@ -165,8 +165,8 @@ class TestMem0UserIdScoping:
         # Mock _load_config to return a config with default user_id
         with patch("plugins.memory.mem0._load_config", return_value={
             "api_key": "test-key",
-            "user_id": "hermes-user",
-            "agent_id": "hermes",
+            "user_id": "eco-user",
+            "agent_id": "eco",
             "rerank": True,
         }):
             provider.initialize(session_id="test-sess", user_id="tg_user_99")
@@ -181,26 +181,26 @@ class TestMem0UserIdScoping:
         with patch("plugins.memory.mem0._load_config", return_value={
             "api_key": "test-key",
             "user_id": "custom-default",
-            "agent_id": "hermes",
+            "agent_id": "eco",
             "rerank": True,
         }):
             provider.initialize(session_id="test-sess")
 
         assert provider._user_id == "custom-default"
 
-    def test_no_user_id_no_config_uses_hermes_user(self):
-        """Without user_id or config override, should default to 'hermes-user'."""
+    def test_no_user_id_no_config_uses_eco_user(self):
+        """Without user_id or config override, should default to 'eco-user'."""
         from plugins.memory.mem0 import Mem0MemoryProvider
 
         provider = Mem0MemoryProvider()
         with patch("plugins.memory.mem0._load_config", return_value={
             "api_key": "test-key",
-            "agent_id": "hermes",
+            "agent_id": "eco",
             "rerank": True,
         }):
             provider.initialize(session_id="test-sess")
 
-        assert provider._user_id == "hermes-user"
+        assert provider._user_id == "eco-user"
 
     def test_different_users_get_different_ids(self):
         """Two providers initialized with different user_ids should be scoped differently."""
@@ -211,8 +211,8 @@ class TestMem0UserIdScoping:
 
         with patch("plugins.memory.mem0._load_config", return_value={
             "api_key": "test-key",
-            "user_id": "hermes-user",
-            "agent_id": "hermes",
+            "user_id": "eco-user",
+            "agent_id": "eco",
             "rerank": True,
         }):
             p1.initialize(session_id="sess-1", user_id="alice_123")
@@ -248,7 +248,7 @@ class TestHonchoUserIdScoping:
         mock_cfg.dialectic_depth = 1
         mock_cfg.dialectic_depth_levels = None
         mock_cfg.init_on_session_start = False
-        mock_cfg.ai_peer = "hermes"
+        mock_cfg.ai_peer = "eco"
         mock_cfg.resolve_session_name.return_value = "test-sess"
         mock_cfg.session_strategy = "shared"
 
@@ -279,7 +279,7 @@ class TestHonchoUserIdScoping:
 
         mock_cfg = MagicMock()
         mock_cfg.peer_name = "static-user"
-        mock_cfg.ai_peer = "hermes"
+        mock_cfg.ai_peer = "eco"
         mock_cfg.write_frequency = "sync"
         mock_cfg.dialectic_reasoning_level = "low"
         mock_cfg.dialectic_dynamic = True

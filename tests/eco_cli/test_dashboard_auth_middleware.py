@@ -24,10 +24,10 @@ import pytest
 pytestmark = pytest.mark.xdist_group("dashboard_auth_app_state")
 from fastapi.testclient import TestClient
 
-from hermes_cli import web_server
-from hermes_cli.dashboard_auth import clear_providers, register_provider
-from hermes_cli.dashboard_auth.cookies import SESSION_AT_COOKIE
-from tests.hermes_cli.conftest_dashboard_auth import StubAuthProvider
+from eco_cli import web_server
+from eco_cli.dashboard_auth import clear_providers, register_provider
+from eco_cli.dashboard_auth.cookies import SESSION_AT_COOKIE
+from tests.eco_cli.conftest_dashboard_auth import StubAuthProvider
 
 
 @pytest.fixture
@@ -156,7 +156,7 @@ def test_full_login_round_trip_unlocks_gated_api(gated_app):
     assert r1.status_code == 302
     pkce = next(
         (c for c in r1.headers.get_list("set-cookie")
-         if "hermes_session_pkce" in c),
+         if "eco_session_pkce" in c),
         None,
     )
     assert pkce and "HttpOnly" in pkce
@@ -176,8 +176,8 @@ def test_full_login_round_trip_unlocks_gated_api(gated_app):
     assert r2.status_code == 302
     assert r2.headers["location"] == "/"
     set_cookies = r2.headers.get_list("set-cookie")
-    assert any("hermes_session_at" in c for c in set_cookies)
-    assert any("hermes_session_rt" in c for c in set_cookies)
+    assert any("eco_session_at" in c for c in set_cookies)
+    assert any("eco_session_rt" in c for c in set_cookies)
 
     # 3) A gated API route (``/api/sessions``) now succeeds because we
     #    have a valid session cookie. (We deliberately don't probe
@@ -259,11 +259,11 @@ def test_logout_clears_cookies_and_redirects_to_login(gated_app):
     assert r.headers["location"] == "/login"
     set_cookies = r.headers.get_list("set-cookie")
     assert any(
-        c.startswith("hermes_session_at=") and "Max-Age=0" in c
+        c.startswith("eco_session_at=") and "Max-Age=0" in c
         for c in set_cookies
     )
     assert any(
-        c.startswith("hermes_session_rt=") and "Max-Age=0" in c
+        c.startswith("eco_session_rt=") and "Max-Age=0" in c
         for c in set_cookies
     )
 

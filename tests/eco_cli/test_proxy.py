@@ -1,4 +1,4 @@
-"""Tests for the `hermes proxy` subcommand and its upstream adapters."""
+"""Tests for the `eco proxy` subcommand and its upstream adapters."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from hermes_cli.proxy.adapters import ADAPTERS, get_adapter
-from hermes_cli.proxy.adapters.base import UpstreamAdapter, UpstreamCredential
-from hermes_cli.proxy.adapters.nous_portal import NousPortalAdapter
-from hermes_cli.proxy.adapters.xai import XAIGrokAdapter
+from eco_cli.proxy.adapters import ADAPTERS, get_adapter
+from eco_cli.proxy.adapters.base import UpstreamAdapter, UpstreamCredential
+from eco_cli.proxy.adapters.nous_portal import NousPortalAdapter
+from eco_cli.proxy.adapters.xai import XAIGrokAdapter
 
 
 # ---------------------------------------------------------------------------
@@ -58,9 +58,9 @@ def test_get_adapter_unknown_provider_raises():
 # ---------------------------------------------------------------------------
 
 
-def _write_auth_store(hermes_home: Path, nous_state: Dict[str, Any]) -> Path:
+def _write_auth_store(eco_home: Path, nous_state: Dict[str, Any]) -> Path:
     """Write an auth.json with the given nous state into a hermetic HERMES_HOME."""
-    auth_path = hermes_home / "auth.json"
+    auth_path = eco_home / "auth.json"
     auth_path.write_text(json.dumps({
         "version": 1,
         "providers": {"nous": nous_state},
@@ -119,7 +119,7 @@ def test_nous_adapter_get_credential_uses_runtime_resolver(tmp_path, monkeypatch
     _write_auth_store(tmp_path, {
         "access_token": "access-tok",
         "refresh_token": "refresh-tok",
-        "client_id": "hermes-cli",
+        "client_id": "eco-cli",
         "portal_base_url": "https://portal.nousresearch.com",
         "inference_base_url": "https://inference-api.nousresearch.com/v1",
     })
@@ -131,7 +131,7 @@ def test_nous_adapter_get_credential_uses_runtime_resolver(tmp_path, monkeypatch
     }
 
     with patch(
-        "hermes_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
+        "eco_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
         return_value=refreshed_state,
     ) as mock_resolve:
         adapter = NousPortalAdapter()
@@ -149,7 +149,7 @@ def test_nous_adapter_retry_credential_force_refreshes_on_jwt_401(tmp_path, monk
     _write_auth_store(tmp_path, {
         "access_token": "jwt-access",
         "refresh_token": "refresh-tok",
-        "client_id": "hermes-cli",
+        "client_id": "eco-cli",
         "portal_base_url": "https://portal.nousresearch.com",
         "inference_base_url": "https://inference-api.nousresearch.com/v1",
         "agent_key": "jwt-access",
@@ -161,7 +161,7 @@ def test_nous_adapter_retry_credential_force_refreshes_on_jwt_401(tmp_path, monk
     }
 
     with patch(
-        "hermes_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
+        "eco_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
         return_value=refreshed_state,
     ) as mock_resolve:
         adapter = NousPortalAdapter()
@@ -187,7 +187,7 @@ def test_nous_adapter_retry_credential_skips_non_401(tmp_path, monkeypatch):
     })
 
     with patch(
-        "hermes_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
+        "eco_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
     ) as mock_resolve:
         adapter = NousPortalAdapter()
         cred = adapter.get_retry_credential(
@@ -205,7 +205,7 @@ def test_nous_adapter_retry_credential_skips_non_401(tmp_path, monkeypatch):
 def test_nous_adapter_get_credential_raises_when_not_logged_in(tmp_path, monkeypatch):
     monkeypatch.setenv("HERMES_HOME", str(tmp_path))
     adapter = NousPortalAdapter()
-    with pytest.raises(RuntimeError, match="hermes auth add nous"):
+    with pytest.raises(RuntimeError, match="eco auth add nous"):
         adapter.get_credential()
 
 
@@ -217,7 +217,7 @@ def test_nous_adapter_get_credential_raises_on_refresh_failure(tmp_path, monkeyp
     })
 
     with patch(
-        "hermes_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
+        "eco_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
         side_effect=RuntimeError("Refresh session has been revoked"),
     ):
         adapter = NousPortalAdapter()
@@ -226,7 +226,7 @@ def test_nous_adapter_get_credential_raises_on_refresh_failure(tmp_path, monkeyp
 
 
 def test_nous_adapter_quarantines_terminal_refresh_failure(tmp_path, monkeypatch):
-    from hermes_cli.auth import AuthError
+    from eco_cli.auth import AuthError
     from agent.credential_pool import load_pool
 
     monkeypatch.setenv("HERMES_HOME", str(tmp_path))
@@ -238,7 +238,7 @@ def test_nous_adapter_quarantines_terminal_refresh_failure(tmp_path, monkeypatch
     assert load_pool("nous").select() is not None
 
     with patch(
-        "hermes_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
+        "eco_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
         side_effect=AuthError(
             "Refresh session has been revoked",
             provider="nous",
@@ -268,7 +268,7 @@ def test_nous_adapter_get_credential_raises_when_no_jwt_returned(tmp_path, monke
     })
 
     with patch(
-        "hermes_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
+        "eco_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
         return_value={"access_token": "a", "refresh_token": "r"},
     ):
         adapter = NousPortalAdapter()
@@ -321,7 +321,7 @@ def test_nous_adapter_concurrent_refresh_serialized(tmp_path, monkeypatch):
             errors.append(exc)
 
     with patch(
-        "hermes_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
+        "eco_cli.proxy.adapters.nous_portal.resolve_nous_runtime_credentials",
         side_effect=serializing_refresh,
     ):
         threads = [threading.Thread(target=worker) for _ in range(3)]
@@ -343,7 +343,7 @@ def test_nous_adapter_concurrent_refresh_serialized(tmp_path, monkeypatch):
 
 
 def _write_xai_pool_entry(
-    hermes_home: Path,
+    eco_home: Path,
     *,
     access_token: str = "xai-access-token",
     refresh_token: str = "xai-refresh-token",
@@ -351,7 +351,7 @@ def _write_xai_pool_entry(
     source: str = "manual:xai_pkce",
 ) -> Path:
     """Write an xai-oauth pool entry into a hermetic HERMES_HOME."""
-    auth_path = hermes_home / "auth.json"
+    auth_path = eco_home / "auth.json"
     auth_path.write_text(json.dumps({
         "version": 1,
         "providers": {},
@@ -435,7 +435,7 @@ def test_xai_adapter_retry_refreshes_current_pool_entry(tmp_path, monkeypatch):
             "last_refresh": "2026-05-19T00:00:00Z",
         }
 
-    monkeypatch.setattr("hermes_cli.auth.refresh_xai_oauth_pure", fake_refresh)
+    monkeypatch.setattr("eco_cli.auth.refresh_xai_oauth_pure", fake_refresh)
 
     adapter = XAIGrokAdapter()
     failed = adapter.get_credential()
@@ -499,7 +499,7 @@ def test_xai_adapter_retry_rotates_pool_entry_on_429(tmp_path, monkeypatch):
     def _refresh_must_not_run(*args, **kwargs):
         raise AssertionError("refresh_xai_oauth_pure must not run on 429")
 
-    monkeypatch.setattr("hermes_cli.auth.refresh_xai_oauth_pure", _refresh_must_not_run)
+    monkeypatch.setattr("eco_cli.auth.refresh_xai_oauth_pure", _refresh_must_not_run)
 
     adapter = XAIGrokAdapter()
     failed = adapter.get_credential()
@@ -526,7 +526,7 @@ def test_xai_adapter_retry_returns_none_on_429_when_pool_exhausted(tmp_path, mon
     def _refresh_must_not_run(*args, **kwargs):
         raise AssertionError("refresh_xai_oauth_pure must not run on 429")
 
-    monkeypatch.setattr("hermes_cli.auth.refresh_xai_oauth_pure", _refresh_must_not_run)
+    monkeypatch.setattr("eco_cli.auth.refresh_xai_oauth_pure", _refresh_must_not_run)
 
     adapter = XAIGrokAdapter()
     failed = adapter.get_credential()
@@ -550,7 +550,7 @@ def test_xai_adapter_retry_returns_none_for_unrelated_status(tmp_path, monkeypat
     def _refresh_must_not_run(*args, **kwargs):
         raise AssertionError("refresh_xai_oauth_pure must not run on non-retry status")
 
-    monkeypatch.setattr("hermes_cli.auth.refresh_xai_oauth_pure", _refresh_must_not_run)
+    monkeypatch.setattr("eco_cli.auth.refresh_xai_oauth_pure", _refresh_must_not_run)
 
     adapter = XAIGrokAdapter()
     failed = adapter.get_credential()
@@ -574,7 +574,7 @@ def test_xai_adapter_retry_returns_none_for_unrelated_status(tmp_path, monkeypat
 aiohttp = pytest.importorskip("aiohttp")
 from aiohttp import web  # noqa: E402
 
-from hermes_cli.proxy.server import create_app  # noqa: E402
+from eco_cli.proxy.server import create_app  # noqa: E402
 
 
 class FakeAdapter(UpstreamAdapter):
@@ -692,7 +692,7 @@ def test_server_forwards_chat_completions():
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{proxy_base}/v1/chat/completions",
-                    json={"model": "Hermes-4-70B",
+                    json={"model": "ECO-4-70B",
                           "messages": [{"role": "user", "content": "hi"}]},
                     headers={"Authorization": "Bearer client-dummy-key"},
                 ) as resp:
@@ -703,7 +703,7 @@ def test_server_forwards_chat_completions():
             assert len(captured["requests"]) == 1
             req = captured["requests"][0]
             assert req["auth"] == "Bearer real-portal-key"
-            assert "Hermes-4-70B" in req["body"]
+            assert "ECO-4-70B" in req["body"]
         finally:
             await proxy_runner.cleanup()
             await upstream_runner.cleanup()
@@ -728,7 +728,7 @@ def test_server_retries_once_with_adapter_retry_credential_on_401():
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     f"{proxy_base}/v1/chat/completions",
-                    json={"model": "Hermes-4-70B"},
+                    json={"model": "ECO-4-70B"},
                 ) as resp:
                     assert resp.status == 200
                     data = await resp.json()
@@ -852,7 +852,7 @@ def test_server_strips_client_auth_header():
 
 def test_cmd_proxy_status_runs(capsys, tmp_path, monkeypatch):
     monkeypatch.setenv("HERMES_HOME", str(tmp_path))
-    from hermes_cli.proxy.cli import cmd_proxy_status
+    from eco_cli.proxy.cli import cmd_proxy_status
 
     args = MagicMock()
     rc = cmd_proxy_status(args)
@@ -864,7 +864,7 @@ def test_cmd_proxy_status_runs(capsys, tmp_path, monkeypatch):
 
 
 def test_cmd_proxy_providers_runs(capsys):
-    from hermes_cli.proxy.cli import cmd_proxy_list_providers
+    from eco_cli.proxy.cli import cmd_proxy_list_providers
 
     args = MagicMock()
     rc = cmd_proxy_list_providers(args)
@@ -875,7 +875,7 @@ def test_cmd_proxy_providers_runs(capsys):
 
 
 def test_cmd_proxy_start_refuses_unknown_provider(capsys):
-    from hermes_cli.proxy.cli import cmd_proxy_start
+    from eco_cli.proxy.cli import cmd_proxy_start
 
     args = MagicMock()
     args.provider = "no-such-provider"
@@ -889,7 +889,7 @@ def test_cmd_proxy_start_refuses_unknown_provider(capsys):
 
 def test_cmd_proxy_start_refuses_when_unauthenticated(capsys, tmp_path, monkeypatch):
     monkeypatch.setenv("HERMES_HOME", str(tmp_path))
-    from hermes_cli.proxy.cli import cmd_proxy_start
+    from eco_cli.proxy.cli import cmd_proxy_start
 
     args = MagicMock()
     args.provider = "nous"
@@ -898,4 +898,4 @@ def test_cmd_proxy_start_refuses_when_unauthenticated(capsys, tmp_path, monkeypa
     rc = cmd_proxy_start(args)
     assert rc == 2
     err = capsys.readouterr().err
-    assert "hermes auth add nous" in err
+    assert "eco auth add nous" in err

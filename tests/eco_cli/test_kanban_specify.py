@@ -1,4 +1,4 @@
-"""Tests for the specifier module + `hermes kanban specify` CLI surface.
+"""Tests for the specifier module + `eco kanban specify` CLI surface.
 
 The auxiliary LLM client is mocked — these tests don't hit any network or
 real provider. They exercise the prompt plumbing, response parsing, DB
@@ -14,14 +14,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from hermes_cli import kanban as kanban_cli
-from hermes_cli import kanban_db as kb
-from hermes_cli import kanban_specify as spec
+from eco_cli import kanban as kanban_cli
+from eco_cli import kanban_db as kb
+from eco_cli import kanban_specify as spec
 
 
 @pytest.fixture
 def kanban_home(tmp_path, monkeypatch):
-    home = tmp_path / ".hermes"
+    home = tmp_path / ".eco"
     home.mkdir()
     monkeypatch.setenv("HERMES_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -219,7 +219,7 @@ def test_list_triage_ids(kanban_home):
 # ---------------------------------------------------------------------------
 
 def _run_cli(*argv: str) -> int:
-    """Invoke the `hermes kanban …` argparse surface directly."""
+    """Invoke the `eco kanban …` argparse surface directly."""
     root = argparse.ArgumentParser()
     subp = root.add_subparsers(dest="cmd")
     kanban_cli.build_parser(subp)

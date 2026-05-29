@@ -1,15 +1,15 @@
 """Cookie helpers for dashboard auth.
 
 Three cookies in play:
-  - hermes_session_at:   the OAuth access token
+  - eco_session_at:   the OAuth access token
                          (HttpOnly, lifetime = token TTL)
-  - hermes_session_rt:   the OAuth refresh token
+  - eco_session_rt:   the OAuth refresh token
                          (HttpOnly, lifetime = 30 days)
                          **DEPRECATED in OAuth contract v1** — Nous Portal
                          does not issue refresh tokens; we keep the cookie
                          name and clear semantics for forward compatibility
                          and to flush stale cookies from old browsers.
-  - hermes_session_pkce: short-lived PKCE state + CSRF nonce + provider
+  - eco_session_pkce: short-lived PKCE state + CSRF nonce + provider
                          hint (HttpOnly, lifetime = 10 minutes)
 
 All three are ``SameSite=Lax`` (browser will send on cross-site GET
@@ -29,15 +29,15 @@ https://datatracker.ietf.org/doc/html/draft-west-cookie-prefixes):
   * Gated HTTPS, direct deploy (Path=/) — ``__Host-`` prefix. Binds the
     cookie to the exact origin (no Domain attribute) — strongest spec
     guarantee.
-  * Gated HTTPS, behind a reverse-proxy prefix (Path=/hermes) —
+  * Gated HTTPS, behind a reverse-proxy prefix (Path=/eco) —
     ``__Secure-`` prefix. ``__Host-`` is disallowed when Path != "/";
     ``__Secure-`` keeps the Secure-required hardening without the
-    Path constraint, and the explicit ``Path=/hermes`` covers
+    Path constraint, and the explicit ``Path=/eco`` covers
     same-origin app isolation.
 
 The setters and readers BOTH consult the active prefix because the
 cookie *name* changes — a reader that looked up the bare name when the
-setter wrote ``__Secure-hermes_session_at`` would never find the value.
+setter wrote ``__Secure-eco_session_at`` would never find the value.
 
 .. deprecated:: contract v1
    ``set_session_cookies`` accepts ``refresh_token=""`` (the contract-v1
@@ -57,9 +57,9 @@ from fastapi.responses import Response
 # Bare cookie names — the request-scoped ``_resolved_name`` helper
 # decides whether to prepend ``__Host-`` / ``__Secure-`` based on the
 # request's HTTPS + prefix combination.
-SESSION_AT_COOKIE = "hermes_session_at"
-SESSION_RT_COOKIE = "hermes_session_rt"
-PKCE_COOKIE = "hermes_session_pkce"
+SESSION_AT_COOKIE = "eco_session_at"
+SESSION_RT_COOKIE = "eco_session_rt"
+PKCE_COOKIE = "eco_session_pkce"
 
 # Possible name variants we may have to read back. Sorted so most-strict
 # wins on iteration when both happen to be present (shouldn't happen in
@@ -89,7 +89,7 @@ def _resolved_name(bare: str, *, use_https: bool, prefix: str) -> str:
 def _cookie_path(prefix: str) -> str:
     """Cookie ``Path`` attribute for the active deploy shape.
 
-    Under ``X-Forwarded-Prefix: /hermes`` we want ``Path=/hermes`` so:
+    Under ``X-Forwarded-Prefix: /eco`` we want ``Path=/eco`` so:
       a) the browser sends the cookie back on requests under the prefix
          (browsers omit the cookie if request path doesn't start with
          Path);
@@ -132,7 +132,7 @@ def set_session_cookies(
     persist anything. If a future contract revision starts emitting refresh
     tokens, this helper will write the RT cookie again with no other change.
 
-    ``prefix`` is the normalised X-Forwarded-Prefix value (e.g. ``/hermes``)
+    ``prefix`` is the normalised X-Forwarded-Prefix value (e.g. ``/eco``)
     or ``""`` for a direct deploy. It influences both the cookie name
     (``__Host-`` vs ``__Secure-`` vs bare) and the ``Path`` attribute.
     """

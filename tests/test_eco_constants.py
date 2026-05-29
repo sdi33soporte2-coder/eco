@@ -1,62 +1,62 @@
-"""Tests for hermes_constants module."""
+"""Tests for eco_constants module."""
 
 import os
 from pathlib import Path
 
 import pytest
 
-import hermes_constants
-from hermes_constants import (
+import eco_constants
+from eco_constants import (
     VALID_REASONING_EFFORTS,
-    get_default_hermes_root,
+    get_default_eco_root,
     is_container,
     parse_reasoning_effort,
     secure_parent_dir,
 )
 
 
-class TestGetDefaultHermesRoot:
-    """Tests for get_default_hermes_root() — Docker/custom deployment awareness."""
+class TestGetDefaultECORoot:
+    """Tests for get_default_eco_root() — Docker/custom deployment awareness."""
 
-    def test_no_hermes_home_returns_native(self, tmp_path, monkeypatch):
-        """When HERMES_HOME is not set, returns ~/.hermes."""
+    def test_no_eco_home_returns_native(self, tmp_path, monkeypatch):
+        """When HERMES_HOME is not set, returns ~/.eco."""
         monkeypatch.delenv("HERMES_HOME", raising=False)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-        assert get_default_hermes_root() == tmp_path / ".hermes"
+        assert get_default_eco_root() == tmp_path / ".eco"
 
-    def test_hermes_home_is_native(self, tmp_path, monkeypatch):
-        """When HERMES_HOME = ~/.hermes, returns ~/.hermes."""
-        native = tmp_path / ".hermes"
+    def test_eco_home_is_native(self, tmp_path, monkeypatch):
+        """When HERMES_HOME = ~/.eco, returns ~/.eco."""
+        native = tmp_path / ".eco"
         native.mkdir()
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("HERMES_HOME", str(native))
-        assert get_default_hermes_root() == native
+        assert get_default_eco_root() == native
 
-    def test_hermes_home_is_profile(self, tmp_path, monkeypatch):
-        """When HERMES_HOME is a profile under ~/.hermes, returns ~/.hermes."""
-        native = tmp_path / ".hermes"
+    def test_eco_home_is_profile(self, tmp_path, monkeypatch):
+        """When HERMES_HOME is a profile under ~/.eco, returns ~/.eco."""
+        native = tmp_path / ".eco"
         profile = native / "profiles" / "coder"
         profile.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("HERMES_HOME", str(profile))
-        assert get_default_hermes_root() == native
+        assert get_default_eco_root() == native
 
-    def test_hermes_home_is_docker(self, tmp_path, monkeypatch):
-        """When HERMES_HOME points outside ~/.hermes (Docker), returns HERMES_HOME."""
+    def test_eco_home_is_docker(self, tmp_path, monkeypatch):
+        """When HERMES_HOME points outside ~/.eco (Docker), returns HERMES_HOME."""
         docker_home = tmp_path / "opt" / "data"
         docker_home.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("HERMES_HOME", str(docker_home))
-        assert get_default_hermes_root() == docker_home
+        assert get_default_eco_root() == docker_home
 
-    def test_hermes_home_is_custom_path(self, tmp_path, monkeypatch):
-        """Any HERMES_HOME outside ~/.hermes is treated as the root."""
-        custom = tmp_path / "my-hermes-data"
+    def test_eco_home_is_custom_path(self, tmp_path, monkeypatch):
+        """Any HERMES_HOME outside ~/.eco is treated as the root."""
+        custom = tmp_path / "my-eco-data"
         custom.mkdir()
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("HERMES_HOME", str(custom))
-        assert get_default_hermes_root() == custom
+        assert get_default_eco_root() == custom
 
     def test_docker_profile_active(self, tmp_path, monkeypatch):
         """When a Docker profile is active (HERMES_HOME=<root>/profiles/<name>),
@@ -66,7 +66,7 @@ class TestGetDefaultHermesRoot:
         profile.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
         monkeypatch.setenv("HERMES_HOME", str(profile))
-        assert get_default_hermes_root() == docker_root
+        assert get_default_eco_root() == docker_root
 
 
 class TestIsContainer:
@@ -74,7 +74,7 @@ class TestIsContainer:
 
     def _reset_cache(self, monkeypatch):
         """Reset the cached detection result before each test."""
-        monkeypatch.setattr(hermes_constants, "_container_detected", None)
+        monkeypatch.setattr(eco_constants, "_container_detected", None)
 
     def test_detects_dockerenv(self, monkeypatch, tmp_path):
         """/.dockerenv triggers container detection."""
@@ -112,7 +112,7 @@ class TestIsContainer:
 
     def test_caches_result(self, monkeypatch):
         """Second call uses cached value without re-probing."""
-        monkeypatch.setattr(hermes_constants, "_container_detected", True)
+        monkeypatch.setattr(eco_constants, "_container_detected", True)
         assert is_container() is True
         # Even if we make os.path.exists return False, cached value wins
         monkeypatch.setattr(os.path, "exists", lambda p: False)
@@ -178,7 +178,7 @@ class TestSecureParentDir:
 
     def test_safe_path_calls_chmod(self, tmp_path, monkeypatch):
         """Normal nested path (depth >= 3) should call os.chmod."""
-        safe_dir = tmp_path / "home" / "user" / ".hermes"
+        safe_dir = tmp_path / "home" / "user" / ".eco"
         safe_dir.mkdir(parents=True)
         target = safe_dir / "auth.json"
         target.touch()

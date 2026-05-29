@@ -9,13 +9,13 @@ from __future__ import annotations
 import json
 import pytest
 
-from hermes_cli.dashboard_auth.audit import audit_log, AuditEvent
+from eco_cli.dashboard_auth.audit import audit_log, AuditEvent
 
 
 @pytest.fixture
 def profile_home(tmp_path, monkeypatch):
     """Redirect $HERMES_HOME and ~ to a tmp dir for the duration of the test."""
-    home = tmp_path / ".hermes"
+    home = tmp_path / ".eco"
     home.mkdir()
     monkeypatch.setenv("HERMES_HOME", str(home))
     # Some code paths fall back to Path.home() — patch that too.
@@ -72,7 +72,7 @@ def test_audit_write_failure_does_not_raise(monkeypatch, tmp_path):
 
 
 def test_audit_creates_logs_dir_if_missing(tmp_path, monkeypatch):
-    home = tmp_path / ".hermes"
+    home = tmp_path / ".eco"
     home.mkdir()
     monkeypatch.setenv("HERMES_HOME", str(home))
     # logs/ deliberately does not exist

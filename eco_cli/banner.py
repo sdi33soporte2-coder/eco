@@ -11,7 +11,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from hermes_constants import get_hermes_home
+from eco_constants import get_eco_home
 from typing import Dict, List, Optional
 
 from rich.console import Console
@@ -46,7 +46,7 @@ def cprint(text: str):
 def _skin_color(key: str, fallback: str) -> str:
     """Get a color from the active skin, or return fallback."""
     try:
-        from hermes_cli.skin_engine import get_active_skin
+        from eco_cli.skin_engine import get_active_skin
         return get_active_skin().get_color(key, fallback)
     except Exception:
         return fallback
@@ -54,7 +54,7 @@ def _skin_color(key: str, fallback: str) -> str:
 # ASCII Art & Branding
 # =========================================================================
 
-from hermes_cli import __version__ as VERSION, __release_date__ as RELEASE_DATE
+from eco_cli import __version__ as VERSION, __release_date__ as RELEASE_DATE
 
 HERMES_AGENT_LOGO = """[bold #FFD700]██╗  ██╗███████╗██████╗ ███╗   ███╗███████╗███████╗       █████╗  ██████╗ ███████╗███╗   ██╗████████╗[/]
 [bold #FFD700]██║  ██║██╔════╝██╔══██╗████╗ ████║██╔════╝██╔════╝      ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝[/]
@@ -113,10 +113,10 @@ def get_available_skills() -> Dict[str, List[str]]:
 _UPDATE_CHECK_CACHE_SECONDS = 6 * 3600
 
 # Sentinel returned when we know an update exists but can't count commits
-# (e.g. nix-built hermes — no local git history to count against).
+# (e.g. nix-built eco — no local git history to count against).
 UPDATE_AVAILABLE_NO_COUNT = -1
 
-_UPSTREAM_REPO_URL = "https://github.com/NousResearch/hermes-agent.git"
+_UPSTREAM_REPO_URL = "https://github.com/NousResearch/hermes-agent-agent-agent.git"
 
 
 def _check_via_rev(local_rev: str) -> Optional[int]:
@@ -175,7 +175,7 @@ def _version_tuple(v: str) -> tuple[int, ...]:
     return tuple(parts)
 
 
-def _fetch_pypi_latest(package: str = "hermes-agent") -> Optional[str]:
+def _fetch_pypi_latest(package: str = "eco-agent") -> Optional[str]:
     """Fetch the latest version of a package from PyPI. Returns None on failure."""
     try:
         import urllib.request
@@ -207,7 +207,7 @@ def check_via_pypi() -> Optional[int]:
 
 
 def check_for_updates() -> Optional[int]:
-    """Check whether a Hermes update is available.
+    """Check whether a ECO update is available.
 
     Two paths: if ``HERMES_REVISION`` is set (nix builds embed it), compare
     it to upstream main via ``git ls-remote``. Otherwise look for a local
@@ -217,8 +217,8 @@ def check_for_updates() -> Optional[int]:
     if behind but the count is unknown, ``0`` if up-to-date, or ``None`` if
     the check failed or doesn't apply. Cached for 6 hours.
     """
-    hermes_home = get_hermes_home()
-    cache_file = hermes_home / ".update_check"
+    eco_home = get_eco_home()
+    cache_file = eco_home / ".update_check"
     embedded_rev = os.environ.get("HERMES_REVISION") or None
 
     # Read cache — invalidate if the embedded rev has changed since last check
@@ -238,11 +238,11 @@ def check_for_updates() -> Optional[int]:
         behind = _check_via_rev(embedded_rev)
     else:
         # Prefer the running code's location over the profile-scoped path.
-        # $HERMES_HOME/hermes-agent/ may be a stale copy from --clone-all;
+        # $HERMES_HOME/eco-agent/ may be a stale copy from --clone-all;
         # Path(__file__) always resolves to the actual installed checkout.
         repo_dir = Path(__file__).parent.parent.resolve()
         if not (repo_dir / ".git").exists():
-            repo_dir = hermes_home / "hermes-agent"
+            repo_dir = eco_home / "eco-agent"
         if not (repo_dir / ".git").exists():
             behind = check_via_pypi()
         else:
@@ -257,16 +257,16 @@ def check_for_updates() -> Optional[int]:
 
 
 def _resolve_repo_dir() -> Optional[Path]:
-    """Return the active Hermes git checkout, or None if this isn't a git install.
+    """Return the active ECO git checkout, or None if this isn't a git install.
 
     Prefers the running code's location over the profile-scoped path
-    because ``$HERMES_HOME/hermes-agent/`` may be a stale copy carried
+    because ``$HERMES_HOME/eco-agent/`` may be a stale copy carried
     over by ``--clone-all``.
     """
     repo_dir = Path(__file__).parent.parent.resolve()
     if not (repo_dir / ".git").exists():
-        hermes_home = get_hermes_home()
-        repo_dir = hermes_home / "hermes-agent"
+        eco_home = get_eco_home()
+        repo_dir = eco_home / "eco-agent"
     return repo_dir if (repo_dir / ".git").exists() else None
 
 
@@ -295,7 +295,7 @@ def get_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]:
     the active checkout.  When no checkout is available — the canonical case
     is the published Docker image, which excludes ``.git`` from the build
     context — we fall back to the baked-in build SHA (see
-    ``hermes_cli/build_info.py``) and return it as a frozen
+    ``eco_cli/build_info.py``) and return it as a frozen
     ``upstream == local`` state with ``ahead=0``.  A built image is by
     definition pinned to one commit, so "ahead" is always zero and the
     banner correctly shows ``· upstream <sha>`` with no carried-commits
@@ -305,7 +305,7 @@ def get_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]:
     if repo_dir is None:
         # No git checkout — try the baked build SHA (Docker image path).
         try:
-            from hermes_cli.build_info import get_build_sha
+            from eco_cli.build_info import get_build_sha
             baked = get_build_sha(short=8)
             if baked:
                 return {"upstream": baked, "local": baked, "ahead": 0}
@@ -319,7 +319,7 @@ def get_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]:
         # Live-git lookup failed (e.g. shallow clone without origin/main).
         # Fall back to the baked build SHA if available.
         try:
-            from hermes_cli.build_info import get_build_sha
+            from eco_cli.build_info import get_build_sha
             baked = get_build_sha(short=8)
             if baked:
                 return {"upstream": baked, "local": baked, "ahead": 0}
@@ -344,7 +344,7 @@ def get_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]:
     return {"upstream": upstream, "local": local, "ahead": max(ahead, 0)}
 
 
-_RELEASE_URL_BASE = "https://github.com/NousResearch/hermes-agent/releases/tag"
+_RELEASE_URL_BASE = "https://github.com/NousResearch/hermes-agent-agent-agent/releases/tag"
 _latest_release_cache: Optional[tuple] = None  # (tag, url) once resolved
 
 
@@ -352,8 +352,8 @@ def get_latest_release_tag(repo_dir: Optional[Path] = None) -> Optional[tuple]:
     """Return ``(tag, release_url)`` for the latest git tag, or None.
 
     Local-only — runs ``git describe --tags --abbrev=0`` against the
-    Hermes checkout. Cached per-process. Release URL always points at the
-    canonical NousResearch/hermes-agent repo (forks don't get a link).
+    ECO checkout. Cached per-process. Release URL always points at the
+    canonical NousResearch/hermes-agent-agent-agent repo (forks don't get a link).
     """
     global _latest_release_cache
     if _latest_release_cache is not None:
@@ -392,7 +392,7 @@ def get_latest_release_tag(repo_dir: Optional[Path] = None) -> Optional[tuple]:
 
 def format_banner_version_label() -> str:
     """Return the version label shown in the startup banner title."""
-    base = f"Hermes Agent v{VERSION} ({RELEASE_DATE})"
+    base = f"ECO Agent v{VERSION} ({RELEASE_DATE})"
     state = get_git_banner_state()
     if not state:
         return base
@@ -516,7 +516,7 @@ def build_welcome_banner(console: Console, model: str, cwd: str,
 
     # Use skin's custom caduceus art if provided
     try:
-        from hermes_cli.skin_engine import get_active_skin
+        from eco_cli.skin_engine import get_active_skin
         _bskin = get_active_skin()
         _hero = _bskin.banner_hero if hasattr(_bskin, 'banner_hero') and _bskin.banner_hero else HERMES_CADUCEUS
     except Exception:
@@ -648,8 +648,8 @@ def build_welcome_banner(console: Console, model: str, cwd: str,
     # understand why tool counts may not match what's actually reachable
     # (codex builds its own tool list inside the spawned subprocess).
     try:
-        from hermes_cli.codex_runtime_switch import get_current_runtime
-        from hermes_cli.config import load_config as _load_cfg
+        from eco_cli.codex_runtime_switch import get_current_runtime
+        from eco_cli.config import load_config as _load_cfg
         if get_current_runtime(_load_cfg()) == "codex_app_server":
             right_lines.append(
                 f"[bold {accent}]Runtime:[/] [{text}]codex app-server[/] "
@@ -659,7 +659,7 @@ def build_welcome_banner(console: Console, model: str, cwd: str,
         pass
     # Show active profile name when not 'default'
     try:
-        from hermes_cli.profiles import get_active_profile_name
+        from eco_cli.profiles import get_active_profile_name
         _profile_name = get_active_profile_name()
         if _profile_name and _profile_name != "default":
             right_lines.append(f"[bold {accent}]Profile:[/] [{text}]{_profile_name}[/]")
@@ -672,7 +672,7 @@ def build_welcome_banner(console: Console, model: str, cwd: str,
     try:
         behind = get_update_result(timeout=0.5)
         if behind is not None and behind != 0:
-            from hermes_cli.config import get_managed_update_command, recommended_update_command
+            from eco_cli.config import get_managed_update_command, recommended_update_command
             if behind > 0:
                 commits_word = "commit" if behind == 1 else "commits"
                 right_lines.append(
@@ -680,7 +680,7 @@ def build_welcome_banner(console: Console, model: str, cwd: str,
                     f"[dim yellow] — run [bold]{recommended_update_command()}[/bold] to update[/]"
                 )
             else:
-                # UPDATE_AVAILABLE_NO_COUNT: nix-built hermes; we know an update
+                # UPDATE_AVAILABLE_NO_COUNT: nix-built eco; we know an update
                 # exists but not by how much, and we don't know how the user
                 # installed it (nix run, profile, system flake, home-manager).
                 managed_cmd = get_managed_update_command()

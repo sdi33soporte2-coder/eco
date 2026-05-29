@@ -1,6 +1,6 @@
 """Tests for HERMES_HOME credential-file read blocking in file_safety.
 
-Regression for https://github.com/NousResearch/hermes-agent/issues/17656 —
+Regression for https://github.com/NousResearch/hermes-agent-agent-agent/issues/17656 —
 ``read_file`` was previously only sandboxed against ``HERMES_HOME`` itself,
 which left ``auth.json`` and ``.anthropic_oauth.json`` (plaintext provider
 keys + OAuth tokens) readable by the agent. A prompt-injection reaching
@@ -21,12 +21,12 @@ import pytest
 
 @pytest.fixture()
 def fake_home(tmp_path, monkeypatch):
-    """Point ``_hermes_home_path()`` at a tmp dir for isolated checks."""
+    """Point ``_eco_home_path()`` at a tmp dir for isolated checks."""
     import agent.file_safety as fs
 
-    home = tmp_path / "hermes_home"
+    home = tmp_path / "eco_home"
     home.mkdir()
-    monkeypatch.setattr(fs, "_hermes_home_path", lambda: home)
+    monkeypatch.setattr(fs, "_eco_home_path", lambda: home)
     return home
 
 
@@ -76,7 +76,7 @@ def test_google_oauth_json_blocked(fake_home):
     assert "credential store" in err
 
 
-def test_arbitrary_hermes_home_file_not_blocked(fake_home):
+def test_arbitrary_eco_home_file_not_blocked(fake_home):
     """Non-credential files inside HERMES_HOME stay readable."""
     from agent.file_safety import get_read_block_error
 
@@ -100,7 +100,7 @@ def test_skills_hub_block_still_applies(fake_home):
     hub_file = _create(fake_home, "skills/.hub/manifest.json")
     err = get_read_block_error(str(hub_file))
     assert err is not None
-    assert "internal Hermes cache file" in err
+    assert "internal ECO cache file" in err
 
 
 def test_path_traversal_resolves_to_blocked(fake_home, tmp_path):
@@ -111,7 +111,7 @@ def test_path_traversal_resolves_to_blocked(fake_home, tmp_path):
     _create(fake_home, "auth.json")
     sibling = tmp_path / "elsewhere"
     sibling.mkdir()
-    traversal = sibling / ".." / "hermes_home" / "auth.json"
+    traversal = sibling / ".." / "eco_home" / "auth.json"
     err = get_read_block_error(str(traversal))
     assert err is not None
     assert "credential store" in err
@@ -246,10 +246,10 @@ def test_mcp_tokens_dir_itself_blocked(fake_home):
     assert "MCP token" in err
 
 
-def test_identically_named_hermes_files_outside_home_not_blocked(
+def test_identically_named_eco_files_outside_home_not_blocked(
     fake_home, tmp_path
 ):
-    """Hermes-specific filenames (``auth.json``, ``mcp-tokens/``, ``google_oauth.json``)
+    """ECO-specific filenames (``auth.json``, ``mcp-tokens/``, ``google_oauth.json``)
     outside HERMES_HOME must remain readable — the gate is per-location for
     those, not per-filename. ``.env`` is the exception: it's blocked anywhere
     on disk (see test_project_local_env_blocked) because the basename always
@@ -301,11 +301,11 @@ def test_profile_mode_blocks_root_credentials(tmp_path, monkeypatch):
     inherited by every profile."""
     import agent.file_safety as fs
 
-    root = tmp_path / "hermes"
+    root = tmp_path / "eco"
     profile = root / "profiles" / "coder"
     profile.mkdir(parents=True)
-    monkeypatch.setattr(fs, "_hermes_home_path", lambda: profile)
-    monkeypatch.setattr(fs, "_hermes_root_path", lambda: root)
+    monkeypatch.setattr(fs, "_eco_home_path", lambda: profile)
+    monkeypatch.setattr(fs, "_eco_root_path", lambda: root)
 
     from agent.file_safety import get_read_block_error
 

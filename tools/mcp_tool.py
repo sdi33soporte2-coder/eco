@@ -424,7 +424,7 @@ def _resolve_stdio_command(command: str, env: dict) -> tuple[str, dict]:
                 os.path.join(os.path.expanduser("~"), ".local", "bin", resolved_command),
                 # /usr/local/bin is the canonical install location for Node on
                 # Linux from-source builds, the upstream node:bookworm-slim
-                # image (which the Hermes Docker image copies node + npm +
+                # image (which the ECO Docker image copies node + npm +
                 # corepack from since #4977), and macOS Homebrew on Intel.
                 # Without this candidate, any MCP server configured with an
                 # env.PATH that omits /usr/local/bin (a common pattern when

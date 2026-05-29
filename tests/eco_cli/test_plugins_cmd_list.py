@@ -1,7 +1,7 @@
 import argparse
 import json
 
-from hermes_cli import plugins_cmd
+from eco_cli import plugins_cmd
 
 
 def _args(**kwargs):

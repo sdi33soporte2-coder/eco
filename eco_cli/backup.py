@@ -1,10 +1,10 @@
 """
-Backup and import commands for hermes CLI.
+Backup and import commands for eco CLI.
 
-`hermes backup` creates a zip archive of the entire ~/.hermes/ directory
-(excluding the hermes-agent repo and transient files).
+`eco backup` creates a zip archive of the entire ~/.eco/ directory
+(excluding the eco-agent repo and transient files).
 
-`hermes import` restores from a backup zip, overlaying onto the current
+`eco import` restores from a backup zip, overlaying onto the current
 HERMES_HOME root.
 """
 
@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from hermes_constants import get_default_hermes_root, get_hermes_home, display_hermes_home
+from eco_constants import get_default_eco_root, get_eco_home, display_eco_home
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 # Directory names to skip entirely (matched against each path component)
 _EXCLUDED_DIRS = {
-    "hermes-agent",     # the codebase repo — re-clone instead
+    "eco-agent",     # the codebase repo — re-clone instead
     "__pycache__",      # bytecode caches — regenerated on import
     ".git",             # nested git dirs (profiles shouldn't have these, but safety)
     "node_modules",     # js deps if website/ somehow leaks in
@@ -66,7 +66,7 @@ _SECRET_FILE_NAMES = {".env", "auth.json", "state.db"}
 
 
 def _should_exclude(rel_path: Path) -> bool:
-    """Return True if *rel_path* (relative to hermes root) should be skipped."""
+    """Return True if *rel_path* (relative to eco root) should be skipped."""
     parts = rel_path.parts
 
     # Any path component matches an excluded dir name
@@ -142,11 +142,11 @@ def _format_size(nbytes: int) -> str:
 
 
 def run_backup(args) -> None:
-    """Create a zip backup of the Hermes home directory."""
-    hermes_root = get_default_hermes_root()
+    """Create a zip backup of the ECO home directory."""
+    eco_root = get_default_eco_root()
 
-    if not hermes_root.is_dir():
-        print(f"Error: Hermes home directory not found at {hermes_root}")
+    if not eco_root.is_dir():
+        print(f"Error: ECO home directory not found at {eco_root}")
         sys.exit(1)
 
     # Determine output path
@@ -155,10 +155,10 @@ def run_backup(args) -> None:
         # If user gave a directory, put the zip inside it
         if out_path.is_dir():
             stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-            out_path = out_path / f"hermes-backup-{stamp}.zip"
+            out_path = out_path / f"eco-backup-{stamp}.zip"
     else:
         stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-        out_path = Path.home() / f"hermes-backup-{stamp}.zip"
+        out_path = Path.home() / f"eco-backup-{stamp}.zip"
 
     # Ensure the suffix is .zip
     if out_path.suffix.lower() != ".zip":
@@ -168,13 +168,13 @@ def run_backup(args) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Collect files
-    print(f"Scanning {display_hermes_home()} ...")
+    print(f"Scanning {display_eco_home()} ...")
     files_to_add: list[tuple[Path, Path]] = []  # (absolute, relative)
     skipped_dirs = set()
 
-    for dirpath, dirnames, filenames in os.walk(hermes_root, followlinks=False):
+    for dirpath, dirnames, filenames in os.walk(eco_root, followlinks=False):
         dp = Path(dirpath)
-        rel_dir = dp.relative_to(hermes_root)
+        rel_dir = dp.relative_to(eco_root)
 
         # Prune excluded directories in-place so os.walk doesn't descend
         orig_dirnames = dirnames[:]
@@ -187,7 +187,7 @@ def run_backup(args) -> None:
 
         for fname in filenames:
             fpath = dp / fname
-            rel = fpath.relative_to(hermes_root)
+            rel = fpath.relative_to(eco_root)
 
             if _should_skip_backup_file(fpath, rel, out_path):
                 continue
@@ -255,7 +255,7 @@ def run_backup(args) -> None:
         if len(errors) > 10:
             print(f"  ... and {len(errors) - 10} more")
 
-    print(f"\nRestore with: hermes import {out_path.name}")
+    print(f"\nRestore with: eco import {out_path.name}")
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +263,7 @@ def run_backup(args) -> None:
 # ---------------------------------------------------------------------------
 
 def _validate_backup_zip(zf: zipfile.ZipFile) -> tuple[bool, str]:
-    """Check that a zip looks like a Hermes backup.
+    """Check that a zip looks like a ECO backup.
 
     Returns (ok, reason).
     """
@@ -271,7 +271,7 @@ def _validate_backup_zip(zf: zipfile.ZipFile) -> tuple[bool, str]:
     if not names:
         return False, "zip archive is empty"
 
-    # Look for telltale files that a hermes home would have
+    # Look for telltale files that a eco home would have
     markers = {"config.yaml", ".env", "state.db"}
     found = set()
     for n in names:
@@ -282,7 +282,7 @@ def _validate_backup_zip(zf: zipfile.ZipFile) -> tuple[bool, str]:
 
     if not found:
         return False, (
-            "zip does not appear to be a Hermes backup "
+            "zip does not appear to be a ECO backup "
             "(no config.yaml, .env, or state databases found)"
         )
 
@@ -292,7 +292,7 @@ def _validate_backup_zip(zf: zipfile.ZipFile) -> tuple[bool, str]:
 def _detect_prefix(zf: zipfile.ZipFile) -> str:
     """Detect if the zip has a common directory prefix wrapping all entries.
 
-    Some tools zip as `.hermes/config.yaml` instead of `config.yaml`.
+    Some tools zip as `.eco/config.yaml` instead of `config.yaml`.
     Returns the prefix to strip (empty string if none).
     """
     names = [n for n in zf.namelist() if not n.endswith("/")]
@@ -306,15 +306,15 @@ def _detect_prefix(zf: zipfile.ZipFile) -> str:
     first_parts = {p[0] for p in parts_list if len(p) > 1}
     if len(first_parts) == 1:
         prefix = first_parts.pop()
-        # Only strip if it looks like a hermes dir name
-        if prefix in {".hermes", "hermes"}:
+        # Only strip if it looks like a eco dir name
+        if prefix in {".eco", "eco"}:
             return prefix + "/"
 
     return ""
 
 
 def run_import(args) -> None:
-    """Restore a Hermes backup from a zip file."""
+    """Restore a ECO backup from a zip file."""
     zip_path = Path(args.zipfile).expanduser().resolve()
 
     if not zip_path.is_file():
@@ -325,7 +325,7 @@ def run_import(args) -> None:
         print(f"Error: Not a valid zip file: {zip_path}")
         sys.exit(1)
 
-    hermes_root = get_default_hermes_root()
+    eco_root = get_default_eco_root()
 
     with zipfile.ZipFile(zip_path, "r") as zf:
         # Validate
@@ -339,18 +339,18 @@ def run_import(args) -> None:
         file_count = len(members)
 
         print(f"Backup contains {file_count} files")
-        print(f"Target: {display_hermes_home()}")
+        print(f"Target: {display_eco_home()}")
 
         if prefix:
             print(f"Detected archive prefix: {prefix!r} (will be stripped)")
 
         # Check for existing installation
-        has_config = (hermes_root / "config.yaml").exists()
-        has_env = (hermes_root / ".env").exists()
+        has_config = (eco_root / "config.yaml").exists()
+        has_env = (eco_root / ".env").exists()
 
         if (has_config or has_env) and not args.force:
             print()
-            print("Warning: Target directory already has Hermes configuration.")
+            print("Warning: Target directory already has ECO configuration.")
             print("Importing will overwrite existing files with backup contents.")
             print()
             try:
@@ -364,7 +364,7 @@ def run_import(args) -> None:
 
         # Extract
         print(f"\nImporting {file_count} files ...")
-        hermes_root.mkdir(parents=True, exist_ok=True)
+        eco_root.mkdir(parents=True, exist_ok=True)
 
         errors = []
         restored = 0
@@ -380,11 +380,11 @@ def run_import(args) -> None:
             if not rel:
                 continue
 
-            target = hermes_root / rel
+            target = eco_root / rel
 
             # Security: reject absolute paths and traversals
             try:
-                target.resolve().relative_to(hermes_root.resolve())
+                target.resolve().relative_to(eco_root.resolve())
             except ValueError:
                 errors.append(f"  {rel}: path traversal blocked")
                 continue
@@ -407,7 +407,7 @@ def run_import(args) -> None:
         # Summary
         print()
         print(f"Import complete: {restored} files restored in {elapsed:.1f}s")
-        print(f"  Target: {display_hermes_home()}")
+        print(f"  Target: {display_eco_home()}")
 
         if errors:
             print(f"\n  Warnings ({len(errors)} files skipped):")
@@ -417,11 +417,11 @@ def run_import(args) -> None:
                 print(f"  ... and {len(errors) - 10} more")
 
         # Post-import: restore profile wrapper scripts
-        profiles_dir = hermes_root / "profiles"
+        profiles_dir = eco_root / "profiles"
         restored_profiles = []
         if profiles_dir.is_dir():
             try:
-                from hermes_cli.profiles import (
+                from eco_cli.profiles import (
                     create_wrapper_script, check_alias_collision,
                     _is_wrapper_dir_in_path, _get_wrapper_dir,
                 )
@@ -452,28 +452,28 @@ def run_import(args) -> None:
                         print('  Add to your shell config (~/.bashrc or ~/.zshrc):')
                         print('    export PATH="$HOME/.local/bin:$PATH"')
             except ImportError:
-                # hermes_cli.profiles might not be available (fresh install)
+                # eco_cli.profiles might not be available (fresh install)
                 if any(profiles_dir.iterdir()):
                     print(f"\n  Profiles detected but aliases could not be created.")
-                    print(f"  Run: hermes profile list  (after installing hermes)")
+                    print(f"  Run: eco profile list  (after installing eco)")
 
         # Guidance
         print()
-        if not (hermes_root / "hermes-agent").is_dir():
-            print("Note: The hermes-agent codebase was not included in the backup.")
-            print("  If this is a fresh install, run: hermes update")
+        if not (eco_root / "eco-agent").is_dir():
+            print("Note: The eco-agent codebase was not included in the backup.")
+            print("  If this is a fresh install, run: eco update")
 
         if restored_profiles:
             gw_profiles = [n for n, _ in restored_profiles]
             print("\nTo re-enable gateway services for profiles:")
             for pname in gw_profiles:
-                print(f"  hermes -p {pname} gateway install")
+                print(f"  eco -p {pname} gateway install")
 
-        print("Done. Your Hermes configuration has been restored.")
+        print("Done. Your ECO configuration has been restored.")
 
 
 # ---------------------------------------------------------------------------
-# Quick state snapshots (used by /snapshot slash command and hermes backup --quick)
+# Quick state snapshots (used by /snapshot slash command and eco backup --quick)
 # ---------------------------------------------------------------------------
 
 # Critical state files to include in quick snapshots (relative to HERMES_HOME).
@@ -483,7 +483,7 @@ def run_import(args) -> None:
 # Entries may be individual files OR directories.  Directories are captured
 # recursively; missing entries are silently skipped.  Pairing data lives in
 # platform-specific JSON blobs outside state.db, so it's listed here explicitly
-# — `hermes update` snapshots this set before pulling so approved-user lists
+# — `eco update` snapshots this set before pulling so approved-user lists
 # are recoverable if anything goes wrong (issue #15733).
 _QUICK_STATE_FILES = (
     "state.db",
@@ -504,14 +504,14 @@ _QUICK_SNAPSHOTS_DIR = "state-snapshots"
 _QUICK_DEFAULT_KEEP = 20
 
 
-def _quick_snapshot_root(hermes_home: Optional[Path] = None) -> Path:
-    home = hermes_home or get_hermes_home()
+def _quick_snapshot_root(eco_home: Optional[Path] = None) -> Path:
+    home = eco_home or get_eco_home()
     return home / _QUICK_SNAPSHOTS_DIR
 
 
 def create_quick_snapshot(
     label: Optional[str] = None,
-    hermes_home: Optional[Path] = None,
+    eco_home: Optional[Path] = None,
     keep: Optional[int] = None,
 ) -> Optional[str]:
     """Create a quick state snapshot of critical files.
@@ -522,7 +522,7 @@ def create_quick_snapshot(
     Returns:
         Snapshot ID (timestamp-based), or None if no files found.
     """
-    home = hermes_home or get_hermes_home()
+    home = eco_home or get_eco_home()
     root = _quick_snapshot_root(home)
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -597,10 +597,10 @@ def create_quick_snapshot(
 
 def list_quick_snapshots(
     limit: int = 20,
-    hermes_home: Optional[Path] = None,
+    eco_home: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
     """List existing quick state snapshots, most recent first."""
-    root = _quick_snapshot_root(hermes_home)
+    root = _quick_snapshot_root(eco_home)
     if not root.exists():
         return []
 
@@ -623,14 +623,14 @@ def list_quick_snapshots(
 
 def restore_quick_snapshot(
     snapshot_id: str,
-    hermes_home: Optional[Path] = None,
+    eco_home: Optional[Path] = None,
 ) -> bool:
     """Restore state from a quick snapshot.
 
     Overwrites current state files with the snapshot's copies.
     Returns True if at least one file was restored.
     """
-    home = hermes_home or get_hermes_home()
+    home = eco_home or get_eco_home()
     root = _quick_snapshot_root(home)
     snap_dir = root / snapshot_id
 
@@ -694,20 +694,20 @@ def _prune_quick_snapshots(root: Path, keep: int = _QUICK_DEFAULT_KEEP) -> int:
 
 def prune_quick_snapshots(
     keep: int = _QUICK_DEFAULT_KEEP,
-    hermes_home: Optional[Path] = None,
+    eco_home: Optional[Path] = None,
 ) -> int:
     """Manually prune quick snapshots. Returns count deleted."""
-    return _prune_quick_snapshots(_quick_snapshot_root(hermes_home), keep=keep)
+    return _prune_quick_snapshots(_quick_snapshot_root(eco_home), keep=keep)
 
 
 def run_quick_backup(args) -> None:
-    """CLI entry point for hermes backup --quick."""
+    """CLI entry point for eco backup --quick."""
     label = getattr(args, "label", None)
     snap_id = create_quick_snapshot(label=label)
     if snap_id:
         print(f"State snapshot created: {snap_id}")
         snaps = list_quick_snapshots()
-        print(f"  {len(snaps)} snapshot(s) stored in {display_hermes_home()}/state-snapshots/")
+        print(f"  {len(snaps)} snapshot(s) stored in {display_eco_home()}/state-snapshots/")
         print(f"  Restore with: /snapshot restore {snap_id}")
     else:
         print("No state files found to snapshot.")
@@ -717,8 +717,8 @@ def run_quick_backup(args) -> None:
 # Shared full-zip backup helper
 # ---------------------------------------------------------------------------
 
-def _write_full_zip_backup(out_path: Path, hermes_root: Path) -> Optional[Path]:
-    """Write a full zip snapshot of ``hermes_root`` to ``out_path``.
+def _write_full_zip_backup(out_path: Path, eco_root: Path) -> Optional[Path]:
+    """Write a full zip snapshot of ``eco_root`` to ``out_path``.
 
     Uses the same exclusion rules and SQLite safe-copy as :func:`run_backup`.
     Returns the output path on success, None on failure (nothing to back up,
@@ -726,7 +726,7 @@ def _write_full_zip_backup(out_path: Path, hermes_root: Path) -> Optional[Path]:
     """
     files_to_add: list[tuple[Path, Path]] = []
     try:
-        for dirpath, dirnames, filenames in os.walk(hermes_root, followlinks=False):
+        for dirpath, dirnames, filenames in os.walk(eco_root, followlinks=False):
             dp = Path(dirpath)
             # Prune excluded directories in-place so os.walk doesn't descend
             dirnames[:] = [d for d in dirnames if d not in _EXCLUDED_DIRS]
@@ -734,7 +734,7 @@ def _write_full_zip_backup(out_path: Path, hermes_root: Path) -> Optional[Path]:
             for fname in filenames:
                 fpath = dp / fname
                 try:
-                    rel = fpath.relative_to(hermes_root)
+                    rel = fpath.relative_to(eco_root)
                 except ValueError:
                     continue
 
@@ -787,8 +787,8 @@ _PRE_UPDATE_PREFIX = "pre-update-"
 _PRE_UPDATE_DEFAULT_KEEP = 5
 
 
-def _pre_update_backup_dir(hermes_home: Optional[Path] = None) -> Path:
-    home = hermes_home or get_hermes_home()
+def _pre_update_backup_dir(eco_home: Optional[Path] = None) -> Path:
+    home = eco_home or get_eco_home()
     return home / _PRE_UPDATE_BACKUPS_DIR
 
 
@@ -830,7 +830,7 @@ def _prune_pre_update_backups(backup_dir: Path, keep: int) -> int:
 
 
 def create_pre_update_backup(
-    hermes_home: Optional[Path] = None,
+    eco_home: Optional[Path] = None,
     keep: int = _PRE_UPDATE_DEFAULT_KEEP,
 ) -> Optional[Path]:
     """Create a full zip backup of HERMES_HOME under ``backups/``.
@@ -841,13 +841,13 @@ def create_pre_update_backup(
 
     Returns the path to the created zip, or ``None`` if no files were
     found or the backup could not be created.  Never raises — the caller
-    (``hermes update``) should continue even if the backup fails.
+    (``eco update``) should continue even if the backup fails.
     """
-    hermes_root = hermes_home or get_default_hermes_root()
-    if not hermes_root.is_dir():
+    eco_root = eco_home or get_default_eco_root()
+    if not eco_root.is_dir():
         return None
 
-    backup_dir = _pre_update_backup_dir(hermes_root)
+    backup_dir = _pre_update_backup_dir(eco_root)
     try:
         backup_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -857,7 +857,7 @@ def create_pre_update_backup(
     stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     out_path = backup_dir / f"{_PRE_UPDATE_PREFIX}{stamp}.zip"
 
-    result = _write_full_zip_backup(out_path, hermes_root)
+    result = _write_full_zip_backup(out_path, eco_root)
     if result is None:
         return None
 
@@ -866,7 +866,7 @@ def create_pre_update_backup(
 
 
 # ---------------------------------------------------------------------------
-# Pre-migration auto-backup (used by `hermes claw migrate`)
+# Pre-migration auto-backup (used by `eco claw migrate`)
 # ---------------------------------------------------------------------------
 
 _PRE_MIGRATION_PREFIX = "pre-migration-"
@@ -902,15 +902,15 @@ def _prune_pre_migration_backups(backup_dir: Path, keep: int) -> int:
 
 
 def create_pre_migration_backup(
-    hermes_home: Optional[Path] = None,
+    eco_home: Optional[Path] = None,
     keep: int = _PRE_MIGRATION_DEFAULT_KEEP,
 ) -> Optional[Path]:
     """Create a full zip backup of HERMES_HOME under ``backups/`` before a
-    ``hermes claw migrate`` apply.
+    ``eco claw migrate`` apply.
 
     Shares implementation with :func:`create_pre_update_backup` via
     ``_write_full_zip_backup`` — same exclusions, same SQLite safe-copy,
-    restorable with ``hermes import <archive>``.  Writes to
+    restorable with ``eco import <archive>``.  Writes to
     ``<HERMES_HOME>/backups/pre-migration-<timestamp>.zip`` and auto-prunes
     old pre-migration backups.
 
@@ -918,13 +918,13 @@ def create_pre_migration_backup(
     to back up (fresh install) or the write failed.  Never raises — the
     caller decides whether to abort or proceed.
     """
-    hermes_root = hermes_home or get_default_hermes_root()
-    if not hermes_root.is_dir():
+    eco_root = eco_home or get_default_eco_root()
+    if not eco_root.is_dir():
         return None
 
-    # Reuses the shared backups/ directory so `hermes import` and the
+    # Reuses the shared backups/ directory so `eco import` and the
     # update-backup listing pick up pre-migration archives too.
-    backup_dir = _pre_update_backup_dir(hermes_root)
+    backup_dir = _pre_update_backup_dir(eco_root)
     try:
         backup_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -934,7 +934,7 @@ def create_pre_migration_backup(
     stamp = datetime.now().strftime("%Y-%m-%d-%H%M%S")
     out_path = backup_dir / f"{_PRE_MIGRATION_PREFIX}{stamp}.zip"
 
-    result = _write_full_zip_backup(out_path, hermes_root)
+    result = _write_full_zip_backup(out_path, eco_root)
     if result is None:
         return None
 

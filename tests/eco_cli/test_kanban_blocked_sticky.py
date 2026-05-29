@@ -34,13 +34,13 @@ from pathlib import Path
 
 import pytest
 
-from hermes_cli import kanban_db as kb
+from eco_cli import kanban_db as kb
 
 
 @pytest.fixture
 def kanban_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Isolated HERMES_HOME with an empty kanban DB."""
-    home = tmp_path / ".hermes"
+    home = tmp_path / ".eco"
     home.mkdir()
     monkeypatch.setenv("HERMES_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -165,7 +165,7 @@ def test_gave_up_event_alone_does_not_make_block_sticky(kanban_home: Path) -> No
 
 
 def test_unblock_clears_sticky_state_and_lets_block_recover(kanban_home: Path) -> None:
-    """``hermes kanban unblock`` (or the ``kanban_unblock`` tool) is
+    """``eco kanban unblock`` (or the ``kanban_unblock`` tool) is
     the only legitimate way out of a worker-initiated block.  After
     unblock, a *subsequent* circuit-breaker block on the same task
     must again be eligible for auto-recovery."""
@@ -262,7 +262,7 @@ def test_protocol_violation_loop_is_broken(kanban_home: Path) -> None:
 
 # ---------------------------------------------------------------------------
 # Schema-init recovery on legacy DBs is covered by
-# tests/hermes_cli/test_kanban_db.py::test_connect_migrates_legacy_db_before_optional_column_indexes
+# tests/eco_cli/test_kanban_db.py::test_connect_migrates_legacy_db_before_optional_column_indexes
 # (landed via #28754 / #28781).  The original PR shipped a duplicate test
 # here; dropped during salvage to avoid two assertions of the same contract.
 # ---------------------------------------------------------------------------

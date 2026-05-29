@@ -14,13 +14,13 @@ These guard the contract:
     fallback — no crash, no empty list.
 
 Merging is what lets new models (e.g. ``mimo-v2.5-pro`` on opencode-go)
-appear in ``/model`` without a Hermes release.
+appear in ``/model`` without a ECO release.
 """
 
 from unittest.mock import patch
 
 
-from hermes_cli.models import (
+from eco_cli.models import (
     _MODELS_DEV_PREFERRED,
     _merge_with_models_dev,
     provider_model_ids,
@@ -83,7 +83,7 @@ class TestProviderModelIdsPreferred:
         """Offline models.dev → curated-only list, no crash."""
         with patch("agent.models_dev.list_agentic_models", return_value=[]):
             out = provider_model_ids("opencode-go")
-        # Curated floor (see hermes_cli/models.py _PROVIDER_MODELS["opencode-go"])
+        # Curated floor (see eco_cli/models.py _PROVIDER_MODELS["opencode-go"])
         assert "mimo-v2-pro" in out
         assert "kimi-k2.6" in out
 
@@ -109,7 +109,7 @@ class TestOpenRouterAndNousUnchanged:
     def test_openrouter_does_not_call_merge(self):
         """openrouter takes its own live path — merge helper must NOT run."""
         with patch(
-            "hermes_cli.models._merge_with_models_dev",
+            "eco_cli.models._merge_with_models_dev",
             side_effect=AssertionError("merge should not be called for openrouter"),
         ):
             # Even if model_ids() fails for some other reason, we just care

@@ -28,7 +28,7 @@ from eco_cli.nous_subscription import (
     apply_nous_managed_defaults,
     get_nous_subscription_features,
 )
-from hermes_cli.nous_account import format_nous_portal_entitlement_message
+from eco_cli.nous_account import format_nous_portal_entitlement_message
 from tools.tool_backend_helpers import fal_key_is_configured
 from utils import base_url_hostname, is_truthy_value
 

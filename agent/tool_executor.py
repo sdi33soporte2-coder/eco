@@ -209,7 +209,7 @@ def execute_tool_calls_concurrent(agent, assistant_message, messages: list, effe
             block_result = _ts_scope_block
         else:
             try:
-                from hermes_cli.plugins import get_pre_tool_call_block_message
+                from eco_cli.plugins import get_pre_tool_call_block_message
                 block_message = get_pre_tool_call_block_message(
                     function_name, function_args, task_id=effective_task_id or "",
                 )
@@ -586,7 +586,7 @@ def execute_tool_calls_sequential(agent, assistant_message, messages: list, effe
             _block_msg = _ts_scope_block
         else:
             try:
-                from hermes_cli.plugins import get_pre_tool_call_block_message
+                from eco_cli.plugins import get_pre_tool_call_block_message
                 _block_msg = get_pre_tool_call_block_message(
                     function_name, function_args, task_id=effective_task_id or "",
                 )
@@ -695,7 +695,7 @@ def execute_tool_calls_sequential(agent, assistant_message, messages: list, effe
         elif function_name == "session_search":
             session_db = agent._get_session_db_for_recall()
             if not session_db:
-                from hermes_state import format_session_db_unavailable
+                from eco_state import format_session_db_unavailable
                 function_result = json.dumps({"success": False, "error": format_session_db_unavailable()})
             else:
                 from tools.session_search_tool import session_search as _session_search

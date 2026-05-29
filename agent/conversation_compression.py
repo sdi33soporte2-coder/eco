@@ -353,7 +353,7 @@ def compress_context(
     # Probe whether the lock subsystem is actually available on this
     # SessionDB instance.  A process running mismatched module versions
     # (e.g. ``conversation_compression.py`` reloaded after a pull but the
-    # long-lived ``hermes_state.SessionDB`` class still bound to the
+    # long-lived ``eco_state.SessionDB`` class still bound to the
     # pre-#34351 version in memory) has the call site but not the method.
     # In that case ``try_acquire_compression_lock`` raises AttributeError —
     # NOT a ``sqlite3.Error`` — so the method's own fail-open guard never
@@ -383,7 +383,7 @@ def compress_context(
                     "compression lock subsystem unavailable for session=%s "
                     "(%s: %s) — proceeding without lock. This usually means a "
                     "stale in-memory module after an update; restart the "
-                    "process (or `hermes update`) to resync.",
+                    "process (or `eco update`) to resync.",
                     _lock_sid, type(_lock_err).__name__, _lock_err,
                 )
             _lock_acquired = True  # treat as acquired-but-unlocked; proceed

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Hermes Agent Release Script
+"""ECO Agent Release Script
 
 Generates changelogs and creates GitHub releases with CalVer tags.
 
@@ -31,7 +31,7 @@ from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-VERSION_FILE = REPO_ROOT / "hermes_cli" / "__init__.py"
+VERSION_FILE = REPO_ROOT / "eco_cli" / "__init__.py"
 PYPROJECT_FILE = REPO_ROOT / "pyproject.toml"
 
 # ACP Registry manifest must stay version-locked with pyproject.toml.
@@ -108,7 +108,7 @@ AUTHOR_MAP = {
     "leeseoki@makestar.com": "leeseoki0",
     "kronexoi13@gmail.com": "kronexoi",
     "hua.zhong@kingsmith.com": "vgocoder",
-    "hermes@marian.local": "Schrotti77",
+    "eco@marian.local": "Schrotti77",
     "david@memorilabs.ai": "devwdave",
     "dave@devwdave.com": "devwdave",
     "1920071390@campus.ouj.ac.jp": "zapabob",
@@ -370,7 +370,7 @@ AUTHOR_MAP = {
     # Temporary tool-progress cleanup salvage (May 2026)
     "Mrcharlesiv@gmail.com": "mrcharlesiv",
     "nbot@liizfq.top": "liizfq",
-    "274096618+hermes-agent-dhabibi@users.noreply.github.com": "dhabibi",
+    "274096618+eco-agent-dhabibi@users.noreply.github.com": "dhabibi",
     "dejie.guo@gmail.com": "JayGwod",
     "133716830+0xKingBack@users.noreply.github.com": "0xKingBack",
     "daixin1204@gmail.com": "SimbaKingjoe",
@@ -675,13 +675,13 @@ AUTHOR_MAP = {
     "shokatalishaikh95@gmail.com": "areu01or00",
     "bryan@intertwinesys.com": "bryanyoung",
     "christo.mitov@gmail.com": "christomitov",
-    "hermes@nousresearch.com": "NousResearch",
+    "eco@nousresearch.com": "NousResearch",
     "reginaldasr@gmail.com": "ReginaldasR",
     "ntconguit@gmail.com": "0xharryriddle",
     "agent@wildcat.local": "ericnicolaides",
     "georgex8001@gmail.com": "georgex8001",
     "stefan@dimagents.ai": "dimitrovi",
-    "hermes@noushq.ai": "benbarclay",
+    "eco@noushq.ai": "benbarclay",
     "chinmingcock@gmail.com": "ChimingLiu",
     "allard.quek@singtel.com": "AllardQuek",
     "openclaw@sparklab.ai": "openclaw",
@@ -853,7 +853,7 @@ AUTHOR_MAP = {
     "7093928+0xyg3n@users.noreply.github.com": "0xyg3n",
     "nftpoetrist@gmail.com": "nftpoetrist",  # PR #18982
     "millerc79@users.noreply.github.com": "millerc79",  # PR #19033
-    "hermes@example.com": "shellybotmoyer",  # PR #18915 (bot-committed)
+    "eco@example.com": "shellybotmoyer",  # PR #18915 (bot-committed)
     "exx@example.com": "exxmen",  # PR #19555
     "hypnosis.mda@gmail.com": "Hypn0sis",
     "ywt000818@gmail.com": "OwenYWT",
@@ -1005,7 +1005,7 @@ AUTHOR_MAP = {
     "aleksandr.pasevin@openzeppelin.com": "pasevin",
     "ubuntu@localhost.localdomain": "holynn-q",
     "holynn@placeholder.local": "holynn-q",
-    "agent@hermes.local": "jacdevos",
+    "agent@eco.local": "jacdevos",
     "sunsky.lau@gmail.com": "liuhao1024",
     "fabianoeq@gmail.com": "rodrigoeqnit",
     "178342791+sgtworkman@users.noreply.github.com": "sgtworkman",
@@ -1137,7 +1137,7 @@ AUTHOR_MAP = {
     "me+github7604@versun.org": "Versun",  # co-author only
     "my.vesper.nine@gmail.com": "kevin-ho",  # salvage: PR #15488 author @kevin-ho
     "noreply@paperclip.ing": "Paperclip",  # co-author only
-    "teknium@hermes-agent": "teknium1",
+    "teknium@eco-agent": "teknium1",
     "web3blind@gmail.com": "web3blind",
     "ztzheng@163.com": "chengoak",  # PR #17467
     "24110240104@m.fudan.edu.cn": "YuShu",  # co-author only
@@ -1213,7 +1213,7 @@ AUTHOR_MAP = {
     "pol.kuijken@gmail.com": "polkn",  # PR #6136 salvage (skill_view collision refusal)
     "robin@soal.org": "rewbs",
     # batch salvage (May 2026 LHF run)
-    "sauravsejal40@gmail.com": "Saurav0989",  # PR #27071 (docs: hermes-eval community link)
+    "sauravsejal40@gmail.com": "Saurav0989",  # PR #27071 (docs: eco-eval community link)
     "220110965+Saurav0989@users.noreply.github.com": "Saurav0989",
     "aviarchi1994@gmail.com": "avifenesh",  # PR #25902 (docs: computer-use-linux MCP)
     "55848801+avifenesh@users.noreply.github.com": "avifenesh",
@@ -1282,7 +1282,7 @@ AUTHOR_MAP = {
     "6108320+wesleysimplicio@users.noreply.github.com": "wesleysimplicio",
     "carryzuo00@gmail.com": "Carry00",  # PR #26851 (doctor SSH env vars)
     "alaamohanad169-ship-it@users.noreply.github.com": "alaamohanad169-ship-it",  # PR #26036 (telegram typing after send)
-    "vigo@hermes": "hawknewton",  # PR #26294 (bedrock boto3 lazy_deps)
+    "vigo@eco": "hawknewton",  # PR #26294 (bedrock boto3 lazy_deps)
     "211668+hawknewton@users.noreply.github.com": "hawknewton",
     "quenvix00@gmail.com": "QuenVix",  # PR #26761/26772 salvage
     "164776164+QuenVix@users.noreply.github.com": "QuenVix",
@@ -1303,7 +1303,7 @@ AUTHOR_MAP = {
     "1743117+burjorjee@users.noreply.github.com": "burjorjee",  # PR #28201 salvage (inline-shell timeout guard)
     "keki@MacBookPro.attlocal.net": "burjorjee",
     "264690993+oseftg@users.noreply.github.com": "oseftg",  # PR #28168 salvage (natural ending emoji/caret)
-    "hex.hermes@agentmail.to": "oseftg",
+    "hex.eco@agentmail.to": "oseftg",
     "236912655+rudi193-cmd@users.noreply.github.com": "rudi193-cmd",  # PR #28241 salvage (empty credential pool)
     "rudi193@gmail.com": "rudi193-cmd",
     "86684667+sadiksaifi@users.noreply.github.com": "sadiksaifi",  # PR #27982 salvage (kanban horiz scroll)
@@ -1378,7 +1378,7 @@ AUTHOR_MAP = {
     "ethie@nous": "ethernet8023",  # PR #29342 (TUI clipboard copy on linux/wayland)
     "jiahuigu@sjtu.edu.cn": "Jiahui-Gu",  # PR #29276 (guard pickle.loads in darwinian-evolver)
     "justinccdev@gmail.com": "justincc",  # PR #28914 (set tool_name on tool-result messages)
-    "kdkcfp@gmail.com": "slowtokki0409",  # PR #29025 (ignore local Hermes runtime files)
+    "kdkcfp@gmail.com": "slowtokki0409",  # PR #29025 (ignore local ECO runtime files)
     "peter.yuqin@gmail.com": "WuKongAI-CMU",  # PR #10082 (reject symlinked audio inputs)
     "sunil.nitie@gmail.com": "Sunil123135",  # PR #31031 (Windows Docker Desktop compose)
     "weichangyuwcy@gmail.com": "ChyuWei",  # PR #30987 (TUI TTS env var on voice off)
@@ -1500,7 +1500,7 @@ def _update_acp_registry_versions(semver: str) -> None:
         manifest["version"] = semver
         uvx = manifest.get("distribution", {}).get("uvx", {})
         if "package" in uvx:
-            uvx["package"] = f"hermes-agent[acp]=={semver}"
+            uvx["package"] = f"eco-agent[acp]=={semver}"
         # Preserve trailing newline + 2-space indent the file already uses.
         ACP_REGISTRY_MANIFEST.write_text(
             json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
@@ -1625,7 +1625,7 @@ def parse_coauthors(body: str) -> list:
         return []
     # AI/bot emails to ignore in co-author trailers
     _ignored_emails = {"noreply@anthropic.com", "noreply@github.com",
-                       "cursoragent@cursor.com", "hermes@nousresearch.com"}
+                       "cursoragent@cursor.com", "eco@nousresearch.com"}
     _ignored_names = re.compile(r"^(Claude|Copilot|Cursor Agent|GitHub Actions?|dependabot|renovate)", re.IGNORECASE)
     pattern = re.compile(r"Co-authored-by:\s*(.+?)\s*<([^>]+)>", re.IGNORECASE)
     results = []
@@ -1697,7 +1697,7 @@ def get_pr_number(subject: str) -> str | None:
     return None
 
 
-def generate_changelog(commits, tag_name, semver, repo_url="https://github.com/NousResearch/hermes-agent",
+def generate_changelog(commits, tag_name, semver, repo_url="https://github.com/NousResearch/hermes-agent-agent-agent",
                        prev_tag=None, first_release=False):
     """Generate markdown changelog from categorized commits."""
     lines = []
@@ -1705,14 +1705,14 @@ def generate_changelog(commits, tag_name, semver, repo_url="https://github.com/N
     # Header
     now = datetime.now()
     date_str = now.strftime("%B %d, %Y")
-    lines.append(f"# Hermes Agent v{semver} ({tag_name})")
+    lines.append(f"# ECO Agent v{semver} ({tag_name})")
     lines.append("")
     lines.append(f"**Release Date:** {date_str}")
     lines.append("")
 
     if first_release:
         lines.append("> 🎉 **First official release!** This marks the beginning of regular weekly releases")
-        lines.append("> for Hermes Agent. See below for everything included in this initial release.")
+        lines.append("> for ECO Agent. See below for everything included in this initial release.")
         lines.append("")
 
     # Group commits by category
@@ -1802,7 +1802,7 @@ def generate_changelog(commits, tag_name, semver, repo_url="https://github.com/N
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Hermes Agent Release Tool")
+    parser = argparse.ArgumentParser(description="ECO Agent Release Tool")
     parser.add_argument("--bump", choices=["major", "minor", "patch"],
                         help="Which semver component to bump")
     parser.add_argument("--publish", action="store_true",
@@ -1850,7 +1850,7 @@ def main():
             return
 
     print(f"{'='*60}")
-    print(f"  Hermes Agent Release Preview")
+    print(f"  ECO Agent Release Preview")
     print(f"{'='*60}")
     print(f"  CalVer tag:      {tag_name}")
     print(f"  SemVer:          v{current_version} → v{new_version}")
@@ -1904,7 +1904,7 @@ def main():
         # Create annotated tag
         tag_result = git_result(
             "tag", "-a", tag_name, "-m",
-            f"Hermes Agent v{new_version} ({calver_date})\n\nWeekly release"
+            f"ECO Agent v{new_version} ({calver_date})\n\nWeekly release"
         )
         if tag_result.returncode != 0:
             print(f"  ✗ Failed to create tag {tag_name}: {tag_result.stderr.strip()}")
@@ -1934,7 +1934,7 @@ def main():
 
         gh_cmd = [
             "gh", "release", "create", tag_name,
-            "--title", f"Hermes Agent v{new_version} ({calver_date})",
+            "--title", f"ECO Agent v{new_version} ({calver_date})",
             "--notes-file", str(changelog_file),
         ]
         gh_cmd.extend(str(path) for path in artifacts)
@@ -1961,7 +1961,7 @@ def main():
             print(f"    Release notes kept at: {changelog_file}")
             print(f"    Tag was created locally. Create the release manually:")
             print(
-                f"    gh release create {tag_name} --title 'Hermes Agent v{new_version} ({calver_date})' "
+                f"    gh release create {tag_name} --title 'ECO Agent v{new_version} ({calver_date})' "
                 f"--notes-file .release_notes.md {' '.join(str(path) for path in artifacts)}"
             )
             print(f"\n  ✓ Release artifacts prepared for manual publish: v{new_version} ({tag_name})")

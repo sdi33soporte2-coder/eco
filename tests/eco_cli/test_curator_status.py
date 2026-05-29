@@ -1,4 +1,4 @@
-"""Tests for `hermes curator status` output.
+"""Tests for `eco curator status` output.
 
 Covers:
 - y0shualee's "least recently active" semantic (view/patch/use all count as activity).
@@ -19,7 +19,7 @@ import pytest
 
 def test_status_uses_last_activity_not_only_last_used(monkeypatch, capsys):
     import agent.curator as curator_state
-    import hermes_cli.curator as curator_cli
+    import eco_cli.curator as curator_cli
     import tools.skill_usage as skill_usage
 
     monkeypatch.setattr(curator_state, "load_state", lambda: {
@@ -60,7 +60,7 @@ def test_status_uses_last_activity_not_only_last_used(monkeypatch, capsys):
 @pytest.fixture
 def curator_status_env(tmp_path, monkeypatch):
     """Isolated HERMES_HOME with real agent-created skills on disk."""
-    home = tmp_path / ".hermes"
+    home = tmp_path / ".eco"
     skills = home / "skills"
     skills.mkdir(parents=True)
     (home / "logs").mkdir()
@@ -68,13 +68,13 @@ def curator_status_env(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     import importlib
-    import hermes_constants
-    importlib.reload(hermes_constants)
+    import eco_constants
+    importlib.reload(eco_constants)
     from tools import skill_usage
     importlib.reload(skill_usage)
     from agent import curator
     importlib.reload(curator)
-    from hermes_cli import curator as curator_cli
+    from eco_cli import curator as curator_cli
     importlib.reload(curator_cli)
 
     def _write_skill(name: str) -> None:
@@ -86,7 +86,7 @@ def curator_status_env(tmp_path, monkeypatch):
             "description: test\n"
             "version: 1.0.0\n"
             "metadata:\n"
-            "  hermes:\n"
+            "  eco:\n"
             "    agent_created: true\n"
             "---\n"
             f"# {name}\n"
@@ -179,7 +179,7 @@ def test_status_no_skills_produces_clean_empty_output(curator_status_env):
 
 def test_status_marks_missing_last_report_path(monkeypatch, capsys, tmp_path):
     import agent.curator as curator_state
-    import hermes_cli.curator as curator_cli
+    import eco_cli.curator as curator_cli
     import tools.skill_usage as skill_usage
 
     missing_report = tmp_path / "stale-report"

@@ -25,8 +25,8 @@ def _get_git_commit(project_root: Path) -> str:
     Source installs and dev images resolve this live via ``git rev-parse``.
     The published Docker image excludes ``.git`` from the build context, so
     that lookup always fails — we fall back to the baked-in build SHA written
-    to ``<project_root>/.hermes_build_sha`` by the Dockerfile's
-    ``HERMES_GIT_SHA`` build-arg (see ``hermes_cli/build_info.py``).
+    to ``<project_root>/.eco_build_sha`` by the Dockerfile's
+    ``HERMES_GIT_SHA`` build-arg (see ``eco_cli/build_info.py``).
     The output format is identical regardless of source.
     """
     try:
@@ -46,7 +46,7 @@ def _get_git_commit(project_root: Path) -> str:
     # images, absent otherwise).  Defers the import so the dump module
     # stays cheap on non-dump code paths.
     try:
-        from hermes_cli.build_info import get_build_sha
+        from eco_cli.build_info import get_build_sha
         baked = get_build_sha(short=8)
         if baked:
             return baked

@@ -21,7 +21,7 @@ class TestSecretCaptureGuidance:
     def test_gateway_secret_capture_message_points_to_local_setup(self):
         message = GATEWAY_SECRET_CAPTURE_UNSUPPORTED_MESSAGE
         assert "local cli" in message.lower()
-        assert "~/.hermes/.env" in message
+        assert "~/.eco/.env" in message
 
 
 class TestSafeUrlForLog:
@@ -512,7 +512,7 @@ class TestMediaDeliveryPathValidation:
         """The motivating case: agent produces a PDF in a project directory.
 
         Reproduces the Discord-PDF-not-delivered bug. Before recency trust,
-        files outside ~/.hermes/cache/* were silently dropped, leaving the
+        files outside ~/.eco/cache/* were silently dropped, leaving the
         user with a raw filepath in chat instead of an attachment.
         """
         self._patch_roots(monkeypatch)
@@ -621,22 +621,22 @@ class TestMediaDeliveryDefaultMode:
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(secret)) is None
 
-    def test_denylist_blocks_hermes_credentials(self, tmp_path, monkeypatch):
-        """~/.hermes/.env and ~/.hermes/auth.json stay blocked even in
+    def test_denylist_blocks_eco_credentials(self, tmp_path, monkeypatch):
+        """~/.eco/.env and ~/.eco/auth.json stay blocked even in
         default mode. They live under $HOME (not the system prefix list)
         so this exercises the home-relative denied paths.
         """
         self._patch_roots(monkeypatch)
 
         fake_home = tmp_path / "home"
-        hermes_dir = fake_home / ".hermes"
-        hermes_dir.mkdir(parents=True)
-        env_file = hermes_dir / ".env"
+        eco_dir = fake_home / ".eco"
+        eco_dir.mkdir(parents=True)
+        env_file = eco_dir / ".env"
         env_file.write_text("OPENAI_API_KEY=sk-...")
         monkeypatch.setenv("HOME", str(fake_home))
         monkeypatch.setattr(
             "gateway.platforms.base._HERMES_HOME",
-            hermes_dir,
+            eco_dir,
         )
 
         assert BasePlatformAdapter.validate_media_delivery_path(str(env_file)) is None

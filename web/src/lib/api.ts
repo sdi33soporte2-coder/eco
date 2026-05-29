@@ -1,6 +1,6 @@
 // The dashboard can be served either at the root of its host (e.g.
 // https://kanban.tilos.com/) or under a URL prefix when reverse-proxied
-// (e.g. https://mission-control.tilos.com/hermes/). The Python backend
+// (e.g. https://mission-control.tilos.com/eco/). The Python backend
 // injects ``window.__HERMES_BASE_PATH__`` into index.html based on the
 // incoming ``X-Forwarded-Prefix`` header so the SPA can address its own
 // ``/api/...`` and ``/dashboard-plugins/...`` URLs correctly without a
@@ -33,7 +33,7 @@ declare global {
   }
 }
 let _sessionToken: string | null = null;
-const SESSION_HEADER = "X-Hermes-Session-Token";
+const SESSION_HEADER = "X-ECO-Session-Token";
 
 function setSessionHeader(headers: Headers, token: string): void {
   if (!headers.has(SESSION_HEADER)) {
@@ -85,7 +85,7 @@ export async function fetchJSON<T>(
       // fallback the post-login handler can read.
       try {
         sessionStorage.setItem(
-          "hermes.lastLocation",
+          "eco.lastLocation",
           window.location.pathname + window.location.search,
         );
       } catch {
@@ -96,7 +96,7 @@ export async function fetchJSON<T>(
       return new Promise<T>(() => {});
     }
     // Loopback mode: ``_SESSION_TOKEN`` rotates on every server restart
-    // (``hermes update``, ``hermes gateway restart``, etc.). A tab kept
+    // (``eco update``, ``eco gateway restart``, etc.). A tab kept
     // open across the restart holds the OLD token in
     // ``window.__HERMES_SESSION_TOKEN__`` from the previous HTML render,
     // so every fetch returns 401. The HTML is served ``Cache-Control:
@@ -108,13 +108,13 @@ export async function fetchJSON<T>(
       let alreadyReloaded = false;
       try {
         alreadyReloaded =
-          sessionStorage.getItem("hermes.tokenReloadAttempted") === "1";
+          sessionStorage.getItem("eco.tokenReloadAttempted") === "1";
       } catch {
         /* SSR / privacy mode — fall through to throw */
       }
       if (!alreadyReloaded) {
         try {
-          sessionStorage.setItem("hermes.tokenReloadAttempted", "1");
+          sessionStorage.setItem("eco.tokenReloadAttempted", "1");
         } catch {
           /* SSR / privacy mode — best effort */
         }
@@ -128,7 +128,7 @@ export async function fetchJSON<T>(
     // current ``window.__HERMES_SESSION_TOKEN__`` is valid, so the next
     // 401 — if any — should be allowed to trigger its own reload cycle.
     try {
-      sessionStorage.removeItem("hermes.tokenReloadAttempted");
+      sessionStorage.removeItem("eco.tokenReloadAttempted");
     } catch {
       /* SSR / privacy mode — ignore */
     }
@@ -152,13 +152,13 @@ async function getSessionToken(): Promise<string> {
     _sessionToken = injected;
     return _sessionToken;
   }
-  throw new Error("Session token not available — page must be served by the Hermes dashboard server");
+  throw new Error("Session token not available — page must be served by the ECO dashboard server");
 }
 
 /**
  * Fetch a single-use ticket for a WebSocket upgrade in gated mode.
  *
- * The dashboard's gated-mode WS auth (``hermes_cli.web_server._ws_auth_ok``)
+ * The dashboard's gated-mode WS auth (``eco_cli.web_server._ws_auth_ok``)
  * rejects the legacy ``?token=<_SESSION_TOKEN>`` path and only accepts
  * ``?ticket=<minted>`` consumed against the in-memory ticket store. Browsers
  * can't set ``Authorization`` on a WS upgrade, so this round-trip via the
@@ -433,7 +433,7 @@ export const api = {
   restartGateway: () =>
     fetchJSON<ActionResponse>("/api/gateway/restart", { method: "POST" }),
   updateHermes: () =>
-    fetchJSON<ActionResponse>("/api/hermes/update", { method: "POST" }),
+    fetchJSON<ActionResponse>("/api/eco/update", { method: "POST" }),
   getActionStatus: (name: string, lines = 200) =>
     fetchJSON<ActionStatusResponse>(
       `/api/actions/${encodeURIComponent(name)}/status?lines=${lines}`,
@@ -573,7 +573,7 @@ export interface StatusResponse {
   gateway_running: boolean;
   gateway_state: string | null;
   gateway_updated_at: string | null;
-  hermes_home: string;
+  eco_home: string;
   latest_config_version: number;
   release_date: string;
   version: string;
@@ -753,7 +753,7 @@ export interface CronJob {
   id: string;
   profile?: string | null;
   profile_name?: string | null;
-  hermes_home?: string | null;
+  eco_home?: string | null;
   is_default_profile?: boolean;
   name?: string | null;
   prompt?: string | null;

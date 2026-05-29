@@ -10,7 +10,7 @@ These tests stand up a container with a named volume, create profiles
 inside it in various gateway states, restart the container, and
 assert the reconciler did the right thing.
 
-Every ``docker exec`` here runs as the unprivileged ``hermes`` user
+Every ``docker exec`` here runs as the unprivileged ``eco`` user
 (via :func:`docker_exec` / :func:`docker_exec_sh` in conftest); see
 the conftest module docstring.
 """
@@ -100,8 +100,8 @@ def restart_container(request, built_image: str):
     """A long-running container with a named volume so docker restart
     preserves $HERMES_HOME/profiles/."""
     safe = request.node.name.replace("[", "_").replace("]", "_")
-    name = f"hermes-restart-{safe}"
-    volume = f"hermes-restart-vol-{safe}"
+    name = f"eco-restart-{safe}"
+    volume = f"eco-restart-vol-{safe}"
     _docker("rm", "-f", name)
     _docker("volume", "rm", "-f", volume)
     _docker("volume", "create", volume, timeout=10).check_returncode()
@@ -120,7 +120,7 @@ def restart_container(request, built_image: str):
     deadline = time.monotonic() + 30.0
     while time.monotonic() < deadline:
         r = _docker(
-            "exec", "-u", "hermes", name, "sh", "-c",
+            "exec", "-u", "eco", name, "sh", "-c",
             "cat /opt/data/logs/container-boot.log 2>/dev/null",
             timeout=5,
         )
@@ -145,10 +145,10 @@ def test_running_gateway_survives_container_restart(restart_container: str) -> N
     # Create the profile + start its gateway. The Phase 4 hooks
     # register the s6 service slot during create and the dispatch
     # path brings it up via s6-svc -u.
-    r = _exec(container, "hermes", "profile", "create", "coder")
+    r = _exec(container, "eco", "profile", "create", "coder")
     assert r.returncode == 0, f"profile create failed: {r.stderr}"
 
-    r = _exec(container, "hermes", "-p", "coder", "gateway", "start", timeout=60)
+    r = _exec(container, "eco", "-p", "coder", "gateway", "start", timeout=60)
     assert r.returncode == 0, f"gateway start failed: {r.stderr}"
 
     # Give the service time to actually come up under supervision.
@@ -197,7 +197,7 @@ def test_running_gateway_survives_container_restart(restart_container: str) -> N
 def test_stopped_gateway_stays_stopped_after_restart(restart_container: str) -> None:
     container = restart_container
 
-    _exec(container, "hermes", "profile", "create", "writer").check_returncode()
+    _exec(container, "eco", "profile", "create", "writer").check_returncode()
 
     # Write 'stopped' directly so we don't have to race against the
     # gateway's own state writes.
@@ -229,7 +229,7 @@ def test_stale_gateway_pid_cleaned_up_on_restart(restart_container: str) -> None
     process-mismatch checks."""
     container = restart_container
 
-    _exec(container, "hermes", "profile", "create", "ghost").check_returncode()
+    _exec(container, "eco", "profile", "create", "ghost").check_returncode()
 
     # Stamp stale runtime files alongside a 'running' state so the
     # reconciler walks this profile.
