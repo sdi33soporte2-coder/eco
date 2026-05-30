@@ -64,6 +64,8 @@ ECO_AGENT_LOGO = """
 [bold #CD7F32]██║     ╚██████╗╚██████╔╝[/]
 [bold #CD7F32]╚═╝      ╚═════╝ ╚═════╝ [/]
 """
+
+ECO_CADUCEUS = """
 [#E94560]      ███████╗ ██████╗ ██████╗ [/]
 [#E94560]      ██╔════╝██╔════╝██╔═══██╗[/]
 [#E94560]      █████╗  ██║     ██║   ██║[/]
@@ -76,7 +78,15 @@ ECO_AGENT_LOGO = """
 [#E94560]      ╚  ╚═╝╝╚╝╚═╝╩ ╩╚═╝╚═╝╩╚═ [/]
 [#9CA3AF]      ────────────────────────────[/]
 [#9CA3AF]       FLOW PROJECT · AGENT[/]
-"""Return skills grouped by category, filtered by platform and disabled state.
+"""
+
+
+# =========================================================================
+# Skills scanning
+# =========================================================================
+
+def get_available_skills() -> Dict[str, List[str]]:
+    """Return skills grouped by category, filtered by platform and disabled state.
 
     Delegates to ``_find_all_skills()`` from ``tools/skills_tool`` which already
     handles platform gating (``platforms:`` frontmatter) and respects the
