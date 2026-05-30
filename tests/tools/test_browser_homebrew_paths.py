@@ -279,7 +279,7 @@ class TestRunBrowserCommandPathConstruction:
                  {
                      "PATH": "/usr/bin:/bin",
                      "HOME": "/home/test",
-                     "HERMES_HOME": eco_home,
+                     "ECO_HOME": eco_home,
                  },
                  clear=True,
              ):
@@ -331,7 +331,7 @@ class TestRunBrowserCommandPathConstruction:
                  {
                      "PATH": "/usr/bin:/bin",
                      "HOME": "/home/test",
-                     "HERMES_HOME": eco_home,
+                     "ECO_HOME": eco_home,
                  },
                  clear=True,
              ):

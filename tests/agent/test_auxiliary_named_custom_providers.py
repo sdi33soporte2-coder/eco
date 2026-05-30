@@ -7,16 +7,16 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _isolate(tmp_path, monkeypatch):
-    """Redirect HERMES_HOME and clear module caches."""
+    """Redirect ECO_HOME and clear module caches."""
     eco_home = tmp_path / ".eco"
     eco_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
     # Write a minimal config so load_config doesn't fail
     (eco_home / "config.yaml").write_text("model:\n  default: test-model\n")
 
 
 def _write_config(tmp_path, config_dict):
-    """Write a config.yaml to the test HERMES_HOME."""
+    """Write a config.yaml to the test ECO_HOME."""
     import yaml
     config_path = tmp_path / ".eco" / "config.yaml"
     config_path.write_text(yaml.dump(config_dict))

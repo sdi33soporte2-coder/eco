@@ -394,8 +394,8 @@ def test_redirect_noop_on_host(monkeypatch: pytest.MonkeyPatch) -> None:
         "eco_cli.gateway.os.execvp",
         lambda *a, **kw: pytest.fail("execvp should not be called on host"),
     )
-    monkeypatch.delenv("HERMES_S6_SUPERVISED_CHILD", raising=False)
-    monkeypatch.delenv("HERMES_GATEWAY_NO_SUPERVISE", raising=False)
+    monkeypatch.delenv("ECO_S6_SUPERVISED_CHILD", raising=False)
+    monkeypatch.delenv("ECO_GATEWAY_NO_SUPERVISE", raising=False)
 
     assert gw._maybe_redirect_run_to_s6_supervision(_Args()) is False
 
@@ -415,8 +415,8 @@ def test_redirect_fires_inside_s6_container(
     rec = _stub_s6(monkeypatch, on_s6=True)
     monkeypatch.setattr("eco_cli.gateway._profile_suffix", lambda: "")
     execvp_calls = _stub_execvp(monkeypatch)
-    monkeypatch.delenv("HERMES_S6_SUPERVISED_CHILD", raising=False)
-    monkeypatch.delenv("HERMES_GATEWAY_NO_SUPERVISE", raising=False)
+    monkeypatch.delenv("ECO_S6_SUPERVISED_CHILD", raising=False)
+    monkeypatch.delenv("ECO_GATEWAY_NO_SUPERVISE", raising=False)
 
     with pytest.raises(_ExecvpCalled) as excinfo:
         gw._maybe_redirect_run_to_s6_supervision(_Args())
@@ -427,7 +427,7 @@ def test_redirect_fires_inside_s6_container(
     err = capsys.readouterr().err
     assert "s6 supervision" in err
     assert "--no-supervise" in err
-    assert "HERMES_GATEWAY_NO_SUPERVISE" in err
+    assert "ECO_GATEWAY_NO_SUPERVISE" in err
     # 3. exec'd `sleep infinity`.
     assert execvp_calls == [["sleep", "sleep", "infinity"]]
     assert excinfo.value.argv == ["sleep", "sleep", "infinity"]
@@ -438,7 +438,7 @@ def test_redirect_short_circuits_supervised_child(
 ) -> None:
     """The recursion guard: when the supervised gateway s6-supervise is
     running execs `eco gateway run --replace`, the
-    HERMES_S6_SUPERVISED_CHILD sentinel must short-circuit the redirect
+    ECO_S6_SUPERVISED_CHILD sentinel must short-circuit the redirect
     so the gateway actually starts foreground. Without this guard the
     supervised process would re-dispatch `start` → re-exec `run` → ...
     in an infinite loop.
@@ -453,8 +453,8 @@ def test_redirect_short_circuits_supervised_child(
         "eco_cli.gateway.os.execvp",
         lambda *a, **kw: pytest.fail("execvp should not run when sentinel is set"),
     )
-    monkeypatch.setenv("HERMES_S6_SUPERVISED_CHILD", "1")
-    monkeypatch.delenv("HERMES_GATEWAY_NO_SUPERVISE", raising=False)
+    monkeypatch.setenv("ECO_S6_SUPERVISED_CHILD", "1")
+    monkeypatch.delenv("ECO_GATEWAY_NO_SUPERVISE", raising=False)
 
     assert gw._maybe_redirect_run_to_s6_supervision(_Args()) is False
 
@@ -474,8 +474,8 @@ def test_redirect_respects_no_supervise_flag(
         "eco_cli.gateway.os.execvp",
         lambda *a, **kw: pytest.fail("execvp should not run when --no-supervise is set"),
     )
-    monkeypatch.delenv("HERMES_S6_SUPERVISED_CHILD", raising=False)
-    monkeypatch.delenv("HERMES_GATEWAY_NO_SUPERVISE", raising=False)
+    monkeypatch.delenv("ECO_S6_SUPERVISED_CHILD", raising=False)
+    monkeypatch.delenv("ECO_GATEWAY_NO_SUPERVISE", raising=False)
 
     assert gw._maybe_redirect_run_to_s6_supervision(_Args(no_supervise=True)) is False
 
@@ -484,7 +484,7 @@ def test_redirect_respects_no_supervise_flag(
 def test_redirect_respects_no_supervise_env(
     monkeypatch: pytest.MonkeyPatch, value: str,
 ) -> None:
-    """`HERMES_GATEWAY_NO_SUPERVISE=1` (env var) must skip the redirect.
+    """`ECO_GATEWAY_NO_SUPERVISE=1` (env var) must skip the redirect.
 
     Truthiness mirrors the dashboard service's own env var parsing —
     1/true/yes are all accepted, case-insensitively.
@@ -499,8 +499,8 @@ def test_redirect_respects_no_supervise_env(
         "eco_cli.gateway.os.execvp",
         lambda *a, **kw: pytest.fail("execvp should not run when env opt-out is set"),
     )
-    monkeypatch.delenv("HERMES_S6_SUPERVISED_CHILD", raising=False)
-    monkeypatch.setenv("HERMES_GATEWAY_NO_SUPERVISE", value)
+    monkeypatch.delenv("ECO_S6_SUPERVISED_CHILD", raising=False)
+    monkeypatch.setenv("ECO_GATEWAY_NO_SUPERVISE", value)
 
     assert gw._maybe_redirect_run_to_s6_supervision(_Args()) is False
 
@@ -508,18 +508,18 @@ def test_redirect_respects_no_supervise_env(
 def test_redirect_no_supervise_env_falsy_values_dont_opt_out(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Falsy / unrecognized values of HERMES_GATEWAY_NO_SUPERVISE must
+    """Falsy / unrecognized values of ECO_GATEWAY_NO_SUPERVISE must
     NOT opt out. We're strict about what counts as "yes" so a typo
-    like `HERMES_GATEWAY_NO_SUPERVISE=0` doesn't silently enable the
+    like `ECO_GATEWAY_NO_SUPERVISE=0` doesn't silently enable the
     historical foreground behavior."""
     from eco_cli import gateway as gw
 
     _stub_s6(monkeypatch, on_s6=True)
     monkeypatch.setattr("eco_cli.gateway._profile_suffix", lambda: "")
     _stub_execvp(monkeypatch)
-    monkeypatch.delenv("HERMES_S6_SUPERVISED_CHILD", raising=False)
+    monkeypatch.delenv("ECO_S6_SUPERVISED_CHILD", raising=False)
 
     for falsy in ("", "0", "false", "no", "off", "garbage"):
-        monkeypatch.setenv("HERMES_GATEWAY_NO_SUPERVISE", falsy)
+        monkeypatch.setenv("ECO_GATEWAY_NO_SUPERVISE", falsy)
         with pytest.raises(_ExecvpCalled):
             gw._maybe_redirect_run_to_s6_supervision(_Args())

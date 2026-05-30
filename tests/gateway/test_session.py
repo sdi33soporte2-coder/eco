@@ -642,7 +642,7 @@ class TestWhatsAppSessionKeyConsistency:
             json.dumps("15551234567@s.whatsapp.net"),
             encoding="utf-8",
         )
-        monkeypatch.setenv("HERMES_HOME", str(tmp_home))
+        monkeypatch.setenv("ECO_HOME", str(tmp_home))
 
         lid_source = SessionSource(
             platform=Platform.WHATSAPP,
@@ -671,7 +671,7 @@ class TestWhatsAppSessionKeyConsistency:
             json.dumps("15551234567@s.whatsapp.net"),
             encoding="utf-8",
         )
-        monkeypatch.setenv("HERMES_HOME", str(tmp_home))
+        monkeypatch.setenv("ECO_HOME", str(tmp_home))
 
         lid_source = SessionSource(
             platform=Platform.WHATSAPP,
@@ -953,7 +953,7 @@ class TestWhatsAppIdentifierPublicHelpers:
 
     def test_canonical_without_mapping_returns_normalized(self, tmp_path, monkeypatch):
         """With no bridge mapping files, the normalized input is returned."""
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path))
         assert canonical_whatsapp_identifier("60123456789@lid") == "60123456789"
 
     def test_canonical_walks_lid_mapping(self, tmp_path, monkeypatch):
@@ -964,14 +964,14 @@ class TestWhatsAppIdentifierPublicHelpers:
             json.dumps("15551234567@s.whatsapp.net"),
             encoding="utf-8",
         )
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path))
 
         canonical = canonical_whatsapp_identifier("999999999999999@lid")
         assert canonical == "15551234567"
         assert canonical_whatsapp_identifier("15551234567@s.whatsapp.net") == "15551234567"
 
     def test_canonical_empty_input(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path))
         assert canonical_whatsapp_identifier("") == ""
 
 

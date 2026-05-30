@@ -27,4 +27,4 @@ def test_eco_launcher_wrapper_clears_python_env_before_exec() -> None:
     assert 'cat > "$command_link_dir/eco" <<EOF' in text
     assert 'unset PYTHONPATH' in text
     assert 'unset PYTHONHOME' in text
-    assert 'exec "$HERMES_BIN" "\\$@"' in text
+    assert 'exec "$ECO_BIN" "\\$@"' in text

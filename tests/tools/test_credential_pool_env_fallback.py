@@ -31,14 +31,14 @@ def _make_pconfig(provider_id="deepseek", env_vars=None):
 
 @pytest.fixture
 def isolated_eco_home(tmp_path, monkeypatch):
-    """Point HERMES_HOME at a temp dir and clear known API key env vars.
+    """Point ECO_HOME at a temp dir and clear known API key env vars.
 
     Also invalidates any cached get_env_value state by patching Path.home().
     """
     home = tmp_path / ".eco"
     home.mkdir()
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
 
     # Clear all known API key env vars so get_env_value falls through to .env
     for key in [

@@ -24,7 +24,7 @@ def eco_home(tmp_path, monkeypatch):
     home = tmp_path / ".eco"
     home.mkdir()
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     # Clear any cached eco_home computation
     import eco_constants
     if hasattr(eco_constants, "_eco_home_cache"):
@@ -49,7 +49,7 @@ def test_save_conversation_writes_under_eco_home(eco_home, tmp_path, monkeypatch
     work.mkdir()
     monkeypatch.chdir(work)
 
-    # Import fresh to pick up the HERMES_HOME fixture
+    # Import fresh to pick up the ECO_HOME fixture
     for mod in [m for m in sys.modules if m.startswith("cli") or m == "eco_constants"]:
         sys.modules.pop(mod, None)
 

@@ -29,7 +29,7 @@ def _reset_modules(prefixes: tuple[str, ...]):
 
 @pytest.fixture(autouse=True)
 def _restore_tool_modules():
-    original_eco_home = os.environ.get("HERMES_HOME")
+    original_eco_home = os.environ.get("ECO_HOME")
     original_modules = {
         name: module
         for name, module in sys.modules.items()
@@ -44,9 +44,9 @@ def _restore_tool_modules():
         yield
     finally:
         if original_eco_home is None:
-            os.environ.pop("HERMES_HOME", None)
+            os.environ.pop("ECO_HOME", None)
         else:
-            os.environ["HERMES_HOME"] = original_eco_home
+            os.environ["ECO_HOME"] = original_eco_home
         _reset_modules(("tools", "eco_cli", "modal"))
         sys.modules.update(original_modules)
 
@@ -63,7 +63,7 @@ def _install_modal_test_modules(
     eco_cli.__path__ = []  # type: ignore[attr-defined]
     sys.modules["eco_cli"] = eco_cli
     eco_home = tmp_path / "eco-home"
-    os.environ["HERMES_HOME"] = str(eco_home)
+    os.environ["ECO_HOME"] = str(eco_home)
     sys.modules["eco_cli.config"] = types.SimpleNamespace(
         get_eco_home=lambda: eco_home,
     )

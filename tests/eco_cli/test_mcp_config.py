@@ -18,7 +18,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def _isolate_config(tmp_path, monkeypatch):
     """Redirect all config I/O to a temp directory."""
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setenv("ECO_HOME", str(tmp_path))
     monkeypatch.setattr(
         "eco_cli.config.get_eco_home", lambda: tmp_path
     )
@@ -552,7 +552,7 @@ class TestMcpRemoveEvictsManager:
         monkeypatch.setattr(
             "eco_cli.mcp_config.get_eco_home", lambda: tmp_path
         )
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path))
 
         from tools.mcp_oauth_manager import get_manager, reset_manager_for_tests
         reset_manager_for_tests()

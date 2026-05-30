@@ -43,11 +43,11 @@ def eco_home(tmp_path, monkeypatch):
     """Point ECO at an isolated home directory."""
     home = tmp_path / ".eco"
     home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     # Some modules cache get_eco_home; clear if needed.
     import eco_constants
-    if hasattr(eco_constants, "_HERMES_HOME_CACHE"):
-        eco_constants._HERMES_HOME_CACHE = None  # type: ignore[attr-defined]
+    if hasattr(eco_constants, "_ECO_HOME_CACHE"):
+        eco_constants._ECO_HOME_CACHE = None  # type: ignore[attr-defined]
     return home
 
 
@@ -525,7 +525,7 @@ def test_env_loader_skips_when_disabled(tmp_path, monkeypatch):
     """No config.yaml present → no BSM call, no crash."""
     home = tmp_path / ".eco"
     home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     from eco_cli.env_loader import _apply_external_secret_sources
@@ -546,7 +546,7 @@ def test_env_loader_calls_bsm_when_enabled(tmp_path, monkeypatch):
         "    override_existing: false\n"
         "    auto_install: false\n"
     )
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     monkeypatch.setenv("BWS_ACCESS_TOKEN", "0.t")
     monkeypatch.delenv("MY_BSM_KEY", raising=False)
 

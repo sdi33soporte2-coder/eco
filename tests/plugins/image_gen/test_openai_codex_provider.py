@@ -34,7 +34,7 @@ def _b64_png() -> str:
 
 @pytest.fixture(autouse=True)
 def _tmp_eco_home(tmp_path, monkeypatch):
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    monkeypatch.setenv("ECO_HOME", str(tmp_path))
     yield tmp_path
 
 

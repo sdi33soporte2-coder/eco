@@ -15,11 +15,11 @@ import pytest
 
 @pytest.fixture
 def curator_env(tmp_path, monkeypatch):
-    """Isolated HERMES_HOME + freshly reloaded curator + skill_usage modules."""
+    """Isolated ECO_HOME + freshly reloaded curator + skill_usage modules."""
     home = tmp_path / ".eco"
     (home / "skills").mkdir(parents=True)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
 
     import tools.skill_usage as usage
     importlib.reload(usage)

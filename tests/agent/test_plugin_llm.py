@@ -741,7 +741,7 @@ plugins:
 """,
             encoding="utf-8",
         )
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         from eco_cli import config as _config_mod
         _config_mod._config_cache = None  # type: ignore[attr-defined]
 
@@ -760,7 +760,7 @@ plugins:
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
         (eco_home / "config.yaml").write_text("plugins: {}\n", encoding="utf-8")
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         from eco_cli import config as _config_mod
         _config_mod._config_cache = None  # type: ignore[attr-defined]
 

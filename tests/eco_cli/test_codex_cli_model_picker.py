@@ -34,7 +34,7 @@ def eco_auth_only_env(tmp_path, monkeypatch):
     eco_home = tmp_path / ".eco"
     eco_home.mkdir()
 
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
     # Point CODEX_HOME to nonexistent dir to prove it's not needed
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "no_codex"))
 
@@ -111,7 +111,7 @@ def claude_code_only_env(tmp_path, monkeypatch):
     eco_home = tmp_path / ".eco"
     eco_home.mkdir()
 
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
     # No Codex CLI
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "no_codex"))
 
@@ -166,7 +166,7 @@ def test_no_codex_when_no_credentials(tmp_path, monkeypatch):
     eco_home = tmp_path / ".eco"
     eco_home.mkdir()
 
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "no_codex"))
 
     (eco_home / "auth.json").write_text(

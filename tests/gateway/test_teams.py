@@ -350,7 +350,7 @@ class TestTeamsInteractiveSetup:
         credentials to .env without crashing.
         """
         eco_home = tmp_path / "eco"
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         import eco_cli.cli_output as cli_output_mod
 

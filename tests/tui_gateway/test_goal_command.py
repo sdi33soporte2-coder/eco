@@ -23,9 +23,9 @@ def eco_home(tmp_path, monkeypatch):
     home = tmp_path / ".eco"
     home.mkdir()
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
 
-    # Bust the goal-module DB cache so it re-resolves HERMES_HOME.
+    # Bust the goal-module DB cache so it re-resolves ECO_HOME.
     from eco_cli import goals
 
     goals._DB_CACHE.clear()

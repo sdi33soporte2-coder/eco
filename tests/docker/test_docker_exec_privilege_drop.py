@@ -13,9 +13,9 @@ These tests verify:
    eco user before the real binary runs.
 2. ``docker exec --user eco <c> eco …`` (already non-root) short-
    circuits and doesn't try to drop again.
-3. Files written under $HERMES_HOME from a ``docker exec`` session land
+3. Files written under $ECO_HOME from a ``docker exec`` session land
    as eco:eco — the actual user-visible invariant.
-4. The HERMES_DOCKER_EXEC_AS_ROOT opt-out lets diagnostic sessions keep
+4. The ECO_DOCKER_EXEC_AS_ROOT opt-out lets diagnostic sessions keep
    running as root deliberately.
 5. The main CMD path (``docker run <image> …``) is unaffected by the
    PATH-shim ordering — no recursion, no behavior change.
@@ -83,7 +83,7 @@ def test_shim_drops_root_to_eco_uid(sleep_container: str) -> None:
     into it without forking subcommands. Simplest approach: have `eco`
     do anything that writes to disk, then check the file's owner.
 
-    Use `eco config set` which writes config.yaml under HERMES_HOME.
+    Use `eco config set` which writes config.yaml under ECO_HOME.
     The resulting file ownership tells us what UID the shim ended up at.
     """
     # Wipe any prior state.
@@ -148,7 +148,7 @@ def test_shim_short_circuits_for_non_root_exec(sleep_container: str) -> None:
 
 
 def test_shim_opt_out_keeps_root(sleep_container: str) -> None:
-    """HERMES_DOCKER_EXEC_AS_ROOT=1 should suppress the privilege drop.
+    """ECO_DOCKER_EXEC_AS_ROOT=1 should suppress the privilege drop.
 
     Reserved for diagnostic sessions where the operator deliberately
     wants root semantics. Verified by writing a file and checking its
@@ -162,7 +162,7 @@ def test_shim_opt_out_keeps_root(sleep_container: str) -> None:
 
     r = subprocess.run(
         ["docker", "exec",
-         "-e", "HERMES_DOCKER_EXEC_AS_ROOT=1",
+         "-e", "ECO_DOCKER_EXEC_AS_ROOT=1",
          sleep_container,
          "eco", "config", "set", "_test.opt_out", "1"],
         capture_output=True, text=True, timeout=30,
@@ -175,7 +175,7 @@ def test_shim_opt_out_keeps_root(sleep_container: str) -> None:
         capture_output=True, text=True, timeout=10,
     )
     assert r.stdout.strip() == "root:root", (
-        f"With HERMES_DOCKER_EXEC_AS_ROOT=1, expected root:root, "
+        f"With ECO_DOCKER_EXEC_AS_ROOT=1, expected root:root, "
         f"got {r.stdout.strip()!r}"
     )
 
@@ -186,9 +186,9 @@ def test_shim_opt_out_strict_truthiness(
 ) -> None:
     """Anything other than 1/true/yes (case-insensitive) does NOT opt out.
 
-    Strict truthiness so a typo (``HERMES_DOCKER_EXEC_AS_ROOT=0``) doesn't
+    Strict truthiness so a typo (``ECO_DOCKER_EXEC_AS_ROOT=0``) doesn't
     silently keep the user as root. Mirrors the policy used by
-    ``HERMES_GATEWAY_NO_SUPERVISE`` in #33583.
+    ``ECO_GATEWAY_NO_SUPERVISE`` in #33583.
     """
     subprocess.run(
         ["docker", "exec", "--user", "root", sleep_container,
@@ -198,7 +198,7 @@ def test_shim_opt_out_strict_truthiness(
 
     r = subprocess.run(
         ["docker", "exec",
-         "-e", f"HERMES_DOCKER_EXEC_AS_ROOT={falsy_value}",
+         "-e", f"ECO_DOCKER_EXEC_AS_ROOT={falsy_value}",
          sleep_container,
          "eco", "config", "set", "_test.falsy", "1"],
         capture_output=True, text=True, timeout=30,
@@ -264,7 +264,7 @@ def test_e2e_login_then_supervised_gateway_can_read_auth(
     # Have the shim-protected `docker exec` write the auth store.
     # `eco auth list` is read-only but still exercises _load_auth_store
     # under the shim's UID. We invoke `eco config set` first to
-    # provoke a write into HERMES_HOME so we have something concrete to
+    # provoke a write into ECO_HOME so we have something concrete to
     # owner-check.
     r = subprocess.run(
         ["docker", "exec", sleep_container,
@@ -274,7 +274,7 @@ def test_e2e_login_then_supervised_gateway_can_read_auth(
     assert r.returncode == 0, f"config set failed: {r.stderr}"
 
     # The supervised UID (10000) must be able to read everything under
-    # HERMES_HOME that docker exec just wrote.
+    # ECO_HOME that docker exec just wrote.
     r = subprocess.run(
         ["docker", "exec", "--user", "eco", sleep_container,
          "find", "/opt/data", "-maxdepth", "2", "-type", "f",

@@ -22,10 +22,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 @pytest.fixture
 def cron_env(tmp_path, monkeypatch):
-    """Isolated HERMES_HOME with an empty skills tree.
+    """Isolated ECO_HOME with an empty skills tree.
 
     `tools.skills_tool` snapshots `SKILLS_DIR` at module-import time, so
-    setting `HERMES_HOME` alone doesn't reach it. We also patch the
+    setting `ECO_HOME` alone doesn't reach it. We also patch the
     module-level constant so `skill_view()` finds the skills we plant.
 
     Note: `test_cron_no_agent.py` (and potentially others) do
@@ -40,14 +40,14 @@ def cron_env(tmp_path, monkeypatch):
     skills_dir.mkdir()
     (eco_home / "cron").mkdir()
     (eco_home / "cron" / "output").mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     # Patch the module-level SKILLS_DIR snapshots that `skill_view()`
     # uses. Without this, the tool resolves against the real
     # `~/.eco/skills/` and our planted skills are invisible.
     import tools.skills_tool as _skills_tool
     monkeypatch.setattr(_skills_tool, "SKILLS_DIR", skills_dir)
-    monkeypatch.setattr(_skills_tool, "HERMES_HOME", eco_home)
+    monkeypatch.setattr(_skills_tool, "ECO_HOME", eco_home)
 
     # Return both the home dir and the scheduler module so tests use the
     # CURRENT module object (post any reload that happened in fixtures of

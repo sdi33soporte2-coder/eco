@@ -138,7 +138,7 @@ class TestFirecrawlClientConfig:
                 )
 
     def test_nous_auth_token_respects_eco_home_override(self, tmp_path):
-        """Auth lookup should read from HERMES_HOME/auth.json, not ~/.eco/auth.json."""
+        """Auth lookup should read from ECO_HOME/auth.json, not ~/.eco/auth.json."""
         real_home = tmp_path / "real-home"
         (real_home / ".eco").mkdir(parents=True)
 
@@ -154,7 +154,7 @@ class TestFirecrawlClientConfig:
 
         with patch.dict(os.environ, {
             "HOME": str(real_home),
-            "HERMES_HOME": str(eco_home),
+            "ECO_HOME": str(eco_home),
         }, clear=False):
             import tools.web_tools
             importlib.reload(tools.web_tools)

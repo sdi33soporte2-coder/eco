@@ -53,7 +53,7 @@ def _jwt_with_exp(exp_epoch: int) -> str:
 def test_read_codex_tokens_success(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     _setup_eco_auth(eco_home)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     data = _read_codex_tokens()
     assert data["tokens"]["access_token"] == "access"
@@ -65,7 +65,7 @@ def test_read_codex_tokens_missing(tmp_path, monkeypatch):
     eco_home.mkdir(parents=True, exist_ok=True)
     # Empty auth store
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     with pytest.raises(AuthError) as exc:
         _read_codex_tokens()
@@ -75,7 +75,7 @@ def test_read_codex_tokens_missing(tmp_path, monkeypatch):
 def test_resolve_codex_runtime_credentials_missing_access_token(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     _setup_eco_auth(eco_home, access_token="")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     with pytest.raises(AuthError) as exc:
         resolve_codex_runtime_credentials()
@@ -87,7 +87,7 @@ def test_resolve_codex_runtime_credentials_refreshes_expiring_token(tmp_path, mo
     eco_home = tmp_path / "eco"
     expiring_token = _jwt_with_exp(int(time.time()) - 10)
     _setup_eco_auth(eco_home, access_token=expiring_token, refresh_token="refresh-old")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     called = {"count": 0}
 
@@ -106,7 +106,7 @@ def test_resolve_codex_runtime_credentials_refreshes_expiring_token(tmp_path, mo
 def test_resolve_codex_runtime_credentials_force_refresh(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     _setup_eco_auth(eco_home, access_token="access-current", refresh_token="refresh-old")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     called = {"count": 0}
 
@@ -152,7 +152,7 @@ def test_resolve_codex_runtime_credentials_falls_back_to_pool_when_singleton_emp
         },
     }
     (eco_home / "auth.json").write_text(json.dumps(auth_store))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     resolved = resolve_codex_runtime_credentials()
     assert resolved["api_key"] == "pool-fallback-token"
@@ -186,7 +186,7 @@ def test_resolve_codex_runtime_credentials_pool_fallback_skips_exhausted(tmp_pat
         },
     }
     (eco_home / "auth.json").write_text(json.dumps(auth_store))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     resolved = resolve_codex_runtime_credentials()
     assert resolved["api_key"] == "usable-token"
@@ -207,7 +207,7 @@ def test_resolve_codex_runtime_credentials_pool_fallback_no_usable_entry(tmp_pat
         },
     }
     (eco_home / "auth.json").write_text(json.dumps(auth_store))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     with pytest.raises(AuthError) as exc:
         resolve_codex_runtime_credentials()
@@ -224,7 +224,7 @@ def test_save_codex_tokens_roundtrip(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     _save_codex_tokens({"access_token": "at123", "refresh_token": "rt456"})
     data = _read_codex_tokens()
@@ -275,7 +275,7 @@ def test_save_codex_tokens_syncs_credential_pool(tmp_path, monkeypatch):
             ],
         },
     }))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     _save_codex_tokens({"access_token": "new-at", "refresh_token": "new-rt"},
                        last_refresh="2026-05-27T00:00:00Z")
@@ -354,7 +354,7 @@ def test_save_codex_tokens_syncs_manual_device_code_entries(tmp_path, monkeypatc
             ],
         },
     }))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     _save_codex_tokens({"access_token": "fresh-at", "refresh_token": "fresh-rt"},
                        last_refresh="2026-05-28T00:00:00Z")
@@ -409,7 +409,7 @@ def test_codex_tokens_not_written_to_shared_file(tmp_path, monkeypatch):
     codex_home.mkdir(parents=True, exist_ok=True)
 
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
     _save_codex_tokens({"access_token": "eco-at", "refresh_token": "eco-rt"})
@@ -425,7 +425,7 @@ def test_codex_tokens_not_written_to_shared_file(tmp_path, monkeypatch):
 def test_resolve_returns_eco_auth_store_source(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     _setup_eco_auth(eco_home)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     creds = resolve_codex_runtime_credentials()
     assert creds["source"] == "eco-auth-store"

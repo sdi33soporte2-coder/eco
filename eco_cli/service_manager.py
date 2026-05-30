@@ -344,8 +344,8 @@ _S6_BIN_DIR = "/command"
 # ``stage2-hook.sh`` enforces (the runtime invariant — see also
 # tests/docker/test_uid_remap.py). The container starts s6-supervise
 # under root and immediately drops to this UID via ``s6-setuidgid``.
-_HERMES_UID = 10000
-_HERMES_GID = 10000
+_ECO_UID = 10000
+_ECO_GID = 10000
 
 
 def _seed_supervise_skeleton(svc_dir: Path) -> None:
@@ -424,7 +424,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
         path.mkdir(parents=False, exist_ok=False)
         path.chmod(mode)
         try:
-            os.chown(path, _HERMES_UID, _HERMES_GID)
+            os.chown(path, _ECO_UID, _ECO_GID)
         except PermissionError:
             # Running as the eco user already — directory is eco-
             # owned by default. The chown is a no-op in that case, so
@@ -454,7 +454,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
         os.mkfifo(control, 0o660)
         control.chmod(0o660)
         try:
-            os.chown(control, _HERMES_UID, _HERMES_GID)
+            os.chown(control, _ECO_UID, _ECO_GID)
         except PermissionError:
             pass
 
@@ -474,7 +474,7 @@ def _seed_supervise_skeleton(svc_dir: Path) -> None:
             os.mkfifo(log_control, 0o660)
             log_control.chmod(0o660)
             try:
-                os.chown(log_control, _HERMES_UID, _HERMES_GID)
+                os.chown(log_control, _ECO_UID, _ECO_GID)
             except PermissionError:
                 pass
 
@@ -563,8 +563,8 @@ class S6ServiceManager:
         """Generate the run script for a profile-gateway s6 service.
 
         The script:
-          1. Sources HERMES_HOME (and any extra env) via with-contenv —
-             so e.g. ``-e HERMES_HOME=/data/eco`` is honored at run
+          1. Sources ECO_HOME (and any extra env) via with-contenv —
+             so e.g. ``-e ECO_HOME=/data/eco`` is honored at run
              time, not Python-substituted at registration time (OQ8-C).
           2. Resets ``HOME`` to ``/opt/data`` before the privilege drop
              so with-contenv's root HOME does not leak into the
@@ -576,13 +576,13 @@ class S6ServiceManager:
 
         Special case: ``profile == "default"`` emits ``eco gateway
         run`` with **no** ``-p`` flag. This is the sentinel for "the
-        root HERMES_HOME profile" (the implicit profile that exists at
-        the top of $HERMES_HOME, not under profiles/). It must be
+        root ECO_HOME profile" (the implicit profile that exists at
+        the top of $ECO_HOME, not under profiles/). It must be
         spelled this way because ``_profile_suffix()`` returns the
         empty string for the root profile, and the dispatcher in
         ``eco_cli.gateway`` maps that empty string to the
         ``gateway-default`` service slot. Passing ``-p default`` here
-        would instead look up ``$HERMES_HOME/profiles/default/`` — a
+        would instead look up ``$ECO_HOME/profiles/default/`` — a
         completely different (and almost always nonexistent) profile.
 
         Port selection: the gateway picks its bind port from the
@@ -613,7 +613,7 @@ class S6ServiceManager:
         # `gateway run --replace` which would re-dispatch `gateway
         # start`, etc. See `_gateway_command_inner` for the matching
         # guard.
-        lines.append("export HERMES_S6_SUPERVISED_CHILD=1")
+        lines.append("export ECO_S6_SUPERVISED_CHILD=1")
         if profile == "default":
             lines.append("exec s6-setuidgid eco eco gateway run")
         else:
@@ -626,10 +626,10 @@ class S6ServiceManager:
     def _render_log_run(profile: str) -> str:
         """Generate the log/run script for a profile-gateway service.
 
-        OQ8-C: persist to ``${HERMES_HOME}/logs/gateways/<profile>/``.
-        CRITICAL: the HERMES_HOME path is sourced from the runtime env
+        OQ8-C: persist to ``${ECO_HOME}/logs/gateways/<profile>/``.
+        CRITICAL: the ECO_HOME path is sourced from the runtime env
         via with-contenv — NOT Python-substituted at registration time
-        — so a container started with ``-e HERMES_HOME=/data/eco``
+        — so a container started with ``-e ECO_HOME=/data/eco``
         gets its logs under /data/eco/logs/..., not the build-time
         default.
 
@@ -670,8 +670,8 @@ class S6ServiceManager:
         return (
             f"#!/command/with-contenv sh\n"
             f"# shellcheck shell=sh\n"
-            f': "${{HERMES_HOME:=/opt/data}}"\n'
-            f'log_dir="$HERMES_HOME/logs/gateways/{prof}"\n'
+            f': "${{ECO_HOME:=/opt/data}}"\n'
+            f'log_dir="$ECO_HOME/logs/gateways/{prof}"\n'
             f'mkdir -p "$log_dir"\n'
             f'chown -R eco:eco "$log_dir" 2>/dev/null || true\n'
             f'exec s6-setuidgid eco s6-log 1 n10 s1000000 T "$log_dir"\n'

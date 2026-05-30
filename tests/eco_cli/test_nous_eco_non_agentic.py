@@ -14,7 +14,7 @@ from __future__ import annotations
 import pytest
 
 from eco_cli.model_switch import (
-    _HERMES_MODEL_WARNING,
+    _ECO_MODEL_WARNING,
     _check_eco_model_warning,
     is_nous_eco_non_agentic,
 )
@@ -40,7 +40,7 @@ def test_matches_real_nous_eco_chat_models(model_name: str) -> None:
     assert is_nous_eco_non_agentic(model_name), (
         f"expected {model_name!r} to be flagged as Nous ECO 3/4"
     )
-    assert _check_eco_model_warning(model_name) == _HERMES_MODEL_WARNING
+    assert _check_eco_model_warning(model_name) == _ECO_MODEL_WARNING
 
 
 @pytest.mark.parametrize(

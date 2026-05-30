@@ -145,12 +145,12 @@ def test_voice_toggle_returns_configured_record_key(monkeypatch):
             check_voice_requirements=lambda: {"available": True, "details": ""}
         ),
     )
-    # ``voice.toggle`` action=on mutates ``os.environ["HERMES_VOICE"]``
+    # ``voice.toggle`` action=on mutates ``os.environ["ECO_VOICE"]``
     # directly (CLI parity, runtime-only flag). Take monkeypatch
     # ownership of the var so the change is reverted at teardown and
     # later tests don't inherit a stale ON state (Copilot round-5
     # review on #19835).
-    monkeypatch.setenv("HERMES_VOICE", "0")
+    monkeypatch.setenv("ECO_VOICE", "0")
 
     on_resp = server.dispatch(
         {"id": "voice-on", "method": "voice.toggle", "params": {"action": "on"}}
@@ -237,7 +237,7 @@ def test_voice_record_start_handles_non_dict_voice_cfg(monkeypatch):
             start_continuous=fake_start_continuous, stop_continuous=lambda: None
         ),
     )
-    monkeypatch.setenv("HERMES_VOICE", "1")
+    monkeypatch.setenv("ECO_VOICE", "1")
 
     for bad in (True, "cmd+b", None, 42, ["ctrl+b"], {"silence_threshold": "loud"}):
         captured.clear()
@@ -348,7 +348,7 @@ def test_voice_record_start_reports_busy_when_stop_is_in_progress(monkeypatch):
             stop_continuous=lambda **_kwargs: None,
         ),
     )
-    monkeypatch.setenv("HERMES_VOICE", "1")
+    monkeypatch.setenv("ECO_VOICE", "1")
     monkeypatch.setattr(server, "_load_cfg", lambda: {"voice": {}})
 
     resp = server.dispatch(
@@ -383,8 +383,8 @@ def test_voice_toggle_tts_branch_also_carries_record_key(monkeypatch):
             check_voice_requirements=lambda: {"available": True, "details": ""}
         ),
     )
-    monkeypatch.setenv("HERMES_VOICE", "1")
-    monkeypatch.delenv("HERMES_VOICE_TTS", raising=False)
+    monkeypatch.setenv("ECO_VOICE", "1")
+    monkeypatch.delenv("ECO_VOICE_TTS", raising=False)
 
     tts_resp = server.dispatch(
         {"id": "voice-tts", "method": "voice.toggle", "params": {"action": "tts"}}
@@ -395,13 +395,13 @@ def test_voice_toggle_tts_branch_also_carries_record_key(monkeypatch):
 
 
 def test_load_enabled_toolsets_prefers_tui_env(monkeypatch):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "web, terminal, ,memory")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "web, terminal, ,memory")
 
     assert server._load_enabled_toolsets() == ["web", "terminal", "memory"]
 
 
 def test_load_enabled_toolsets_filters_invalid_tui_env(monkeypatch, capsys):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "web, nope")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "web, nope")
     monkeypatch.setitem(
         sys.modules,
         "eco_cli.plugins",
@@ -413,7 +413,7 @@ def test_load_enabled_toolsets_filters_invalid_tui_env(monkeypatch, capsys):
 
 
 def test_load_enabled_toolsets_accepts_plugin_env_after_discovery(monkeypatch):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "plugin_demo")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "plugin_demo")
 
     import toolsets
 
@@ -436,7 +436,7 @@ def test_load_enabled_toolsets_accepts_plugin_env_after_discovery(monkeypatch):
 
 
 def test_load_enabled_toolsets_rejects_disabled_mcp_env(monkeypatch, capsys):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "mcp-off")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "mcp-off")
     monkeypatch.setitem(
         sys.modules,
         "eco_cli.plugins",
@@ -465,7 +465,7 @@ def test_load_enabled_toolsets_rejects_disabled_mcp_env(monkeypatch, capsys):
 
 
 def test_load_enabled_toolsets_falls_back_when_tui_env_invalid(monkeypatch, capsys):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "nope")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "nope")
     monkeypatch.setitem(
         sys.modules,
         "eco_cli.plugins",
@@ -483,7 +483,7 @@ def test_load_enabled_toolsets_falls_back_when_tui_env_invalid(monkeypatch, caps
 
 
 def test_load_enabled_toolsets_warns_when_config_fallback_fails(monkeypatch, capsys):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "nope")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "nope")
     monkeypatch.setitem(
         sys.modules,
         "eco_cli.plugins",
@@ -501,7 +501,7 @@ def test_load_enabled_toolsets_warns_when_config_fallback_fails(monkeypatch, cap
 
 
 def test_load_enabled_toolsets_honors_builtin_env_if_config_fails(monkeypatch):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "web")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "web")
 
     import eco_cli.config as config_mod
 
@@ -513,7 +513,7 @@ def test_load_enabled_toolsets_honors_builtin_env_if_config_fails(monkeypatch):
 
 
 def test_load_enabled_toolsets_all_env_means_all(monkeypatch):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "all")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "all")
 
     assert server._load_enabled_toolsets() is None
 
@@ -521,14 +521,14 @@ def test_load_enabled_toolsets_all_env_means_all(monkeypatch):
 def test_load_enabled_toolsets_all_env_warns_about_ignored_extra_entries(
     monkeypatch, capsys
 ):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "all,nope")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "all,nope")
 
     assert server._load_enabled_toolsets() is None
     assert "ignoring additional entries: nope" in capsys.readouterr().err
 
 
 def test_load_enabled_toolsets_reports_disabled_mcp_separately(monkeypatch, capsys):
-    monkeypatch.setenv("HERMES_TUI_TOOLSETS", "web,mcp-off,nope")
+    monkeypatch.setenv("ECO_TUI_TOOLSETS", "web,mcp-off,nope")
     monkeypatch.setitem(
         sys.modules,
         "eco_cli.plugins",
@@ -545,7 +545,7 @@ def test_load_enabled_toolsets_reports_disabled_mcp_separately(monkeypatch, caps
 
     assert server._load_enabled_toolsets() == ["web"]
     err = capsys.readouterr().err
-    assert "ignoring unknown HERMES_TUI_TOOLSETS entries: nope" in err
+    assert "ignoring unknown ECO_TUI_TOOLSETS entries: nope" in err
     assert "ignoring disabled MCP servers" in err
     assert "mcp-off" in err
 
@@ -672,15 +672,15 @@ def test_status_callback_accepts_single_message_argument():
 
 
 def test_resolve_model_uses_inference_model_env(monkeypatch):
-    monkeypatch.delenv("HERMES_MODEL", raising=False)
-    monkeypatch.setenv("HERMES_INFERENCE_MODEL", " anthropic/claude-sonnet-4.6\n")
+    monkeypatch.delenv("ECO_MODEL", raising=False)
+    monkeypatch.setenv("ECO_INFERENCE_MODEL", " anthropic/claude-sonnet-4.6\n")
 
     assert server._resolve_model() == "anthropic/claude-sonnet-4.6"
 
 
 def test_resolve_model_strips_config_model(monkeypatch):
-    monkeypatch.delenv("HERMES_MODEL", raising=False)
-    monkeypatch.delenv("HERMES_INFERENCE_MODEL", raising=False)
+    monkeypatch.delenv("ECO_MODEL", raising=False)
+    monkeypatch.delenv("ECO_INFERENCE_MODEL", raising=False)
     monkeypatch.setattr(
         server, "_load_cfg", lambda: {"model": {"default": " nous/eco-test "}}
     )
@@ -689,17 +689,17 @@ def test_resolve_model_strips_config_model(monkeypatch):
 
 
 def test_startup_runtime_uses_tui_provider_env(monkeypatch):
-    monkeypatch.setenv("HERMES_MODEL", "nous/eco-test")
-    monkeypatch.setenv("HERMES_TUI_PROVIDER", "nous")
-    monkeypatch.delenv("HERMES_INFERENCE_PROVIDER", raising=False)
+    monkeypatch.setenv("ECO_MODEL", "nous/eco-test")
+    monkeypatch.setenv("ECO_TUI_PROVIDER", "nous")
+    monkeypatch.delenv("ECO_INFERENCE_PROVIDER", raising=False)
 
     assert server._resolve_startup_runtime() == ("nous/eco-test", "nous")
 
 
 def test_startup_runtime_does_not_treat_inference_provider_as_explicit(monkeypatch):
-    monkeypatch.setenv("HERMES_MODEL", "nous/eco-test")
-    monkeypatch.delenv("HERMES_TUI_PROVIDER", raising=False)
-    monkeypatch.setenv("HERMES_INFERENCE_PROVIDER", "nous")
+    monkeypatch.setenv("ECO_MODEL", "nous/eco-test")
+    monkeypatch.delenv("ECO_TUI_PROVIDER", raising=False)
+    monkeypatch.setenv("ECO_INFERENCE_PROVIDER", "nous")
     monkeypatch.setattr(
         "eco_cli.models.detect_static_provider_for_model",
         lambda model, provider: None,
@@ -709,9 +709,9 @@ def test_startup_runtime_does_not_treat_inference_provider_as_explicit(monkeypat
 
 
 def test_startup_runtime_detects_provider_for_model_env(monkeypatch):
-    monkeypatch.setenv("HERMES_MODEL", "sonnet")
-    monkeypatch.delenv("HERMES_TUI_PROVIDER", raising=False)
-    monkeypatch.delenv("HERMES_INFERENCE_PROVIDER", raising=False)
+    monkeypatch.setenv("ECO_MODEL", "sonnet")
+    monkeypatch.delenv("ECO_TUI_PROVIDER", raising=False)
+    monkeypatch.delenv("ECO_INFERENCE_PROVIDER", raising=False)
     monkeypatch.setattr(server, "_load_cfg", lambda: {"model": {"provider": "auto"}})
 
     def fake_detect(model, current_provider):
@@ -730,9 +730,9 @@ def test_startup_runtime_detects_provider_for_model_env(monkeypatch):
 
 
 def test_startup_runtime_resolves_short_alias_without_network(monkeypatch):
-    monkeypatch.setenv("HERMES_MODEL", "sonnet")
-    monkeypatch.delenv("HERMES_TUI_PROVIDER", raising=False)
-    monkeypatch.delenv("HERMES_INFERENCE_PROVIDER", raising=False)
+    monkeypatch.setenv("ECO_MODEL", "sonnet")
+    monkeypatch.delenv("ECO_TUI_PROVIDER", raising=False)
+    monkeypatch.delenv("ECO_INFERENCE_PROVIDER", raising=False)
     monkeypatch.setattr(server, "_load_cfg", lambda: {"model": {"provider": "auto"}})
     monkeypatch.setattr(
         "eco_cli.models.fetch_openrouter_models",
@@ -748,9 +748,9 @@ def test_startup_runtime_resolves_short_alias_without_network(monkeypatch):
 
 
 def test_startup_runtime_does_not_call_network_detector(monkeypatch):
-    monkeypatch.setenv("HERMES_MODEL", "sonnet")
-    monkeypatch.delenv("HERMES_TUI_PROVIDER", raising=False)
-    monkeypatch.delenv("HERMES_INFERENCE_PROVIDER", raising=False)
+    monkeypatch.setenv("ECO_MODEL", "sonnet")
+    monkeypatch.delenv("ECO_TUI_PROVIDER", raising=False)
+    monkeypatch.delenv("ECO_INFERENCE_PROVIDER", raising=False)
     monkeypatch.setattr(server, "_load_cfg", lambda: {"model": {"provider": "auto"}})
     monkeypatch.setattr(
         "eco_cli.models.detect_provider_for_model",
@@ -1363,7 +1363,7 @@ def test_config_busy_get_and_set(monkeypatch):
 
 
 def test_config_set_yolo_process_scope_treats_false_like_env_as_disabled(monkeypatch):
-    monkeypatch.setenv("HERMES_YOLO_MODE", "false")
+    monkeypatch.setenv("ECO_YOLO_MODE", "false")
 
     resp = server.handle_request(
         {
@@ -1374,7 +1374,7 @@ def test_config_set_yolo_process_scope_treats_false_like_env_as_disabled(monkeyp
     )
 
     assert resp["result"]["value"] == "1"
-    assert os.environ.get("HERMES_YOLO_MODE") == "1"
+    assert os.environ.get("ECO_YOLO_MODE") == "1"
 
 
 def test_config_get_statusbar_survives_non_dict_display(monkeypatch):
@@ -1592,15 +1592,15 @@ def test_config_mouse_accepts_preset_strings_and_aliases(monkeypatch):
 
 
 def test_enable_gateway_prompts_sets_gateway_env(monkeypatch):
-    monkeypatch.delenv("HERMES_EXEC_ASK", raising=False)
-    monkeypatch.delenv("HERMES_GATEWAY_SESSION", raising=False)
-    monkeypatch.delenv("HERMES_INTERACTIVE", raising=False)
+    monkeypatch.delenv("ECO_EXEC_ASK", raising=False)
+    monkeypatch.delenv("ECO_GATEWAY_SESSION", raising=False)
+    monkeypatch.delenv("ECO_INTERACTIVE", raising=False)
 
     server._enable_gateway_prompts()
 
-    assert server.os.environ["HERMES_GATEWAY_SESSION"] == "1"
-    assert server.os.environ["HERMES_EXEC_ASK"] == "1"
-    assert server.os.environ["HERMES_INTERACTIVE"] == "1"
+    assert server.os.environ["ECO_GATEWAY_SESSION"] == "1"
+    assert server.os.environ["ECO_EXEC_ASK"] == "1"
+    assert server.os.environ["ECO_INTERACTIVE"] == "1"
 
 
 def test_setup_status_reports_provider_config(monkeypatch):
@@ -1848,7 +1848,7 @@ def test_config_set_model_global_persists(monkeypatch):
 
 
 def test_config_set_model_syncs_inference_provider_env(monkeypatch):
-    """After an explicit provider switch, HERMES_INFERENCE_PROVIDER must
+    """After an explicit provider switch, ECO_INFERENCE_PROVIDER must
     reflect the user's choice so ambient re-resolution (credential pool
     refresh, aux clients) picks up the new provider instead of the original
     one persisted in config or shell env.
@@ -1878,7 +1878,7 @@ def test_config_set_model_syncs_inference_provider_env(monkeypatch):
     )
 
     server._sessions["sid"] = _session(agent=_Agent())
-    monkeypatch.setenv("HERMES_INFERENCE_PROVIDER", "openrouter")
+    monkeypatch.setenv("ECO_INFERENCE_PROVIDER", "openrouter")
     monkeypatch.setattr(
         "eco_cli.model_switch.switch_model", lambda **_kwargs: result
     )
@@ -1897,11 +1897,11 @@ def test_config_set_model_syncs_inference_provider_env(monkeypatch):
         }
     )
 
-    assert os.environ["HERMES_INFERENCE_PROVIDER"] == "anthropic"
+    assert os.environ["ECO_INFERENCE_PROVIDER"] == "anthropic"
 
 
 def test_config_set_model_syncs_tui_provider_unconditionally(monkeypatch):
-    """Regression for #16857: /model must set HERMES_TUI_PROVIDER even when
+    """Regression for #16857: /model must set ECO_TUI_PROVIDER even when
     it wasn't pre-set on launch, so a later /new (which re-runs
     _resolve_startup_runtime) honours the user's explicit provider choice
     instead of falling through to static-catalog detection and picking a
@@ -1928,8 +1928,8 @@ def test_config_set_model_syncs_tui_provider_unconditionally(monkeypatch):
     )
 
     server._sessions["sid"] = _session(agent=_Agent())
-    monkeypatch.delenv("HERMES_TUI_PROVIDER", raising=False)
-    monkeypatch.delenv("HERMES_INFERENCE_PROVIDER", raising=False)
+    monkeypatch.delenv("ECO_TUI_PROVIDER", raising=False)
+    monkeypatch.delenv("ECO_INFERENCE_PROVIDER", raising=False)
     monkeypatch.setattr(
         "eco_cli.model_switch.switch_model", lambda **_kwargs: result
     )
@@ -1948,11 +1948,11 @@ def test_config_set_model_syncs_tui_provider_unconditionally(monkeypatch):
         }
     )
 
-    # Both env vars must reflect the user's choice. HERMES_TUI_PROVIDER is
+    # Both env vars must reflect the user's choice. ECO_TUI_PROVIDER is
     # the canonical explicit-this-process carrier consumed by
     # _resolve_startup_runtime() on /new.
-    assert os.environ["HERMES_TUI_PROVIDER"] == "custom:xuanji"
-    assert os.environ["HERMES_INFERENCE_PROVIDER"] == "custom:xuanji"
+    assert os.environ["ECO_TUI_PROVIDER"] == "custom:xuanji"
+    assert os.environ["ECO_INFERENCE_PROVIDER"] == "custom:xuanji"
 
 
 def test_config_set_model_syncs_tui_provider_env(monkeypatch):
@@ -1968,7 +1968,7 @@ def test_config_set_model_syncs_tui_provider_env(monkeypatch):
 
     agent = Agent()
     server._sessions["sid"] = _session(agent=agent)
-    monkeypatch.setenv("HERMES_TUI_PROVIDER", "openai-codex")
+    monkeypatch.setenv("ECO_TUI_PROVIDER", "openai-codex")
     monkeypatch.setattr(server, "_restart_slash_worker", lambda session: None)
     monkeypatch.setattr(server, "_emit", lambda *args, **kwargs: None)
 
@@ -1999,9 +1999,9 @@ def test_config_set_model_syncs_tui_provider_env(monkeypatch):
         )
 
         assert resp["result"]["value"] == "anthropic/claude-sonnet-4.6"
-        assert os.environ["HERMES_TUI_PROVIDER"] == "anthropic"
-        assert os.environ["HERMES_MODEL"] == "anthropic/claude-sonnet-4.6"
-        assert os.environ["HERMES_INFERENCE_MODEL"] == "anthropic/claude-sonnet-4.6"
+        assert os.environ["ECO_TUI_PROVIDER"] == "anthropic"
+        assert os.environ["ECO_MODEL"] == "anthropic/claude-sonnet-4.6"
+        assert os.environ["ECO_INFERENCE_MODEL"] == "anthropic/claude-sonnet-4.6"
     finally:
         server._sessions.clear()
 
@@ -3593,7 +3593,7 @@ def test_session_delete_success_returns_deleted_id(monkeypatch):
     assert captured["sid"] == "old-1"
     # sessions_dir must be forwarded so transcript files get cleaned up
     # too — not just the SQLite row.  The autouse _isolate_eco_home
-    # fixture pins HERMES_HOME to a temp dir; the handler should append
+    # fixture pins ECO_HOME to a temp dir; the handler should append
     # /sessions to it.
     assert captured["sessions_dir"] is not None
     assert str(captured["sessions_dir"]).endswith("sessions")

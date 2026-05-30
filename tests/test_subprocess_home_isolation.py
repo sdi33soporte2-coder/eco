@@ -21,14 +21,14 @@ class TestGetSubprocessHome:
     """Unit tests for eco_constants.get_subprocess_home()."""
 
     def test_returns_none_when_eco_home_unset(self, monkeypatch):
-        monkeypatch.delenv("HERMES_HOME", raising=False)
+        monkeypatch.delenv("ECO_HOME", raising=False)
         from eco_constants import get_subprocess_home
         assert get_subprocess_home() is None
 
     def test_returns_none_when_home_dir_missing(self, tmp_path, monkeypatch):
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         # No home/ subdirectory created
         from eco_constants import get_subprocess_home
         assert get_subprocess_home() is None
@@ -38,7 +38,7 @@ class TestGetSubprocessHome:
         eco_home.mkdir()
         profile_home = eco_home / "home"
         profile_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         from eco_constants import get_subprocess_home
         assert get_subprocess_home() == str(profile_home)
 
@@ -48,7 +48,7 @@ class TestGetSubprocessHome:
         profile_dir.mkdir(parents=True)
         profile_home = profile_dir / "home"
         profile_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(profile_dir))
+        monkeypatch.setenv("ECO_HOME", str(profile_dir))
         from eco_constants import get_subprocess_home
         assert get_subprocess_home() == str(profile_home)
 
@@ -61,10 +61,10 @@ class TestGetSubprocessHome:
 
         from eco_constants import get_subprocess_home
 
-        monkeypatch.setenv("HERMES_HOME", str(base / "alpha"))
+        monkeypatch.setenv("ECO_HOME", str(base / "alpha"))
         home_a = get_subprocess_home()
 
-        monkeypatch.setenv("HERMES_HOME", str(base / "beta"))
+        monkeypatch.setenv("ECO_HOME", str(base / "beta"))
         home_b = get_subprocess_home()
 
         assert home_a is not None
@@ -78,7 +78,7 @@ class TestGetSubprocessHome:
         profile = tmp_path / "profile"
         root.mkdir()
         profile.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(root))
+        monkeypatch.setenv("ECO_HOME", str(root))
 
         from eco_constants import (
             get_eco_home,
@@ -123,7 +123,7 @@ class TestMakeRunEnvHomeInjection:
         eco_home = tmp_path / "eco"
         eco_home.mkdir()
         (eco_home / "home").mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         monkeypatch.setenv("HOME", "/root")
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
@@ -136,7 +136,7 @@ class TestMakeRunEnvHomeInjection:
         eco_home = tmp_path / "eco"
         eco_home.mkdir()
         # No home/ subdirectory
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         monkeypatch.setenv("HOME", "/root")
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
@@ -146,7 +146,7 @@ class TestMakeRunEnvHomeInjection:
         assert result["HOME"] == "/root"
 
     def test_no_injection_when_eco_home_unset(self, monkeypatch):
-        monkeypatch.delenv("HERMES_HOME", raising=False)
+        monkeypatch.delenv("ECO_HOME", raising=False)
         monkeypatch.setenv("HOME", "/home/user")
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
@@ -161,7 +161,7 @@ class TestMakeRunEnvHomeInjection:
         root.mkdir()
         profile.mkdir()
         (profile / "home").mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(root))
+        monkeypatch.setenv("ECO_HOME", str(root))
         monkeypatch.setenv("HOME", "/root")
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
 
@@ -174,7 +174,7 @@ class TestMakeRunEnvHomeInjection:
         finally:
             reset_eco_home_override(token)
 
-        assert result["HERMES_HOME"] == str(profile)
+        assert result["ECO_HOME"] == str(profile)
         assert result["HOME"] == str(profile / "home")
 
 
@@ -189,7 +189,7 @@ class TestSanitizeSubprocessEnvHomeInjection:
         eco_home = tmp_path / "eco"
         eco_home.mkdir()
         (eco_home / "home").mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         base_env = {"HOME": "/root", "PATH": "/usr/bin", "USER": "root"}
         from tools.environments.local import _sanitize_subprocess_env
@@ -200,7 +200,7 @@ class TestSanitizeSubprocessEnvHomeInjection:
     def test_no_injection_when_home_dir_missing(self, tmp_path, monkeypatch):
         eco_home = tmp_path / "eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         base_env = {"HOME": "/root", "PATH": "/usr/bin"}
         from tools.environments.local import _sanitize_subprocess_env
@@ -214,7 +214,7 @@ class TestSanitizeSubprocessEnvHomeInjection:
         root.mkdir()
         profile.mkdir()
         (profile / "home").mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(root))
+        monkeypatch.setenv("ECO_HOME", str(root))
 
         base_env = {"HOME": "/root", "PATH": "/usr/bin"}
         from eco_constants import reset_eco_home_override, set_eco_home_override
@@ -226,7 +226,7 @@ class TestSanitizeSubprocessEnvHomeInjection:
         finally:
             reset_eco_home_override(token)
 
-        assert result["HERMES_HOME"] == str(profile)
+        assert result["ECO_HOME"] == str(profile)
         assert result["HOME"] == str(profile / "home")
 
 
@@ -246,7 +246,7 @@ class TestProfileBootstrap:
         home = tmp_path / ".eco"
         home.mkdir()
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(home))
+        monkeypatch.setenv("ECO_HOME", str(home))
 
         from eco_cli.profiles import create_profile
         profile_dir = create_profile("testbot", no_alias=True)
@@ -266,7 +266,7 @@ class TestPythonProcessUnchanged:
         eco_home = tmp_path / "eco"
         eco_home.mkdir()
         (eco_home / "home").mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         original_home = os.environ.get("HOME")
         original_path_home = str(Path.home())

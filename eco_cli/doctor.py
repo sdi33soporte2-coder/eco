@@ -15,7 +15,7 @@ from eco_cli.env_loader import load_eco_dotenv
 from eco_constants import display_eco_home
 
 PROJECT_ROOT = get_project_root()
-HERMES_HOME = get_eco_home()
+ECO_HOME = get_eco_home()
 _DHH = display_eco_home()  # user-facing display path (e.g. ~/.eco or ~/.eco/profiles/coder)
 
 # Load environment variables from ~/.eco/.env so API key checks work
@@ -23,7 +23,7 @@ _env_path = get_env_path()
 load_eco_dotenv(eco_home=_env_path.parent, project_env=PROJECT_ROOT / ".env")
 
 from eco_cli.colors import Colors, color
-from eco_cli.models import _HERMES_USER_AGENT
+from eco_cli.models import _ECO_USER_AGENT
 from eco_constants import OPENROUTER_MODELS_URL
 from utils import base_url_host_matches
 
@@ -117,7 +117,7 @@ def _is_kanban_worker_env_gate(item: dict) -> bool:
     """Return True when Kanban is unavailable only because this is not a worker process."""
     if item.get("name") != "kanban":
         return False
-    if os.environ.get("HERMES_KANBAN_TASK"):
+    if os.environ.get("ECO_KANBAN_TASK"):
         return False
 
     tools = item.get("tools") or []
@@ -126,7 +126,7 @@ def _is_kanban_worker_env_gate(item: dict) -> bool:
 
 def _doctor_tool_availability_detail(toolset: str) -> str:
     """Optional explanatory suffix for toolsets whose doctor status needs context."""
-    if toolset == "kanban" and not os.environ.get("HERMES_KANBAN_TASK"):
+    if toolset == "kanban" and not os.environ.get("ECO_KANBAN_TASK"):
         return "(runtime-gated; loaded only for dispatcher-spawned workers)"
     return ""
 
@@ -398,7 +398,7 @@ def run_doctor(args):
 
     # Doctor runs from the interactive CLI, so CLI-gated tool availability
     # checks (like cronjob management) should see the same context as `eco`.
-    os.environ.setdefault("HERMES_INTERACTIVE", "1")
+    os.environ.setdefault("ECO_INTERACTIVE", "1")
 
     # Handle `eco doctor --ack <id>` as a fast path. Persist the ack and
     # return without running the rest of the diagnostics — the user has
@@ -541,7 +541,7 @@ def run_doctor(args):
     
     _section("Configuration Files")
     # Check ~/.eco/.env (primary location for user config)
-    env_path = HERMES_HOME / '.env'
+    env_path = ECO_HOME / '.env'
     if env_path.exists():
         check_ok(f"{_DHH}/.env file exists")
         
@@ -580,7 +580,7 @@ def run_doctor(args):
                 issues.append("Run 'eco setup' to create .env")
     
     # Check ~/.eco/config.yaml (primary) or project cli-config.yaml (fallback)
-    config_path = HERMES_HOME / 'config.yaml'
+    config_path = ECO_HOME / 'config.yaml'
     if config_path.exists():
         check_ok(f"{_DHH}/config.yaml exists")
 
@@ -770,7 +770,7 @@ def run_doctor(args):
                 check_warn("config.yaml not found", "(using defaults)")
 
     # Check config version and stale keys
-    config_path = HERMES_HOME / 'config.yaml'
+    config_path = ECO_HOME / 'config.yaml'
     if config_path.exists():
         try:
             from eco_cli.config import check_config_version, migrate_config
@@ -948,7 +948,7 @@ def run_doctor(args):
         pass
 
     _section("Directory Structure")
-    eco_home = HERMES_HOME
+    eco_home = ECO_HOME
     if eco_home.exists():
         check_ok(f"{_DHH} directory exists")
     elif should_fix:
@@ -1571,7 +1571,7 @@ def run_doctor(args):
             url = (base.rstrip("/") + "/models") if base else default_url
             headers = {
                 "Authorization": f"Bearer {key}",
-                "User-Agent": _HERMES_USER_AGENT,
+                "User-Agent": _ECO_USER_AGENT,
             }
             if base_url_host_matches(base, "api.kimi.com"):
                 headers["User-Agent"] = "claude-code/0.1.0"
@@ -1845,7 +1845,7 @@ def run_doctor(args):
         check_warn("Could not check tool availability", f"({e})")
     
     _section("Skills Hub")
-    hub_dir = HERMES_HOME / "skills" / ".hub"
+    hub_dir = ECO_HOME / "skills" / ".hub"
     if hub_dir.exists():
         check_ok("Skills Hub directory exists")
         lock_file = hub_dir / "lock.json"
@@ -1889,7 +1889,7 @@ def run_doctor(args):
     _active_memory_provider = ""
     try:
         import yaml as _yaml
-        _mem_cfg_path = HERMES_HOME / "config.yaml"
+        _mem_cfg_path = ECO_HOME / "config.yaml"
         if _mem_cfg_path.exists():
             with open(_mem_cfg_path, encoding="utf-8") as _f:
                 _raw_cfg = _yaml.safe_load(_f) or {}

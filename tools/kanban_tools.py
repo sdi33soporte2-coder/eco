@@ -193,7 +193,7 @@ def _connect(board: Optional[str] = None):
 #     fails (board missing, DB locked, etc.).
 #   - Rate-limited to one DB write per 60s per-process; runtime activity
 #     can tick on every chunk/tool result and we don't need that resolution.
-#   - No-op outside dispatcher-spawned worker context (no ``HERMES_KANBAN_TASK``).
+#   - No-op outside dispatcher-spawned worker context (no ``ECO_KANBAN_TASK``).
 #   - No durable note on these auto-heartbeats; that's reserved for the
 #     explicit tool which carries a model-supplied note.
 
@@ -211,10 +211,10 @@ def heartbeat_current_worker_from_env() -> bool:
     not branch on it.
 
     Identity comes from:
-      * ``HERMES_KANBAN_TASK`` — task id (required; absence means no-op)
-      * ``HERMES_KANBAN_RUN_ID`` — pins the run row so we don't heartbeat
+      * ``ECO_KANBAN_TASK`` — task id (required; absence means no-op)
+      * ``ECO_KANBAN_RUN_ID`` — pins the run row so we don't heartbeat
         a stale run that may have already been reclaimed
-      * ``HERMES_KANBAN_CLAIM_LOCK`` — claim lock for ``heartbeat_claim``;
+      * ``ECO_KANBAN_CLAIM_LOCK`` — claim lock for ``heartbeat_claim``;
         falls back to the default ``_claimer_id()`` for locally-driven
         workers that never went through the dispatcher path
 
@@ -223,7 +223,7 @@ def heartbeat_current_worker_from_env() -> bool:
     the worst case is one extra DB write per race, which is harmless.
     """
     global _auto_heartbeat_last_attempt
-    tid = os.environ.get("HERMES_KANBAN_TASK")
+    tid = os.environ.get("ECO_KANBAN_TASK")
     if not tid:
         return False
     import time as _time
@@ -234,12 +234,12 @@ def heartbeat_current_worker_from_env() -> bool:
     try:
         kb, conn = _connect()
         try:
-            claim_lock = os.environ.get("HERMES_KANBAN_CLAIM_LOCK")
+            claim_lock = os.environ.get("ECO_KANBAN_CLAIM_LOCK")
             try:
                 kb.heartbeat_claim(conn, tid, claimer=claim_lock)
             except Exception:
                 logger.debug("auto-heartbeat: heartbeat_claim failed", exc_info=True)
-            run_id_raw = os.environ.get("HERMES_KANBAN_RUN_ID")
+            run_id_raw = os.environ.get("ECO_KANBAN_RUN_ID")
             run_id: Optional[int]
             try:
                 run_id = int(run_id_raw) if run_id_raw else None

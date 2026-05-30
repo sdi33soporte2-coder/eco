@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # Non-agentic model warning
 # ---------------------------------------------------------------------------
 
-_HERMES_MODEL_WARNING = (
+_ECO_MODEL_WARNING = (
     "Nous Research ECO 3 & 4 models are NOT agentic and are not designed "
     "for use with ECO Agent. They lack the tool-calling capabilities "
     "required for agent workflows. Consider using an agentic model instead "
@@ -66,7 +66,7 @@ _HERMES_MODEL_WARNING = (
 #   NousResearch/ECO-3-Llama-3.1-70B, eco-4-405b, openrouter/hermes3:70b
 # Negative examples it must NOT match:
 #   eco-brain:qwen3-14b-ctx16k, qwen3:14b, claude-opus-4-6
-_NOUS_HERMES_NON_AGENTIC_RE = re.compile(
+_NOUS_ECO_NON_AGENTIC_RE = re.compile(
     r"(?:^|[/:])eco[-_ ]?[34](?:[-_.:]|$)",
     re.IGNORECASE,
 )
@@ -81,13 +81,13 @@ def is_nous_eco_non_agentic(model_name: str) -> bool:
     """
     if not model_name:
         return False
-    return bool(_NOUS_HERMES_NON_AGENTIC_RE.search(model_name))
+    return bool(_NOUS_ECO_NON_AGENTIC_RE.search(model_name))
 
 
 def _check_eco_model_warning(model_name: str) -> str:
     """Return a warning string if *model_name* is a Nous ECO 3/4 chat model."""
     if is_nous_eco_non_agentic(model_name):
-        return _HERMES_MODEL_WARNING
+        return _ECO_MODEL_WARNING
     return ""
 
 
@@ -1210,7 +1210,7 @@ def list_authenticated_providers(
         # minimax-cn → MINIMAX_API_KEY instead of MINIMAX_CN_API_KEY).
         pconfig = PROVIDER_REGISTRY.get(eco_id)
         # Skip non-API-key auth providers here — they are handled in
-        # section 2 (HERMES_OVERLAYS) with proper auth store checking.
+        # section 2 (ECO_OVERLAYS) with proper auth store checking.
         if pconfig and pconfig.auth_type != "api_key":
             continue
         if pconfig and pconfig.api_key_env_vars:
@@ -1263,15 +1263,15 @@ def list_authenticated_providers(
         _record_builtin_endpoint(slug)
 
     # --- 2. Check ECO-only providers (nous, openai-codex, copilot, opencode-go) ---
-    from eco_cli.providers import HERMES_OVERLAYS
+    from eco_cli.providers import ECO_OVERLAYS
     from eco_cli.auth import PROVIDER_REGISTRY as _auth_registry
 
     # Build reverse mapping: models.dev ID → ECO provider ID.
-    # HERMES_OVERLAYS keys may be models.dev IDs (e.g. "github-copilot")
+    # ECO_OVERLAYS keys may be models.dev IDs (e.g. "github-copilot")
     # while _PROVIDER_MODELS and config.yaml use ECO IDs ("copilot").
     _mdev_to_hermes = {v: k for k, v in PROVIDER_TO_MODELS_DEV.items()}
 
-    for pid, overlay in HERMES_OVERLAYS.items():
+    for pid, overlay in ECO_OVERLAYS.items():
         if pid.lower() in seen_slugs:
             continue
 
@@ -1386,7 +1386,7 @@ def list_authenticated_providers(
 
     # --- 2b. Cross-check canonical provider list ---
     # Catches providers that are in CANONICAL_PROVIDERS but weren't found
-    # in PROVIDER_TO_MODELS_DEV or HERMES_OVERLAYS (keeps /model in sync
+    # in PROVIDER_TO_MODELS_DEV or ECO_OVERLAYS (keeps /model in sync
     # with `eco model`).
     try:
         from eco_cli.models import CANONICAL_PROVIDERS as _canon_provs

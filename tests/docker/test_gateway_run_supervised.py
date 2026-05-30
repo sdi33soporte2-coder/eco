@@ -5,15 +5,15 @@ run`` was the standard pattern — the gateway ran as the container's
 main process, container exit code matched gateway exit code, no
 supervision. With s6 as PID 1, the same invocation now auto-redirects
 to the supervised path (`gateway start`) so users get auto-restart on
-crash and a supervised dashboard alongside (when ``HERMES_DASHBOARD=1``).
+crash and a supervised dashboard alongside (when ``ECO_DASHBOARD=1``).
 
 These tests verify the three load-bearing properties of that redirect:
 
   1. The default invocation **does** redirect (container stays up via
      ``sleep infinity`` while s6 supervises ``gateway-default``).
-  2. ``--no-supervise`` / ``HERMES_GATEWAY_NO_SUPERVISE=1`` opts out.
+  2. ``--no-supervise`` / ``ECO_GATEWAY_NO_SUPERVISE=1`` opts out.
   3. The supervised process itself does NOT recurse — the
-     ``HERMES_S6_SUPERVISED_CHILD`` sentinel breaks the loop.
+     ``ECO_S6_SUPERVISED_CHILD`` sentinel breaks the loop.
 
 Every ``docker exec`` runs as ``eco`` per the conftest module
 docstring; see ``tests/docker/conftest.py`` for rationale.
@@ -213,7 +213,7 @@ def test_gateway_run_no_supervise_env_var(
     """
     subprocess.run(
         ["docker", "run", "-d", "--name", container_name,
-         "-e", "HERMES_GATEWAY_NO_SUPERVISE=1",
+         "-e", "ECO_GATEWAY_NO_SUPERVISE=1",
          built_image, "gateway", "run"],
         check=True, capture_output=True, timeout=30,
     )
@@ -237,7 +237,7 @@ def test_gateway_run_no_supervise_env_var(
     )
     if inspect.stdout.strip() == "running":
         assert not _svstat_wants_up(container_name, "gateway-default"), (
-            "HERMES_GATEWAY_NO_SUPERVISE=1: gateway-default has "
+            "ECO_GATEWAY_NO_SUPERVISE=1: gateway-default has "
             "want-state up, implying the redirect dispatched `start` "
             f"despite the env-var opt-out. svstat:\n{_svstat(container_name)!r}"
         )
@@ -246,7 +246,7 @@ def test_gateway_run_no_supervise_env_var(
 def test_supervised_gateway_does_not_recurse(
     built_image: str, container_name: str,
 ) -> None:
-    """The HERMES_S6_SUPERVISED_CHILD sentinel must prevent the
+    """The ECO_S6_SUPERVISED_CHILD sentinel must prevent the
     supervised ``eco gateway run`` from re-entering the redirect.
 
     If recursion happened, every supervised gateway start would itself
@@ -305,7 +305,7 @@ def test_supervised_gateway_does_not_recurse(
 def test_dashboard_supervised_when_env_set(
     built_image: str, container_name: str,
 ) -> None:
-    """When ``HERMES_DASHBOARD=1`` is set, ``docker run <image> gateway
+    """When ``ECO_DASHBOARD=1`` is set, ``docker run <image> gateway
     run`` should result in BOTH the gateway and the dashboard being
     supervised by s6 — the dashboard slot was always there but only
     activates with the env var. This is the headline benefit of the
@@ -314,7 +314,7 @@ def test_dashboard_supervised_when_env_set(
     """
     subprocess.run(
         ["docker", "run", "-d", "--name", container_name,
-         "-e", "HERMES_DASHBOARD=1",
+         "-e", "ECO_DASHBOARD=1",
          built_image, "gateway", "run"],
         check=True, capture_output=True, timeout=30,
     )
@@ -334,7 +334,7 @@ def test_supervised_gateway_stdout_reaches_docker_logs(
 ) -> None:
     """The supervised gateway's stdout — including the rich-console
     startup banner — must reach ``docker logs``, not just the rotated
-    log file under ``${HERMES_HOME}/logs/gateways/<profile>/current``.
+    log file under ``${ECO_HOME}/logs/gateways/<profile>/current``.
 
     Without the ``1`` action directive in ``_render_log_run``, s6-log
     swallows the gateway's stdout into the file and ``docker logs``

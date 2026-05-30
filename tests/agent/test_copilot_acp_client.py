@@ -59,7 +59,7 @@ class CopilotACPClientSafetyTests(unittest.TestCase):
 
             with patch.dict(
                 os.environ,
-                {"HOME": str(home), "HERMES_HOME": str(home / ".eco")},
+                {"HOME": str(home), "ECO_HOME": str(home / ".eco")},
                 clear=False,
             ):
                 response = self._dispatch(
@@ -80,7 +80,7 @@ class CopilotACPClientSafetyTests(unittest.TestCase):
             secret_file = root / "config.env"
             secret_file.write_text("OPENAI_API_KEY=sk-proj-abc123def456ghi789jkl012")
 
-            # agent.redact snapshots HERMES_REDACT_SECRETS at import time into
+            # agent.redact snapshots ECO_REDACT_SECRETS at import time into
             # _REDACT_ENABLED, so patching os.environ is a no-op. Flip the
             # module-level constant directly for the duration of the call.
             with patch("agent.redact._REDACT_ENABLED", True):
@@ -128,7 +128,7 @@ class CopilotACPClientSafetyTests(unittest.TestCase):
             safe_root.mkdir()
             outside = root / "outside.txt"
 
-            with patch.dict(os.environ, {"HERMES_WRITE_SAFE_ROOT": str(safe_root)}, clear=False):
+            with patch.dict(os.environ, {"ECO_WRITE_SAFE_ROOT": str(safe_root)}, clear=False):
                 response = self._dispatch(
                     {
                         "jsonrpc": "2.0",
@@ -180,7 +180,7 @@ def test_run_prompt_prefers_profile_home_when_available(monkeypatch, tmp_path):
     profile_home.mkdir(parents=True)
 
     monkeypatch.delenv("HOME", raising=False)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     captured = {}
     client = _make_home_client(tmp_path)
@@ -194,7 +194,7 @@ def test_run_prompt_prefers_profile_home_when_available(monkeypatch, tmp_path):
 
 def test_run_prompt_passes_home_when_parent_env_is_clean(monkeypatch, tmp_path):
     monkeypatch.delenv("HOME", raising=False)
-    monkeypatch.delenv("HERMES_HOME", raising=False)
+    monkeypatch.delenv("ECO_HOME", raising=False)
 
     captured = {}
     client = _make_home_client(tmp_path)

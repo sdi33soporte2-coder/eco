@@ -208,7 +208,7 @@ class TestMem0Defaults:
     def test_default_user_id_eco_user(self, monkeypatch, tmp_path):
         monkeypatch.setenv("MEM0_API_KEY", "test-key")
         monkeypatch.delenv("MEM0_USER_ID", raising=False)
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path))
 
         provider = Mem0MemoryProvider()
         provider.initialize("test")
@@ -218,7 +218,7 @@ class TestMem0Defaults:
     def test_default_agent_id_hermes(self, monkeypatch, tmp_path):
         monkeypatch.setenv("MEM0_API_KEY", "test-key")
         monkeypatch.delenv("MEM0_AGENT_ID", raising=False)
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path))
 
         provider = Mem0MemoryProvider()
         provider.initialize("test")

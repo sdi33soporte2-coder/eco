@@ -28,7 +28,7 @@ import pytest
 def _isolate_env(tmp_path, monkeypatch):
     eco_home = tmp_path / ".eco"
     eco_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
     monkeypatch.delenv("SECURITY_GUIDANCE_BLOCK", raising=False)
     monkeypatch.delenv("SECURITY_GUIDANCE_DISABLE", raising=False)
     yield eco_home

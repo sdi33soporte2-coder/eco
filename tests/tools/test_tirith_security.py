@@ -764,7 +764,7 @@ class TestInstallArchiveMemberValidation:
         archive, checksums = self._write_archive(tmp_path, member, payload)
 
         eco_home = tmp_path / "eco-home"
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         with patch("tools.tirith_security._download_file",
                    side_effect=self._download_side_effect(archive, checksums)):
             path, reason = _install_tirith(log_failures=False)
@@ -791,7 +791,7 @@ class TestInstallArchiveMemberValidation:
         archive, checksums = self._write_archive(tmp_path, member)
 
         eco_home = tmp_path / "eco-home"
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         with patch("tools.tirith_security._download_file",
                    side_effect=self._download_side_effect(archive, checksums)):
             path, reason = _install_tirith(log_failures=False)
@@ -1010,7 +1010,7 @@ class TestDiskFailureMarker:
         _tirith_mod._resolved_path = None
 
     def test_install_failed_recovers_from_eco_bin(self):
-        """After _INSTALL_FAILED, manual install in HERMES_HOME/bin is picked up."""
+        """After _INSTALL_FAILED, manual install in ECO_HOME/bin is picked up."""
         from tools.tirith_security import _resolve_tirith_path, _INSTALL_FAILED
         import tempfile
         tmpdir = tempfile.mkdtemp()
@@ -1152,41 +1152,41 @@ class TestDiskFailureMarker:
 
 
 # ---------------------------------------------------------------------------
-# HERMES_HOME isolation
+# ECO_HOME isolation
 # ---------------------------------------------------------------------------
 
 class TestECOHomeIsolation:
     def test_eco_bin_dir_respects_eco_home(self):
-        """_eco_bin_dir must use HERMES_HOME, not hardcoded ~/.eco."""
+        """_eco_bin_dir must use ECO_HOME, not hardcoded ~/.eco."""
         from tools.tirith_security import _eco_bin_dir
         import tempfile
         tmpdir = tempfile.mkdtemp()
-        with patch.dict(os.environ, {"HERMES_HOME": tmpdir}):
+        with patch.dict(os.environ, {"ECO_HOME": tmpdir}):
             result = _eco_bin_dir()
         assert result == os.path.join(tmpdir, "bin")
         assert os.path.isdir(result)
 
     def test_failure_marker_respects_eco_home(self):
-        """_failure_marker_path must use HERMES_HOME, not hardcoded ~/.eco."""
+        """_failure_marker_path must use ECO_HOME, not hardcoded ~/.eco."""
         from tools.tirith_security import _failure_marker_path
-        with patch.dict(os.environ, {"HERMES_HOME": "/custom/eco"}):
+        with patch.dict(os.environ, {"ECO_HOME": "/custom/eco"}):
             result = _failure_marker_path()
         assert result == "/custom/eco/.tirith-install-failed"
 
     def test_conftest_isolation_prevents_real_home_writes(self):
-        """The conftest autouse fixture sets HERMES_HOME; verify it's active."""
-        eco_home = os.getenv("HERMES_HOME")
-        assert eco_home is not None, "HERMES_HOME should be set by conftest"
+        """The conftest autouse fixture sets ECO_HOME; verify it's active."""
+        eco_home = os.getenv("ECO_HOME")
+        assert eco_home is not None, "ECO_HOME should be set by conftest"
         assert "eco_test" in eco_home, "Should point to test temp dir"
 
     def test_get_eco_home_fallback(self):
-        """Without HERMES_HOME set, falls back to the active OS home."""
+        """Without ECO_HOME set, falls back to the active OS home."""
         from tools.tirith_security import _get_eco_home
         with patch.dict(os.environ, {}, clear=True):
-            # Remove HERMES_HOME entirely. With HOME also absent, expanduser
+            # Remove ECO_HOME entirely. With HOME also absent, expanduser
             # falls back to the account database; compute expected under the
             # same environment instead of after patch.dict restores HOME.
-            os.environ.pop("HERMES_HOME", None)
+            os.environ.pop("ECO_HOME", None)
             expected = os.path.join(os.path.expanduser("~"), ".eco")
             result = _get_eco_home()
         assert result == expected

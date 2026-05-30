@@ -259,11 +259,11 @@ def test_check_website_access_uses_dynamic_eco_home(monkeypatch, tmp_path):
         encoding="utf-8",
     )
 
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
-    # Invalidate the module-level cache so the new HERMES_HOME is picked up.
+    # Invalidate the module-level cache so the new ECO_HOME is picked up.
     # A prior test may have cached a default policy (enabled=False) under the
-    # old HERMES_HOME set by the autouse _isolate_eco_home fixture.
+    # old ECO_HOME set by the autouse _isolate_eco_home fixture.
     from tools.website_policy import invalidate_cache
     invalidate_cache()
 
@@ -453,8 +453,8 @@ def test_check_website_access_fails_open_on_malformed_config(tmp_path, monkeypat
     with pytest.raises(WebsitePolicyError):
         check_website_access("https://example.com", config_path=config_path)
 
-    # Simulate default path by pointing HERMES_HOME to tmp_path
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    # Simulate default path by pointing ECO_HOME to tmp_path
+    monkeypatch.setenv("ECO_HOME", str(tmp_path))
     from tools import website_policy
     website_policy.invalidate_cache()
 

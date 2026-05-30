@@ -1219,7 +1219,7 @@ def run_conversation(
                 except Exception:
                     pass
 
-                if env_var_enabled("HERMES_DUMP_REQUESTS"):
+                if env_var_enabled("ECO_DUMP_REQUESTS"):
                     agent._dump_api_request_debug(api_kwargs, reason="preflight")
 
                 # Always prefer the streaming path — even without stream
@@ -4314,7 +4314,7 @@ def run_conversation(
         # a task whose worker keeps exhausting its budget would block
         # silently each run, get auto-promoted by the operator (or never
         # surface), and re-block in an endless loop with no signal.
-        _kanban_task = os.environ.get("HERMES_KANBAN_TASK")
+        _kanban_task = os.environ.get("ECO_KANBAN_TASK")
         if _kanban_task:
             try:
                 from eco_cli import kanban_db as _kb

@@ -1,6 +1,6 @@
 """Audit log for dashboard-auth events.
 
-Profile-aware location: ``$HERMES_HOME/logs/dashboard-auth.log``.
+Profile-aware location: ``$ECO_HOME/logs/dashboard-auth.log``.
 Format: one JSON object per line. Token-like fields are stripped before
 serialisation to avoid leaking refresh tokens or JWTs to disk.
 
@@ -50,13 +50,13 @@ class AuditEvent(enum.Enum):
 
 
 def _resolve_log_path() -> Path:
-    """``$HERMES_HOME/logs/dashboard-auth.log`` with the standard fallback.
+    """``$ECO_HOME/logs/dashboard-auth.log`` with the standard fallback.
 
     Mirrors ``eco_constants.get_eco_home`` semantics: env var wins,
     else ``~/.eco``. A local copy avoids an import cycle with the
     middleware which lives below ``eco_cli``.
     """
-    home = os.environ.get("HERMES_HOME") or str(Path.home() / ".eco")
+    home = os.environ.get("ECO_HOME") or str(Path.home() / ".eco")
     return Path(home) / "logs" / "dashboard-auth.log"
 
 

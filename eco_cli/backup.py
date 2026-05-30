@@ -5,7 +5,7 @@ Backup and import commands for eco CLI.
 (excluding the eco-agent repo and transient files).
 
 `eco import` restores from a backup zip, overlaying onto the current
-HERMES_HOME root.
+ECO_HOME root.
 """
 
 import json
@@ -91,7 +91,7 @@ def _should_skip_backup_file(abs_path: Path, rel_path: Path, out_path: Path) -> 
         return True
 
     # zipfile.write() follows file symlinks, so skip links before any archive
-    # write can copy data from outside HERMES_HOME.
+    # write can copy data from outside ECO_HOME.
     if abs_path.is_symlink():
         return True
 
@@ -476,7 +476,7 @@ def run_import(args) -> None:
 # Quick state snapshots (used by /snapshot slash command and eco backup --quick)
 # ---------------------------------------------------------------------------
 
-# Critical state files to include in quick snapshots (relative to HERMES_HOME).
+# Critical state files to include in quick snapshots (relative to ECO_HOME).
 # Everything else is either regeneratable (logs, cache) or managed separately
 # (skills, repo, sessions/).
 #
@@ -833,10 +833,10 @@ def create_pre_update_backup(
     eco_home: Optional[Path] = None,
     keep: int = _PRE_UPDATE_DEFAULT_KEEP,
 ) -> Optional[Path]:
-    """Create a full zip backup of HERMES_HOME under ``backups/``.
+    """Create a full zip backup of ECO_HOME under ``backups/``.
 
     Mirrors :func:`run_backup` (same exclusion rules, same SQLite safe-copy)
-    but writes to ``<HERMES_HOME>/backups/pre-update-<timestamp>.zip`` and
+    but writes to ``<ECO_HOME>/backups/pre-update-<timestamp>.zip`` and
     auto-prunes old pre-update backups.
 
     Returns the path to the created zip, or ``None`` if no files were
@@ -905,13 +905,13 @@ def create_pre_migration_backup(
     eco_home: Optional[Path] = None,
     keep: int = _PRE_MIGRATION_DEFAULT_KEEP,
 ) -> Optional[Path]:
-    """Create a full zip backup of HERMES_HOME under ``backups/`` before a
+    """Create a full zip backup of ECO_HOME under ``backups/`` before a
     ``eco claw migrate`` apply.
 
     Shares implementation with :func:`create_pre_update_backup` via
     ``_write_full_zip_backup`` — same exclusions, same SQLite safe-copy,
     restorable with ``eco import <archive>``.  Writes to
-    ``<HERMES_HOME>/backups/pre-migration-<timestamp>.zip`` and auto-prunes
+    ``<ECO_HOME>/backups/pre-migration-<timestamp>.zip`` and auto-prunes
     old pre-migration backups.
 
     Returns the path to the created zip, or ``None`` if nothing was found

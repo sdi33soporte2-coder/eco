@@ -36,15 +36,15 @@ from utils import atomic_replace
 logger = logging.getLogger(__name__)
 
 
-HERMES_HOME = get_eco_home()
-SKILLS_DIR = HERMES_HOME / "skills"
+ECO_HOME = get_eco_home()
+SKILLS_DIR = ECO_HOME / "skills"
 MANIFEST_FILE = SKILLS_DIR / ".bundled_manifest"
 
 
 def _get_bundled_dir() -> Path:
     """Locate the bundled skills/ directory.
 
-    Checks HERMES_BUNDLED_SKILLS env var first (set by Nix wrapper),
+    Checks ECO_BUNDLED_SKILLS env var first (set by Nix wrapper),
     then a wheel-installed data dir, then falls back to the relative
     path from this source file.
     """

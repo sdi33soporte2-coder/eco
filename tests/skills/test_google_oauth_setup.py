@@ -276,38 +276,38 @@ class TestECOConstantsFallback:
         return module
 
     def test_fallback_uses_eco_home_env_var(self, monkeypatch, tmp_path):
-        """When eco_constants is missing, HERMES_HOME comes from env var."""
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path / "custom-eco"))
+        """When eco_constants is missing, ECO_HOME comes from env var."""
+        monkeypatch.setenv("ECO_HOME", str(tmp_path / "custom-eco"))
         module = self._load_helper(monkeypatch)
         assert module.get_eco_home() == tmp_path / "custom-eco"
 
     def test_fallback_defaults_to_dot_hermes(self, monkeypatch):
-        """When eco_constants is missing and HERMES_HOME unset, default to ~/.eco."""
-        monkeypatch.delenv("HERMES_HOME", raising=False)
+        """When eco_constants is missing and ECO_HOME unset, default to ~/.eco."""
+        monkeypatch.delenv("ECO_HOME", raising=False)
         module = self._load_helper(monkeypatch)
         assert module.get_eco_home() == Path.home() / ".eco"
 
     def test_fallback_ignores_empty_eco_home(self, monkeypatch):
-        """Empty/whitespace HERMES_HOME is treated as unset."""
-        monkeypatch.setenv("HERMES_HOME", "  ")
+        """Empty/whitespace ECO_HOME is treated as unset."""
+        monkeypatch.setenv("ECO_HOME", "  ")
         module = self._load_helper(monkeypatch)
         assert module.get_eco_home() == Path.home() / ".eco"
 
     def test_fallback_display_eco_home_shortens_path(self, monkeypatch):
         """Fallback display_eco_home() uses ~/ shorthand like the real one."""
-        monkeypatch.delenv("HERMES_HOME", raising=False)
+        monkeypatch.delenv("ECO_HOME", raising=False)
         module = self._load_helper(monkeypatch)
         assert module.display_eco_home() == "~/.eco"
 
     def test_fallback_display_eco_home_profile_path(self, monkeypatch):
         """Fallback display_eco_home() handles profile paths under ~/."""
-        monkeypatch.setenv("HERMES_HOME", str(Path.home() / ".eco/profiles/coder"))
+        monkeypatch.setenv("ECO_HOME", str(Path.home() / ".eco/profiles/coder"))
         module = self._load_helper(monkeypatch)
         assert module.display_eco_home() == "~/.eco/profiles/coder"
 
     def test_fallback_display_eco_home_custom_path(self, monkeypatch):
         """Fallback display_eco_home() returns full path for non-home locations."""
-        monkeypatch.setenv("HERMES_HOME", "/opt/eco-custom")
+        monkeypatch.setenv("ECO_HOME", "/opt/eco-custom")
         module = self._load_helper(monkeypatch)
         assert module.display_eco_home() == "/opt/eco-custom"
 

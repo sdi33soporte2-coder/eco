@@ -35,7 +35,7 @@ class TestRegisterCredentialFiles:
         eco_home.mkdir()
         (eco_home / "token.json").write_text("{}")
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             missing = register_credential_files([{"path": "token.json"}])
 
         assert missing == []
@@ -50,7 +50,7 @@ class TestRegisterCredentialFiles:
         eco_home.mkdir()
         (eco_home / "google_token.json").write_text("{}")
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             missing = register_credential_files([
                 {"name": "google_token.json", "description": "OAuth token"},
             ])
@@ -65,7 +65,7 @@ class TestRegisterCredentialFiles:
         eco_home.mkdir()
         (eco_home / "secret.key").write_text("key")
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             missing = register_credential_files(["secret.key"])
 
         assert missing == []
@@ -76,7 +76,7 @@ class TestRegisterCredentialFiles:
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             missing = register_credential_files([
                 {"name": "does_not_exist.json"},
             ])
@@ -90,7 +90,7 @@ class TestRegisterCredentialFiles:
         eco_home.mkdir()
         (eco_home / "real.json").write_text("{}")
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             missing = register_credential_files([
                 {"path": "real.json", "name": "wrong.json"},
             ])
@@ -108,7 +108,7 @@ class TestSkillsDirectoryMount:
         (skills_dir / "test-skill").mkdir()
         (skills_dir / "test-skill" / "SKILL.md").write_text("# test")
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             mounts = get_skills_directory_mount()
 
         assert len(mounts) >= 1
@@ -119,7 +119,7 @@ class TestSkillsDirectoryMount:
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             mounts = get_skills_directory_mount()
 
         # No local skills dir → no local mount (external dirs may still appear)
@@ -130,7 +130,7 @@ class TestSkillsDirectoryMount:
         eco_home = tmp_path / ".eco"
         (eco_home / "skills").mkdir(parents=True)
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             mounts = get_skills_directory_mount(container_base="/home/user/.eco")
 
         assert mounts[0]["container_path"] == "/home/user/.eco/skills"
@@ -146,7 +146,7 @@ class TestSkillsDirectoryMount:
         secret.write_text("TOP SECRET")
         (skills_dir / "evil_link").symlink_to(secret)
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             mounts = get_skills_directory_mount()
 
         assert len(mounts) >= 1
@@ -167,7 +167,7 @@ class TestSkillsDirectoryMount:
         skills_dir.mkdir(parents=True)
         (skills_dir / "skill.md").write_text("ok")
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             mounts = get_skills_directory_mount()
 
         assert mounts[0]["host_path"] == str(skills_dir)
@@ -186,7 +186,7 @@ class TestIterSkillsFiles:
         secret.write_text("nope")
         (skills_dir / "cat" / "myskill" / "evil").symlink_to(secret)
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             files = iter_skills_files()
 
         paths = {f["container_path"] for f in files}
@@ -199,7 +199,7 @@ class TestIterSkillsFiles:
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
 
-        with patch.dict(os.environ, {"HERMES_HOME": str(eco_home)}):
+        with patch.dict(os.environ, {"ECO_HOME": str(eco_home)}):
             assert iter_skills_files() == []
 
 class TestPathTraversalSecurity:
@@ -215,8 +215,8 @@ class TestPathTraversalSecurity:
     """
 
     def test_dotdot_traversal_rejected(self, tmp_path, monkeypatch):
-        """'../sensitive' must not escape HERMES_HOME."""
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".eco"))
+        """'../sensitive' must not escape ECO_HOME."""
+        monkeypatch.setenv("ECO_HOME", str(tmp_path / ".eco"))
         (tmp_path / ".eco").mkdir()
 
         # Create a sensitive file one level above eco_home
@@ -232,7 +232,7 @@ class TestPathTraversalSecurity:
         """'../../etc/passwd' style traversal must be rejected."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         # Create a fake sensitive file outside eco_home
         ssh_dir = tmp_path / ".ssh"
@@ -248,7 +248,7 @@ class TestPathTraversalSecurity:
         """Absolute paths must be rejected regardless of whether they exist."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         # Create a file at an absolute path
         sensitive = tmp_path / "absolute.json"
@@ -260,10 +260,10 @@ class TestPathTraversalSecurity:
         assert get_credential_file_mounts() == []
 
     def test_legitimate_file_still_works(self, tmp_path, monkeypatch):
-        """Normal files inside HERMES_HOME must still be registered."""
+        """Normal files inside ECO_HOME must still be registered."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         (eco_home / "token.json").write_text('{"token": "abc"}')
 
         result = register_credential_file("token.json")
@@ -274,23 +274,23 @@ class TestPathTraversalSecurity:
         assert "token.json" in mounts[0]["container_path"]
 
     def test_nested_subdir_inside_eco_home_allowed(self, tmp_path, monkeypatch):
-        """Files in subdirectories of HERMES_HOME must be allowed."""
+        """Files in subdirectories of ECO_HOME must be allowed."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
         subdir = eco_home / "creds"
         subdir.mkdir()
         (subdir / "oauth.json").write_text("{}")
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         result = register_credential_file("creds/oauth.json")
 
         assert result is True
 
     def test_symlink_traversal_rejected(self, tmp_path, monkeypatch):
-        """A symlink inside HERMES_HOME pointing outside must be rejected."""
+        """A symlink inside ECO_HOME pointing outside must be rejected."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         # Create a sensitive file outside eco_home
         sensitive = tmp_path / "sensitive.json"
@@ -305,7 +305,7 @@ class TestPathTraversalSecurity:
 
         result = register_credential_file("evil_link.json")
 
-        # The resolved path escapes HERMES_HOME — must be rejected
+        # The resolved path escapes ECO_HOME — must be rejected
         assert result is False
         assert get_credential_file_mounts() == []
 
@@ -323,10 +323,10 @@ class TestConfigPathTraversal:
         config_path.write_text(yaml.dump({"terminal": {"credential_files": cred_files}}))
 
     def test_config_traversal_rejected(self, tmp_path, monkeypatch):
-        """'../secret' in config.yaml must not escape HERMES_HOME."""
+        """'../secret' in config.yaml must not escape ECO_HOME."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         sensitive = tmp_path / "secret.json"
         sensitive.write_text("{}")
@@ -341,7 +341,7 @@ class TestConfigPathTraversal:
         """Absolute paths in config.yaml must be rejected."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         sensitive = tmp_path / "abs.json"
         sensitive.write_text("{}")
@@ -351,10 +351,10 @@ class TestConfigPathTraversal:
         assert mounts == []
 
     def test_config_legitimate_file_works(self, tmp_path, monkeypatch):
-        """Normal files inside HERMES_HOME via config must still mount."""
+        """Normal files inside ECO_HOME via config must still mount."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         (eco_home / "oauth.json").write_text("{}")
         self._write_config(eco_home, ["oauth.json"])
@@ -377,7 +377,7 @@ class TestCacheDirectoryMounts:
         eco_home.mkdir()
         (eco_home / "cache" / "documents").mkdir(parents=True)
         (eco_home / "cache" / "audio").mkdir(parents=True)
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         mounts = get_cache_directory_mounts()
         paths = {m["container_path"] for m in mounts}
@@ -390,7 +390,7 @@ class TestCacheDirectoryMounts:
         eco_home.mkdir()
         # Create only one cache dir
         (eco_home / "cache" / "documents").mkdir(parents=True)
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         mounts = get_cache_directory_mounts()
         assert len(mounts) == 1
@@ -403,7 +403,7 @@ class TestCacheDirectoryMounts:
         # Use legacy dir name — get_eco_dir prefers old if it exists
         (eco_home / "document_cache").mkdir()
         (eco_home / "image_cache").mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         mounts = get_cache_directory_mounts()
         host_paths = {m["host_path"] for m in mounts}
@@ -418,7 +418,7 @@ class TestCacheDirectoryMounts:
         """No cache dirs → empty list."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         assert get_cache_directory_mounts() == []
 
@@ -433,7 +433,7 @@ class TestIterCacheFiles:
         doc_dir.mkdir(parents=True)
         (doc_dir / "upload.zip").write_bytes(b"PK\x03\x04")
         (doc_dir / "report.pdf").write_bytes(b"%PDF-1.4")
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         entries = iter_cache_files()
         names = {Path(e["container_path"]).name for e in entries}
@@ -448,7 +448,7 @@ class TestIterCacheFiles:
         real_file = doc_dir / "real.txt"
         real_file.write_text("content")
         (doc_dir / "link.txt").symlink_to(real_file)
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         entries = iter_cache_files()
         names = [Path(e["container_path"]).name for e in entries]
@@ -462,7 +462,7 @@ class TestIterCacheFiles:
         sub = ss_dir / "session_abc"
         sub.mkdir(parents=True)
         (sub / "screen1.png").write_bytes(b"PNG")
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         entries = iter_cache_files()
         assert len(entries) == 1
@@ -472,6 +472,6 @@ class TestIterCacheFiles:
         """No cache dirs → empty list."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
 
         assert iter_cache_files() == []

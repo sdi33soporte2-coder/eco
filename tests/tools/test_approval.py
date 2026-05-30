@@ -149,7 +149,7 @@ class TestSessionKeyContext:
     def test_context_session_key_overrides_process_env(self):
         token = approval_module.set_current_session_key("alice")
         try:
-            with mock_patch.dict("os.environ", {"HERMES_SESSION_KEY": "bob"}, clear=False):
+            with mock_patch.dict("os.environ", {"ECO_SESSION_KEY": "bob"}, clear=False):
                 assert approval_module.get_current_session_key() == "alice"
         finally:
             approval_module.reset_current_session_key(token)
@@ -369,12 +369,12 @@ class TestTeePattern:
         assert key is not None
 
     def test_tee_custom_eco_home_env(self):
-        dangerous, key, desc = detect_dangerous_command("echo x | tee $HERMES_HOME/.env")
+        dangerous, key, desc = detect_dangerous_command("echo x | tee $ECO_HOME/.env")
         assert dangerous is True
         assert key is not None
 
     def test_tee_quoted_custom_eco_home_env(self):
-        dangerous, key, desc = detect_dangerous_command('echo x | tee "$HERMES_HOME/.env"')
+        dangerous, key, desc = detect_dangerous_command('echo x | tee "$ECO_HOME/.env"')
         assert dangerous is True
         assert key is not None
 
@@ -417,7 +417,7 @@ class TestSensitiveRedirectPattern:
     """Detect shell redirection writes to sensitive user-managed paths."""
 
     def test_redirect_to_custom_eco_home_env(self):
-        dangerous, key, desc = detect_dangerous_command("echo x > $HERMES_HOME/.env")
+        dangerous, key, desc = detect_dangerous_command("echo x > $ECO_HOME/.env")
         assert dangerous is True
         assert key is not None
 
@@ -1344,13 +1344,13 @@ class TestApprovalTimeoutIsNotConsent:
 
         self._saved_env = {
             k: os.environ.get(k)
-            for k in ("HERMES_GATEWAY_SESSION", "HERMES_YOLO_MODE",
-                      "HERMES_SESSION_KEY", "HERMES_INTERACTIVE")
+            for k in ("ECO_GATEWAY_SESSION", "ECO_YOLO_MODE",
+                      "ECO_SESSION_KEY", "ECO_INTERACTIVE")
         }
-        os.environ.pop("HERMES_YOLO_MODE", None)
-        os.environ.pop("HERMES_INTERACTIVE", None)
-        os.environ["HERMES_GATEWAY_SESSION"] = "1"
-        os.environ["HERMES_SESSION_KEY"] = self.SESSION_KEY
+        os.environ.pop("ECO_YOLO_MODE", None)
+        os.environ.pop("ECO_INTERACTIVE", None)
+        os.environ["ECO_GATEWAY_SESSION"] = "1"
+        os.environ["ECO_SESSION_KEY"] = self.SESSION_KEY
 
     def teardown_method(self):
         from tools import approval as mod

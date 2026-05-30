@@ -415,7 +415,7 @@ def test_save_and_read_xai_oauth_tokens_roundtrip(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     _save_xai_oauth_tokens(
         {
@@ -439,7 +439,7 @@ def test_read_xai_oauth_tokens_missing(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     with pytest.raises(AuthError) as exc:
         _read_xai_oauth_tokens()
@@ -450,7 +450,7 @@ def test_read_xai_oauth_tokens_missing(tmp_path, monkeypatch):
 def test_read_xai_oauth_tokens_missing_access_token(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     _setup_eco_auth(eco_home, access_token="")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     with pytest.raises(AuthError) as exc:
         _read_xai_oauth_tokens()
@@ -461,7 +461,7 @@ def test_read_xai_oauth_tokens_missing_access_token(tmp_path, monkeypatch):
 def test_read_xai_oauth_tokens_missing_refresh_token(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     _setup_eco_auth(eco_home, refresh_token="")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     with pytest.raises(AuthError) as exc:
         _read_xai_oauth_tokens()
@@ -478,8 +478,8 @@ def test_resolve_xai_runtime_credentials_returns_singleton_state(tmp_path, monke
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
-    monkeypatch.delenv("HERMES_XAI_BASE_URL", raising=False)
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
+    monkeypatch.delenv("ECO_XAI_BASE_URL", raising=False)
     monkeypatch.delenv("XAI_BASE_URL", raising=False)
 
     creds = resolve_xai_oauth_runtime_credentials()
@@ -499,7 +499,7 @@ def test_resolve_xai_runtime_credentials_refreshes_expiring_token(tmp_path, monk
         refresh_token="rt-old",
         discovery={"token_endpoint": "https://auth.x.ai/oauth2/token"},
     )
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     new_access = _jwt_with_exp(int(time.time()) + 3600)
     called = {"count": 0}
@@ -526,7 +526,7 @@ def test_resolve_xai_runtime_credentials_force_refresh(tmp_path, monkeypatch):
         access_token=fresh,
         discovery={"token_endpoint": "https://auth.x.ai/oauth2/token"},
     )
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     forced = _jwt_with_exp(int(time.time()) + 7200)
     called = {"count": 0}
@@ -548,8 +548,8 @@ def test_resolve_xai_runtime_credentials_honours_env_base_url(tmp_path, monkeypa
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
-    monkeypatch.setenv("HERMES_XAI_BASE_URL", "https://custom.x.ai/v1/")
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_XAI_BASE_URL", "https://custom.x.ai/v1/")
 
     creds = resolve_xai_oauth_runtime_credentials()
     assert creds["base_url"] == "https://custom.x.ai/v1"
@@ -559,7 +559,7 @@ def test_resolve_xai_runtime_credentials_honours_env_base_url(tmp_path, monkeypa
 # Inference base-URL host guard (xai-oauth bearer leak protection)
 #
 # The xAI OAuth bearer is a high-value, long-lived SuperGrok credential.
-# ``XAI_BASE_URL`` / ``HERMES_XAI_BASE_URL`` are a credential-leak vector
+# ``XAI_BASE_URL`` / ``ECO_XAI_BASE_URL`` are a credential-leak vector
 # unless the host is pinned to the xAI origin. These tests cover the
 # accept/reject matrix for `_xai_validate_inference_base_url` and confirm
 # the runtime resolver falls back to the default on rejection rather than
@@ -671,9 +671,9 @@ def test_resolve_xai_runtime_credentials_rejects_off_origin_env_base_url(tmp_pat
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
     monkeypatch.setenv("XAI_BASE_URL", "https://attacker.example/v1")
-    monkeypatch.delenv("HERMES_XAI_BASE_URL", raising=False)
+    monkeypatch.delenv("ECO_XAI_BASE_URL", raising=False)
 
     with caplog.at_level("WARNING"):
         creds = resolve_xai_oauth_runtime_credentials()
@@ -725,7 +725,7 @@ def test_resolve_credentials_quarantines_dead_tokens_on_terminal_refresh_failure
     """
     eco_home = tmp_path / "eco"
     _seed_xai_oauth_state(eco_home, dict(_STALE_XAI_OAUTH_STATE), active_provider="nous")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     def _terminal_refresh(tokens, **kwargs):
         raise AuthError(
@@ -775,7 +775,7 @@ def test_resolve_credentials_does_not_quarantine_on_transient_refresh_failure(
     """
     eco_home = tmp_path / "eco"
     _seed_xai_oauth_state(eco_home, dict(_STALE_XAI_OAUTH_STATE))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     def _transient_refresh(tokens, **kwargs):
         raise AuthError(
@@ -809,7 +809,7 @@ def test_get_xai_oauth_auth_status_logged_in_via_singleton(tmp_path, monkeypatch
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     status = get_xai_oauth_auth_status()
     assert status["logged_in"] is True
@@ -821,7 +821,7 @@ def test_get_xai_oauth_auth_status_logged_out(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     status = get_xai_oauth_auth_status()
     assert status["logged_in"] is False
@@ -1174,7 +1174,7 @@ def test_credential_pool_seeds_xai_oauth_from_singleton(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh, refresh_token="rt-1")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     pool = load_pool("xai-oauth")
     assert pool.has_credentials()
@@ -1202,7 +1202,7 @@ def test_credential_pool_does_not_seed_when_singleton_missing_access_token(tmp_p
         },
     }
     (eco_home / "auth.json").write_text(json.dumps(auth_store))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     pool = load_pool("xai-oauth")
     assert not pool.has_credentials()
@@ -1216,7 +1216,7 @@ def test_credential_pool_seed_respects_suppression(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     # Suppress the source — mimic `eco auth remove`.
     from eco_cli.auth import suppress_credential_source
@@ -1248,7 +1248,7 @@ def test_auth_remove_xai_oauth_clears_singleton_and_sticks(tmp_path, monkeypatch
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh, refresh_token="rt-1")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     # Confirm pre-state: pool sees the seeded entry, auth.json has the singleton.
     pool = load_pool("xai-oauth")
@@ -1292,7 +1292,7 @@ def test_pool_sync_back_writes_to_singleton(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     expired = _jwt_with_exp(int(time.time()) - 10)
     _setup_eco_auth(eco_home, access_token=expired, refresh_token="rt-old")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     new_access = _jwt_with_exp(int(time.time()) + 3600)
 
@@ -1336,8 +1336,8 @@ def test_runtime_provider_uses_pool_entry_for_xai_oauth(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
-    monkeypatch.delenv("HERMES_XAI_BASE_URL", raising=False)
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
+    monkeypatch.delenv("ECO_XAI_BASE_URL", raising=False)
     monkeypatch.delenv("XAI_BASE_URL", raising=False)
 
     runtime = resolve_runtime_provider(requested="xai-oauth")
@@ -1356,8 +1356,8 @@ def test_runtime_provider_default_base_url_when_pool_entry_missing_url(tmp_path,
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
-    monkeypatch.delenv("HERMES_XAI_BASE_URL", raising=False)
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
+    monkeypatch.delenv("ECO_XAI_BASE_URL", raising=False)
     monkeypatch.delenv("XAI_BASE_URL", raising=False)
 
     fresh = _jwt_with_exp(int(time.time()) + 3600)
@@ -1402,7 +1402,7 @@ def test_pool_entry_needs_refresh_when_jwt_within_skew(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     # Token expires in 30s — well inside the 120s skew window.
     near_expiry = _jwt_with_exp(int(time.time()) + 30)
@@ -1431,7 +1431,7 @@ def test_pool_entry_no_refresh_for_fresh_jwt(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     pool = load_pool("xai-oauth")
@@ -1460,7 +1460,7 @@ def test_pool_select_proactively_refreshes_expiring_token(tmp_path, monkeypatch)
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     near_expiry = _jwt_with_exp(int(time.time()) + 30)
     new_access = _jwt_with_exp(int(time.time()) + 3600)
@@ -1514,7 +1514,7 @@ def test_pool_try_refresh_current_handles_xai_oauth(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     # Even a "fresh-looking" token gets force-refreshed via try_refresh_current.
     # We simulate the scenario where the server rejected the token (401)
@@ -1569,7 +1569,7 @@ def test_pool_refresh_marks_entry_exhausted_on_failure(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     def _fake_refresh_fail(*args, **kwargs):
         raise AuthError("refresh_token_reused", code="xai_refresh_failed", relogin_required=True)
@@ -1607,7 +1607,7 @@ def test_pool_seeded_entry_sync_back_after_refresh(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     near_expiry = _jwt_with_exp(int(time.time()) + 30)
     _setup_eco_auth(eco_home, access_token=near_expiry, refresh_token="rt-singleton")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     new_access = _jwt_with_exp(int(time.time()) + 3600)
 
@@ -1651,7 +1651,7 @@ def test_pool_refresh_adopts_singleton_tokens_when_consumed_elsewhere(tmp_path, 
     eco_home = tmp_path / "eco"
     in_memory_at = _jwt_with_exp(int(time.time()) + 30)  # near-expiry
     _setup_eco_auth(eco_home, access_token=in_memory_at, refresh_token="rt-stale")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     # Load the pool once so the in-memory entry is seeded with rt-stale.
     pool = load_pool("xai-oauth")
@@ -1704,7 +1704,7 @@ def test_pool_refresh_recovers_when_other_process_already_refreshed(tmp_path, mo
     eco_home = tmp_path / "eco"
     in_memory_at = _jwt_with_exp(int(time.time()) + 30)
     _setup_eco_auth(eco_home, access_token=in_memory_at, refresh_token="rt-shared")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     pool = load_pool("xai-oauth")
 
@@ -1752,7 +1752,7 @@ def test_pool_exhausted_xai_entry_recovers_after_singleton_refresh(tmp_path, mon
     eco_home = tmp_path / "eco"
     stale_at = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=stale_at, refresh_token="rt-stale")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     pool = load_pool("xai-oauth")
     seeded = pool.entries()[0]
@@ -1806,7 +1806,7 @@ def test_pool_manual_xai_entry_not_synced_from_singleton(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     singleton_at = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=singleton_at, refresh_token="rt-singleton")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     pool = load_pool("xai-oauth")
 
@@ -1844,7 +1844,7 @@ def test_pool_manual_entry_does_not_sync_back_to_singleton(tmp_path, monkeypatch
     # Singleton has its own tokens (separate login).
     singleton_at = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=singleton_at, refresh_token="rt-singleton")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     manual_at_old = _jwt_with_exp(int(time.time()) + 30)
     manual_at_new = _jwt_with_exp(int(time.time()) + 7200)
@@ -1913,8 +1913,8 @@ def test_auxiliary_client_routes_xai_oauth_through_responses_api(tmp_path, monke
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
-    monkeypatch.delenv("HERMES_XAI_BASE_URL", raising=False)
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
+    monkeypatch.delenv("ECO_XAI_BASE_URL", raising=False)
     monkeypatch.delenv("XAI_BASE_URL", raising=False)
 
     client, model = resolve_provider_client("xai-oauth", model="grok-4")
@@ -1941,7 +1941,7 @@ def test_auxiliary_client_xai_oauth_returns_none_when_unauthenticated(tmp_path, 
     eco_home = tmp_path / "eco"
     eco_home.mkdir(parents=True, exist_ok=True)
     (eco_home / "auth.json").write_text(json.dumps({"version": 1, "providers": {}}))
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     client, model = resolve_provider_client("xai-oauth", model="grok-4")
     assert client is None
@@ -1957,7 +1957,7 @@ def test_auxiliary_client_xai_oauth_requires_explicit_model(tmp_path, monkeypatc
     eco_home = tmp_path / "eco"
     fresh = _jwt_with_exp(int(time.time()) + 3600)
     _setup_eco_auth(eco_home, access_token=fresh)
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     client, model = resolve_provider_client("xai-oauth", model=None)
     assert client is None
@@ -1982,7 +1982,7 @@ def test_pool_sync_back_preserves_active_provider(tmp_path, monkeypatch):
     eco_home = tmp_path / "eco"
     near_expiry = _jwt_with_exp(int(time.time()) + 30)
     _setup_eco_auth(eco_home, access_token=near_expiry, refresh_token="rt-xai")
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     # Simulate a multi-provider user whose actual chosen provider is
     # OpenRouter — xai-oauth tokens exist in the singleton but are NOT

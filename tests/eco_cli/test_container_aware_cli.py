@@ -23,11 +23,11 @@ from eco_cli.config import (
 
 @pytest.fixture
 def container_env(tmp_path, monkeypatch):
-    """Set up a fake HERMES_HOME with .container-mode file."""
+    """Set up a fake ECO_HOME with .container-mode file."""
     eco_home = tmp_path / ".eco"
     eco_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
-    monkeypatch.delenv("HERMES_DEV", raising=False)
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
+    monkeypatch.delenv("ECO_DEV", raising=False)
 
     container_mode = eco_home / ".container-mode"
     container_mode.write_text(
@@ -64,8 +64,8 @@ def test_get_container_exec_info_none_without_file(tmp_path, monkeypatch):
     """Returns None when .container-mode doesn't exist (native mode)."""
     eco_home = tmp_path / ".eco"
     eco_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
-    monkeypatch.delenv("HERMES_DEV", raising=False)
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
+    monkeypatch.delenv("ECO_DEV", raising=False)
 
     with patch("eco_constants.is_container", return_value=False):
         info = get_container_exec_info()
@@ -74,8 +74,8 @@ def test_get_container_exec_info_none_without_file(tmp_path, monkeypatch):
 
 
 def test_get_container_exec_info_skipped_when_eco_dev(container_env, monkeypatch):
-    """Returns None when HERMES_DEV=1 is set (dev mode bypass)."""
-    monkeypatch.setenv("HERMES_DEV", "1")
+    """Returns None when ECO_DEV=1 is set (dev mode bypass)."""
+    monkeypatch.setenv("ECO_DEV", "1")
 
     with patch("eco_constants.is_container", return_value=False):
         info = get_container_exec_info()
@@ -84,8 +84,8 @@ def test_get_container_exec_info_skipped_when_eco_dev(container_env, monkeypatch
 
 
 def test_get_container_exec_info_not_skipped_when_eco_dev_zero(container_env, monkeypatch):
-    """HERMES_DEV=0 does NOT trigger bypass — only '1' does."""
-    monkeypatch.setenv("HERMES_DEV", "0")
+    """ECO_DEV=0 does NOT trigger bypass — only '1' does."""
+    monkeypatch.setenv("ECO_DEV", "0")
 
     with patch("eco_constants.is_container", return_value=False):
         info = get_container_exec_info()
@@ -107,7 +107,7 @@ def test_get_container_exec_info_defaults():
         with patch("eco_constants.is_container", return_value=False), \
              patch.dict(get_container_exec_info.__globals__, {"get_eco_home": lambda: eco_home}), \
              patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("HERMES_DEV", None)
+            os.environ.pop("ECO_DEV", None)
             info = get_container_exec_info()
 
         assert info is not None

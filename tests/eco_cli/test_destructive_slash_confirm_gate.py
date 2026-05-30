@@ -48,7 +48,7 @@ class TestUserConfigMerge:
         }
         cfg_path.write_text(yaml.safe_dump(legacy))
 
-        monkeypatch.setenv("HERMES_HOME", str(home))
+        monkeypatch.setenv("ECO_HOME", str(home))
         import importlib
         import eco_cli.config as cfg_mod
         importlib.reload(cfg_mod)
@@ -77,7 +77,7 @@ class TestUserConfigMerge:
         }
         cfg_path.write_text(yaml.safe_dump(user_cfg))
 
-        monkeypatch.setenv("HERMES_HOME", str(home))
+        monkeypatch.setenv("ECO_HOME", str(home))
         import importlib
         import eco_cli.config as cfg_mod
         importlib.reload(cfg_mod)

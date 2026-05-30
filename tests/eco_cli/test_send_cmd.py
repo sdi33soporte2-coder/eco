@@ -349,7 +349,7 @@ def test_load_eco_env_bridges_config_yaml_scalars(tmp_path, monkeypatch):
         "TELEGRAM_HOME_CHANNEL: '5550001111'\nnested:\n  ignored: true\n"
     )
 
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
     monkeypatch.delenv("TELEGRAM_HOME_CHANNEL", raising=False)
     monkeypatch.delenv("SOME_TOKEN", raising=False)
 
@@ -373,7 +373,7 @@ def test_load_eco_env_does_not_override_existing(tmp_path, monkeypatch):
     eco_home.mkdir()
     (eco_home / "config.yaml").write_text("TELEGRAM_HOME_CHANNEL: yaml_value\n")
 
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
     monkeypatch.setenv("TELEGRAM_HOME_CHANNEL", "env_value")
 
     from importlib import reload
@@ -389,7 +389,7 @@ def test_load_eco_env_handles_missing_files(tmp_path, monkeypatch):
     """No .env or config.yaml should be a silent no-op, not an exception."""
     eco_home = tmp_path / ".eco"
     eco_home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     from importlib import reload
     import eco_cli.config as _hc_config

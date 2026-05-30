@@ -540,18 +540,18 @@ def test_s6_register_creates_service_dir_and_triggers_scan(
     # it, the supervised `gateway run` would re-enter the s6 redirect
     # in `_gateway_command_inner` and recurse. See the matching guard
     # in eco_cli/gateway.py::_gateway_command_inner.
-    assert "export HERMES_S6_SUPERVISED_CHILD=1" in run_text
+    assert "export ECO_S6_SUPERVISED_CHILD=1" in run_text
 
     log_run = svc_dir / "log" / "run"
     assert log_run.is_file()
     log_text = log_run.read_text()
-    # CRITICAL: HERMES_HOME must be a runtime env-var expansion, NOT
+    # CRITICAL: ECO_HOME must be a runtime env-var expansion, NOT
     # a Python-substituted absolute path. Negative-assert the wrong
     # form so future regressions are caught.
-    assert "$HERMES_HOME" in log_text
+    assert "$ECO_HOME" in log_text
     assert "logs/gateways/coder" in log_text
     assert "/opt/data/logs/gateways/coder" not in log_text, (
-        "log_dir was hard-coded; must use ${HERMES_HOME} at run time"
+        "log_dir was hard-coded; must use ${ECO_HOME} at run time"
     )
     # `1` action directive forwards lines to stdout BEFORE the file
     # destination so the supervised gateway's stdout (including the

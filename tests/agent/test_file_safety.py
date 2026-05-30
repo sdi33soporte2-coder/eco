@@ -67,7 +67,7 @@ class TestEnvFileReadBlocking:
             assert error is None, f"{path} should be allowed"
 
     def test_allowed_eco_env(self):
-        """ECO' own .env inside HERMES_HOME is NOT blocked by this rule
+        """ECO' own .env inside ECO_HOME is NOT blocked by this rule
         (it's handled by other mechanisms). Only project-local .env is blocked."""
         # Note: eco internal .env is in ~/.eco/.env which is NOT a project-local
         # path, but the basename check applies to ANY .env. This is intentional —
@@ -122,7 +122,7 @@ class TestCombinedGuards:
     """Both guards should work independently without interference."""
 
     def test_env_guard_works_regardless_of_eco_home(self, tmp_path):
-        """The env basename guard does not depend on HERMES_HOME resolution."""
+        """The env basename guard does not depend on ECO_HOME resolution."""
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
 

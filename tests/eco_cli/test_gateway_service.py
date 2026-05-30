@@ -240,11 +240,11 @@ class TestSystemdServiceRefresh:
         """Defense in depth: ``refresh_systemd_unit_if_needed()`` runs every
         time ``run_gateway()`` starts. The user-scope unit path resolves
         under ``Path.home()`` (NOT sandboxed by conftest), and
-        ``generate_systemd_unit()`` bakes ``HERMES_HOME`` into the unit's
+        ``generate_systemd_unit()`` bakes ``ECO_HOME`` into the unit's
         ``Environment=`` line. Without this guard, any test that drives
         ``run_gateway()`` end-to-end on a real Linux dev box silently
         rewrites the developer's installed gateway unit with a
-        ``/tmp/pytest-of-.../eco_test`` HERMES_HOME — silently breaking
+        ``/tmp/pytest-of-.../eco_test`` ECO_HOME — silently breaking
         their gateway on the next boot. The guard sniffs the generated
         unit body for tmpdir markers and refuses the write. Tests that
         legitimately exercise the refresh flow patch
@@ -257,10 +257,10 @@ class TestSystemdServiceRefresh:
         monkeypatch.setattr(
             gateway_cli, "get_systemd_unit_path", lambda system=False: unit_path
         )
-        # Realistic generated unit referencing a pytest tmpdir HERMES_HOME
+        # Realistic generated unit referencing a pytest tmpdir ECO_HOME
         polluted_unit = (
             "[Service]\n"
-            'Environment="HERMES_HOME=/tmp/pytest-of-alice/pytest-42/'
+            'Environment="ECO_HOME=/tmp/pytest-of-alice/pytest-42/'
             'popen-gw0/test_x/eco_test"\n'
         )
         monkeypatch.setattr(
@@ -451,7 +451,7 @@ class TestGatewayStopCleanup:
 
 class TestLaunchdServiceRecovery:
     def test_get_restart_drain_timeout_prefers_env_then_config_then_default(self, monkeypatch):
-        monkeypatch.delenv("HERMES_RESTART_DRAIN_TIMEOUT", raising=False)
+        monkeypatch.delenv("ECO_RESTART_DRAIN_TIMEOUT", raising=False)
         monkeypatch.setattr(gateway_cli, "read_raw_config", lambda: {})
 
         assert (
@@ -466,10 +466,10 @@ class TestLaunchdServiceRecovery:
         )
         assert gateway_cli._get_restart_drain_timeout() == 14.0
 
-        monkeypatch.setenv("HERMES_RESTART_DRAIN_TIMEOUT", "9")
+        monkeypatch.setenv("ECO_RESTART_DRAIN_TIMEOUT", "9")
         assert gateway_cli._get_restart_drain_timeout() == 9.0
 
-        monkeypatch.setenv("HERMES_RESTART_DRAIN_TIMEOUT", "invalid")
+        monkeypatch.setenv("ECO_RESTART_DRAIN_TIMEOUT", "invalid")
         assert (
             gateway_cli._get_restart_drain_timeout()
             == DEFAULT_GATEWAY_RESTART_DRAIN_TIMEOUT
@@ -1180,12 +1180,12 @@ class TestDetectVenvDir:
 
 
 class TestSystemUnitECOHome:
-    """HERMES_HOME in system units must reference the target user, not root."""
+    """ECO_HOME in system units must reference the target user, not root."""
 
     def test_system_unit_uses_target_user_home_not_calling_user(self, monkeypatch):
         # Simulate sudo: Path.home() returns /root, target user is alice
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
-        monkeypatch.delenv("HERMES_HOME", raising=False)
+        monkeypatch.delenv("ECO_HOME", raising=False)
         monkeypatch.setattr(
             gateway_cli, "_system_service_identity",
             lambda run_as_user=None: ("alice", "alice", "/home/alice"),
@@ -1197,13 +1197,13 @@ class TestSystemUnitECOHome:
 
         unit = gateway_cli.generate_systemd_unit(system=True, run_as_user="alice")
 
-        assert 'HERMES_HOME=/home/alice/.eco' in unit
+        assert 'ECO_HOME=/home/alice/.eco' in unit
         assert '/root/.eco' not in unit
 
     def test_system_unit_remaps_profile_to_target_user(self, monkeypatch):
-        # Simulate sudo with a profile: HERMES_HOME was resolved under root
+        # Simulate sudo with a profile: ECO_HOME was resolved under root
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
-        monkeypatch.setenv("HERMES_HOME", "/root/.eco/profiles/coder")
+        monkeypatch.setenv("ECO_HOME", "/root/.eco/profiles/coder")
         monkeypatch.setattr(
             gateway_cli, "_system_service_identity",
             lambda run_as_user=None: ("alice", "alice", "/home/alice"),
@@ -1215,13 +1215,13 @@ class TestSystemUnitECOHome:
 
         unit = gateway_cli.generate_systemd_unit(system=True, run_as_user="alice")
 
-        assert 'HERMES_HOME=/home/alice/.eco/profiles/coder' in unit
+        assert 'ECO_HOME=/home/alice/.eco/profiles/coder' in unit
         assert '/root/' not in unit
 
     def test_system_unit_preserves_custom_eco_home(self, monkeypatch):
-        # Custom HERMES_HOME not under any user's home — keep as-is
+        # Custom ECO_HOME not under any user's home — keep as-is
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
-        monkeypatch.setenv("HERMES_HOME", "/opt/eco-shared")
+        monkeypatch.setenv("ECO_HOME", "/opt/eco-shared")
         monkeypatch.setattr(
             gateway_cli, "_system_service_identity",
             lambda run_as_user=None: ("alice", "alice", "/home/alice"),
@@ -1233,14 +1233,14 @@ class TestSystemUnitECOHome:
 
         unit = gateway_cli.generate_systemd_unit(system=True, run_as_user="alice")
 
-        assert 'HERMES_HOME=/opt/eco-shared' in unit
+        assert 'ECO_HOME=/opt/eco-shared' in unit
 
     def test_user_unit_unaffected_by_change(self):
-        # User-scope units should still use the calling user's HERMES_HOME
+        # User-scope units should still use the calling user's ECO_HOME
         unit = gateway_cli.generate_systemd_unit(system=False)
 
         eco_home = str(gateway_cli.get_eco_home().resolve())
-        assert f'HERMES_HOME={eco_home}' in unit
+        assert f'ECO_HOME={eco_home}' in unit
 
 
 class TestECOHomeForTargetUser:
@@ -1248,28 +1248,28 @@ class TestECOHomeForTargetUser:
 
     def test_remaps_default_home(self, monkeypatch):
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
-        monkeypatch.delenv("HERMES_HOME", raising=False)
+        monkeypatch.delenv("ECO_HOME", raising=False)
 
         result = gateway_cli._eco_home_for_target_user("/home/alice")
         assert result == "/home/alice/.eco"
 
     def test_remaps_profile_path(self, monkeypatch):
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
-        monkeypatch.setenv("HERMES_HOME", "/root/.eco/profiles/coder")
+        monkeypatch.setenv("ECO_HOME", "/root/.eco/profiles/coder")
 
         result = gateway_cli._eco_home_for_target_user("/home/alice")
         assert result == "/home/alice/.eco/profiles/coder"
 
     def test_keeps_custom_path(self, monkeypatch):
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/root")))
-        monkeypatch.setenv("HERMES_HOME", "/opt/eco")
+        monkeypatch.setenv("ECO_HOME", "/opt/eco")
 
         result = gateway_cli._eco_home_for_target_user("/home/alice")
         assert result == "/opt/eco"
 
     def test_noop_when_same_user(self, monkeypatch):
         monkeypatch.setattr(Path, "home", staticmethod(lambda: Path("/home/alice")))
-        monkeypatch.delenv("HERMES_HOME", raising=False)
+        monkeypatch.delenv("ECO_HOME", raising=False)
 
         result = gateway_cli._eco_home_for_target_user("/home/alice")
         assert result == "/home/alice/.eco"
@@ -1567,7 +1567,7 @@ class TestProfileArg:
         eco_home = tmp_path / ".eco"
         eco_home.mkdir()
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
         result = gateway_cli._profile_arg(str(eco_home))
         assert result == ""
 
@@ -1576,16 +1576,16 @@ class TestProfileArg:
         profile_dir = tmp_path / ".eco" / "profiles" / "mybot"
         profile_dir.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".eco"))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path / ".eco"))
         result = gateway_cli._profile_arg(str(profile_dir))
         assert result == "--profile mybot"
 
     def test_hash_path_returns_empty(self, tmp_path, monkeypatch):
-        """Arbitrary non-profile HERMES_HOME should return empty string."""
+        """Arbitrary non-profile ECO_HOME should return empty string."""
         custom_home = tmp_path / "custom" / "eco"
         custom_home.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".eco"))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path / ".eco"))
         result = gateway_cli._profile_arg(str(custom_home))
         assert result == ""
 
@@ -1594,7 +1594,7 @@ class TestProfileArg:
         nested = tmp_path / ".eco" / "profiles" / "mybot" / "subdir"
         nested.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".eco"))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path / ".eco"))
         result = gateway_cli._profile_arg(str(nested))
         assert result == ""
 
@@ -1603,7 +1603,7 @@ class TestProfileArg:
         bad_profile = tmp_path / ".eco" / "profiles" / "My Bot!"
         bad_profile.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".eco"))
+        monkeypatch.setenv("ECO_HOME", str(tmp_path / ".eco"))
         result = gateway_cli._profile_arg(str(bad_profile))
         assert result == ""
 
@@ -1612,7 +1612,7 @@ class TestProfileArg:
         profile_dir = tmp_path / ".eco" / "profiles" / "mybot"
         profile_dir.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(profile_dir))
+        monkeypatch.setenv("ECO_HOME", str(profile_dir))
         monkeypatch.setattr(gateway_cli, "get_eco_home", lambda: profile_dir)
         unit = gateway_cli.generate_systemd_unit(system=False)
         assert "--profile mybot" in unit
@@ -1623,7 +1623,7 @@ class TestProfileArg:
         profile_dir = tmp_path / ".eco" / "profiles" / "mybot"
         profile_dir.mkdir(parents=True)
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(profile_dir))
+        monkeypatch.setenv("ECO_HOME", str(profile_dir))
         monkeypatch.setattr(gateway_cli, "get_eco_home", lambda: profile_dir)
         plist = gateway_cli.generate_launchd_plist()
         assert "<string>--profile</string>" in plist
@@ -1638,7 +1638,7 @@ class TestProfileArg:
         profile_home.mkdir()
 
         monkeypatch.setattr(Path, "home", lambda: profile_home)
-        monkeypatch.setenv("HERMES_HOME", str(profile_dir))
+        monkeypatch.setenv("ECO_HOME", str(profile_dir))
         monkeypatch.setattr(gateway_cli, "get_eco_home", lambda: profile_dir)
         monkeypatch.setattr(pwd, "getpwuid", lambda uid: SimpleNamespace(pw_dir=str(machine_home)))
 
@@ -1688,7 +1688,7 @@ class TestSystemUnitPathRemapping:
         target_home = "/home/alice"
 
         monkeypatch.setattr(Path, "home", lambda: root_home)
-        monkeypatch.setenv("HERMES_HOME", str(root_home / ".eco"))
+        monkeypatch.setenv("ECO_HOME", str(root_home / ".eco"))
         monkeypatch.setattr(gateway_cli, "get_eco_home", lambda: root_home / ".eco")
         monkeypatch.setattr(gateway_cli, "PROJECT_ROOT", project)
         monkeypatch.setattr(gateway_cli, "_detect_venv_dir", lambda: project / "venv")

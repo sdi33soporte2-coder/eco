@@ -18,10 +18,10 @@ from eco_cli import kanban_db as kb
 
 @pytest.fixture
 def kanban_home(tmp_path, monkeypatch):
-    """Isolated HERMES_HOME with an empty kanban DB."""
+    """Isolated ECO_HOME with an empty kanban DB."""
     home = tmp_path / ".eco"
     home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     kb.init_db()
     return home
@@ -59,7 +59,7 @@ def test_connect_honors_kanban_busy_timeout_env(kanban_home, monkeypatch):
     setup.  The timeout must be queryable via PRAGMA so CLI, gateway, and tool
     connections behave the same way.
     """
-    monkeypatch.setenv("HERMES_KANBAN_BUSY_TIMEOUT_MS", "123456")
+    monkeypatch.setenv("ECO_KANBAN_BUSY_TIMEOUT_MS", "123456")
 
     with kb.connect() as conn:
         row = conn.execute("PRAGMA busy_timeout").fetchone()
@@ -92,9 +92,9 @@ def test_connect_rejects_tls_record_in_sqlite_header(tmp_path, monkeypatch):
     """Kanban should classify TLS-looking page-0 clobbers before WAL setup."""
     home = tmp_path / ".eco"
     home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
-    monkeypatch.delenv("HERMES_KANBAN_DB", raising=False)
-    monkeypatch.delenv("HERMES_KANBAN_HOME", raising=False)
+    monkeypatch.setenv("ECO_HOME", str(home))
+    monkeypatch.delenv("ECO_KANBAN_DB", raising=False)
+    monkeypatch.delenv("ECO_KANBAN_HOME", raising=False)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     corrupt = home / "kanban.db"
@@ -359,7 +359,7 @@ def test_claim_once_wins_second_loses(kanban_home):
 
 
 def test_claim_uses_env_default_ttl(kanban_home, monkeypatch):
-    monkeypatch.setenv("HERMES_KANBAN_CLAIM_TTL_SECONDS", "3600")
+    monkeypatch.setenv("ECO_KANBAN_CLAIM_TTL_SECONDS", "3600")
     with kb.connect() as conn:
         t = kb.create_task(conn, title="x", assignee="a")
         kb.claim_task(conn, t, claimer="host:1")
@@ -482,7 +482,7 @@ def test_stale_claim_with_live_pid_uses_env_ttl_override(
 ):
     import eco_cli.kanban_db as _kb
 
-    monkeypatch.setenv("HERMES_KANBAN_CLAIM_TTL_SECONDS", "3600")
+    monkeypatch.setenv("ECO_KANBAN_CLAIM_TTL_SECONDS", "3600")
 
     with kb.connect() as conn:
         t = kb.create_task(conn, title="x", assignee="a")
@@ -611,7 +611,7 @@ def test_detect_crashed_workers_skips_freshly_claimed_tasks(
     import eco_cli.kanban_db as _kb
 
     monkeypatch.setattr(_kb, "_pid_alive", lambda _pid: False)
-    monkeypatch.delenv("HERMES_KANBAN_CRASH_GRACE_SECONDS", raising=False)
+    monkeypatch.delenv("ECO_KANBAN_CRASH_GRACE_SECONDS", raising=False)
 
     now = 1_000_000.0
     monkeypatch.setattr(_kb.time, "time", lambda: now)
@@ -639,11 +639,11 @@ def test_detect_crashed_workers_skips_freshly_claimed_tasks(
 def test_detect_crashed_workers_grace_period_env_override(
     kanban_home, monkeypatch,
 ):
-    """HERMES_KANBAN_CRASH_GRACE_SECONDS env var adjusts the window."""
+    """ECO_KANBAN_CRASH_GRACE_SECONDS env var adjusts the window."""
     import eco_cli.kanban_db as _kb
 
     monkeypatch.setattr(_kb, "_pid_alive", lambda _pid: False)
-    monkeypatch.setenv("HERMES_KANBAN_CRASH_GRACE_SECONDS", "5")
+    monkeypatch.setenv("ECO_KANBAN_CRASH_GRACE_SECONDS", "5")
 
     now = 2_000_000.0
 
@@ -671,7 +671,7 @@ def test_resolve_crash_grace_seconds_handles_bad_env(monkeypatch):
     import eco_cli.kanban_db as _kb
 
     for bad_val in ("notanumber", "-5", ""):
-        monkeypatch.setenv("HERMES_KANBAN_CRASH_GRACE_SECONDS", bad_val)
+        monkeypatch.setenv("ECO_KANBAN_CRASH_GRACE_SECONDS", bad_val)
         result = _kb._resolve_crash_grace_seconds()
         assert result == _kb.DEFAULT_CRASH_GRACE_SECONDS, (
             f"expected default for {bad_val!r}, got {result}"
@@ -741,7 +741,7 @@ def test_heartbeat_extends_claim(kanban_home):
 
 
 def test_heartbeat_uses_env_default_ttl(kanban_home, monkeypatch):
-    monkeypatch.setenv("HERMES_KANBAN_CLAIM_TTL_SECONDS", "3600")
+    monkeypatch.setenv("ECO_KANBAN_CLAIM_TTL_SECONDS", "3600")
     with kb.connect() as conn:
         t = kb.create_task(conn, title="x", assignee="a")
         claimer = "host:hb"
@@ -1632,7 +1632,7 @@ def test_cleanup_workspace_refuses_path_outside_scratch_root(kanban_home, tmp_pa
 
 
 def test_cleanup_workspace_honors_workspaces_root_env_override(tmp_path, monkeypatch):
-    """``HERMES_KANBAN_WORKSPACES_ROOT`` extends the managed-scratch set.
+    """``ECO_KANBAN_WORKSPACES_ROOT`` extends the managed-scratch set.
 
     Worker subprocesses run with this env var injected by the dispatcher. The
     cleanup containment check must treat paths under it as managed even when
@@ -1640,11 +1640,11 @@ def test_cleanup_workspace_honors_workspaces_root_env_override(tmp_path, monkeyp
     """
     home = tmp_path / ".eco"
     home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     workspaces_override = tmp_path / "ext-workspaces"
     workspaces_override.mkdir()
-    monkeypatch.setenv("HERMES_KANBAN_WORKSPACES_ROOT", str(workspaces_override))
+    monkeypatch.setenv("ECO_KANBAN_WORKSPACES_ROOT", str(workspaces_override))
     kb.init_db()
 
     with kb.connect() as conn:
@@ -1858,22 +1858,22 @@ def test_session_id_compose_with_tenant_filter(kanban_home):
 # spawned with `eco -p <profile>` must read/write the same kanban.db
 # as the dispatcher that claimed the task. These tests exercise the
 # path-resolution layer directly and would have caught the regression
-# where `kanban_db_path()` resolved to the active profile's HERMES_HOME.
+# where `kanban_db_path()` resolved to the active profile's ECO_HOME.
 # ---------------------------------------------------------------------------
 
 class TestSharedBoardPaths:
     """`kanban_home`/`kanban_db_path`/`workspaces_root`/`worker_log_path`
-    must anchor at the **shared root**, not the active profile's HERMES_HOME."""
+    must anchor at the **shared root**, not the active profile's ECO_HOME."""
 
     def _set_home(self, monkeypatch, tmp_path, eco_home):
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(eco_home))
-        monkeypatch.delenv("HERMES_KANBAN_HOME", raising=False)
+        monkeypatch.setenv("ECO_HOME", str(eco_home))
+        monkeypatch.delenv("ECO_KANBAN_HOME", raising=False)
 
     def test_default_install_anchors_at_home_dot_hermes(
         self, tmp_path, monkeypatch
     ):
-        # Standard install: HERMES_HOME == ~/.eco, no profile active.
+        # Standard install: ECO_HOME == ~/.eco, no profile active.
         default_home = tmp_path / ".eco"
         default_home.mkdir()
         self._set_home(monkeypatch, tmp_path, default_home)
@@ -1900,7 +1900,7 @@ class TestSharedBoardPaths:
         self._set_home(monkeypatch, tmp_path, profile_home)
 
         # All four resolvers must anchor at the shared root, not the
-        # profile-local HERMES_HOME.
+        # profile-local ECO_HOME.
         assert kb.kanban_home() == default_home
         assert kb.kanban_db_path() == default_home / "kanban.db"
         assert kb.workspaces_root() == default_home / "kanban" / "workspaces"
@@ -1917,7 +1917,7 @@ class TestSharedBoardPaths:
         self, tmp_path, monkeypatch
     ):
         # End-to-end convergence: resolve the path under each side's
-        # HERMES_HOME and confirm equality. This is the property the
+        # ECO_HOME and confirm equality. This is the property the
         # dispatcher/worker handoff actually depends on.
         default_home = tmp_path / ".eco"
         default_home.mkdir()
@@ -1931,7 +1931,7 @@ class TestSharedBoardPaths:
         dispatcher_log = kb.worker_log_path("t_handoff")
 
         # Worker's perspective (profile activated by `eco -p coder`).
-        monkeypatch.setenv("HERMES_HOME", str(profile_home))
+        monkeypatch.setenv("ECO_HOME", str(profile_home))
         worker_db = kb.kanban_db_path()
         worker_ws = kb.workspaces_root()
         worker_log = kb.worker_log_path("t_handoff")
@@ -1943,7 +1943,7 @@ class TestSharedBoardPaths:
     def test_docker_custom_eco_home_uses_env_path_directly(
         self, tmp_path, monkeypatch
     ):
-        # Docker / custom deployment: HERMES_HOME points outside ~/.eco.
+        # Docker / custom deployment: ECO_HOME points outside ~/.eco.
         # `get_default_eco_root()` returns env_home directly when it
         # is not a `<root>/profiles/<name>` shape and not under
         # `Path.home() / ".eco"`.
@@ -1957,7 +1957,7 @@ class TestSharedBoardPaths:
     def test_docker_profile_layout_uses_grandparent(
         self, tmp_path, monkeypatch
     ):
-        # Docker profile shape: HERMES_HOME=/opt/eco/profiles/coder;
+        # Docker profile shape: ECO_HOME=/opt/eco/profiles/coder;
         # `get_default_eco_root()` walks up to /opt/eco because
         # the immediate parent dir is named "profiles".
         custom_root = tmp_path / "opt" / "eco"
@@ -1971,7 +1971,7 @@ class TestSharedBoardPaths:
     def test_explicit_override_via_eco_kanban_home(
         self, tmp_path, monkeypatch
     ):
-        # Explicit override: HERMES_KANBAN_HOME beats every other
+        # Explicit override: ECO_KANBAN_HOME beats every other
         # resolution rule.
         default_home = tmp_path / ".eco"
         profile_home = default_home / "profiles" / "any"
@@ -1980,8 +1980,8 @@ class TestSharedBoardPaths:
         override.mkdir()
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(profile_home))
-        monkeypatch.setenv("HERMES_KANBAN_HOME", str(override))
+        monkeypatch.setenv("ECO_HOME", str(profile_home))
+        monkeypatch.setenv("ECO_KANBAN_HOME", str(override))
 
         assert kb.kanban_home() == override
         assert kb.kanban_db_path() == override / "kanban.db"
@@ -1992,8 +1992,8 @@ class TestSharedBoardPaths:
         default_home = tmp_path / ".eco"
         default_home.mkdir()
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(default_home))
-        monkeypatch.setenv("HERMES_KANBAN_HOME", "   ")
+        monkeypatch.setenv("ECO_HOME", str(default_home))
+        monkeypatch.setenv("ECO_KANBAN_HOME", "   ")
 
         assert kb.kanban_home() == default_home
 
@@ -2001,7 +2001,7 @@ class TestSharedBoardPaths:
         self, tmp_path, monkeypatch
     ):
         # Belt-and-suspenders: round-trip a task across the two
-        # HERMES_HOME perspectives via a real SQLite file. Without the
+        # ECO_HOME perspectives via a real SQLite file. Without the
         # fix the worker would open a different file and see no rows.
         default_home = tmp_path / ".eco"
         default_home.mkdir()
@@ -2014,8 +2014,8 @@ class TestSharedBoardPaths:
         with kb.connect() as conn:
             task_id = kb.create_task(conn, title="cross-profile")
 
-        # Worker switches to the profile HERMES_HOME and reads.
-        monkeypatch.setenv("HERMES_HOME", str(profile_home))
+        # Worker switches to the profile ECO_HOME and reads.
+        monkeypatch.setenv("ECO_HOME", str(profile_home))
         with kb.connect() as conn:
             task = kb.get_task(conn, task_id)
         assert task is not None
@@ -2024,8 +2024,8 @@ class TestSharedBoardPaths:
     def test_eco_kanban_db_pin_beats_kanban_home(
         self, tmp_path, monkeypatch
     ):
-        # HERMES_KANBAN_DB pins the file path directly and beats both
-        # HERMES_KANBAN_HOME and the `get_default_eco_root()` path.
+        # ECO_KANBAN_DB pins the file path directly and beats both
+        # ECO_KANBAN_HOME and the `get_default_eco_root()` path.
         # This is the env the dispatcher injects into workers.
         default_home = tmp_path / ".eco"
         default_home.mkdir()
@@ -2035,19 +2035,19 @@ class TestSharedBoardPaths:
         pinned_db.parent.mkdir()
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(default_home))
-        monkeypatch.setenv("HERMES_KANBAN_HOME", str(umbrella))
-        monkeypatch.setenv("HERMES_KANBAN_DB", str(pinned_db))
+        monkeypatch.setenv("ECO_HOME", str(default_home))
+        monkeypatch.setenv("ECO_KANBAN_HOME", str(umbrella))
+        monkeypatch.setenv("ECO_KANBAN_DB", str(pinned_db))
 
         assert kb.kanban_db_path() == pinned_db
-        # workspaces_root still follows HERMES_KANBAN_HOME -- the pins
+        # workspaces_root still follows ECO_KANBAN_HOME -- the pins
         # are independent.
         assert kb.workspaces_root() == umbrella / "kanban" / "workspaces"
 
     def test_eco_kanban_workspaces_root_pin_beats_kanban_home(
         self, tmp_path, monkeypatch
     ):
-        # HERMES_KANBAN_WORKSPACES_ROOT pins the workspaces root directly.
+        # ECO_KANBAN_WORKSPACES_ROOT pins the workspaces root directly.
         default_home = tmp_path / ".eco"
         default_home.mkdir()
         umbrella = tmp_path / "umbrella"
@@ -2056,25 +2056,25 @@ class TestSharedBoardPaths:
         pinned_ws.mkdir()
 
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(default_home))
-        monkeypatch.setenv("HERMES_KANBAN_HOME", str(umbrella))
-        monkeypatch.setenv("HERMES_KANBAN_WORKSPACES_ROOT", str(pinned_ws))
+        monkeypatch.setenv("ECO_HOME", str(default_home))
+        monkeypatch.setenv("ECO_KANBAN_HOME", str(umbrella))
+        monkeypatch.setenv("ECO_KANBAN_WORKSPACES_ROOT", str(pinned_ws))
 
         assert kb.workspaces_root() == pinned_ws
-        # kanban_db_path still follows HERMES_KANBAN_HOME.
+        # kanban_db_path still follows ECO_KANBAN_HOME.
         assert kb.kanban_db_path() == umbrella / "kanban.db"
 
     def test_empty_per_path_overrides_fall_through(
         self, tmp_path, monkeypatch
     ):
         # Empty/whitespace pins are treated as unset, same as
-        # HERMES_KANBAN_HOME.
+        # ECO_KANBAN_HOME.
         default_home = tmp_path / ".eco"
         default_home.mkdir()
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        monkeypatch.setenv("HERMES_HOME", str(default_home))
-        monkeypatch.setenv("HERMES_KANBAN_DB", "   ")
-        monkeypatch.setenv("HERMES_KANBAN_WORKSPACES_ROOT", "")
+        monkeypatch.setenv("ECO_HOME", str(default_home))
+        monkeypatch.setenv("ECO_KANBAN_DB", "   ")
+        monkeypatch.setenv("ECO_KANBAN_WORKSPACES_ROOT", "")
 
         assert kb.kanban_db_path() == default_home / "kanban.db"
         assert kb.workspaces_root() == default_home / "kanban" / "workspaces"
@@ -2082,10 +2082,10 @@ class TestSharedBoardPaths:
     def test_dispatcher_spawn_injects_kanban_db_and_workspaces_root(
         self, tmp_path, monkeypatch
     ):
-        # The dispatcher's `_default_spawn` must inject HERMES_KANBAN_DB
-        # and HERMES_KANBAN_WORKSPACES_ROOT into the worker env so the
+        # The dispatcher's `_default_spawn` must inject ECO_KANBAN_DB
+        # and ECO_KANBAN_WORKSPACES_ROOT into the worker env so the
         # worker converges on the dispatcher's paths even when the
-        # `-p <profile>` flag rewrites HERMES_HOME.
+        # `-p <profile>` flag rewrites ECO_HOME.
         default_home = tmp_path / ".eco"
         default_home.mkdir()
         self._set_home(monkeypatch, tmp_path, default_home)
@@ -2121,12 +2121,12 @@ class TestSharedBoardPaths:
         kb._default_spawn(task, str(tmp_path / "ws"))
 
         env = captured["env"]
-        assert env["HERMES_KANBAN_DB"] == str(default_home / "kanban.db")
-        assert env["HERMES_KANBAN_WORKSPACES_ROOT"] == str(
+        assert env["ECO_KANBAN_DB"] == str(default_home / "kanban.db")
+        assert env["ECO_KANBAN_WORKSPACES_ROOT"] == str(
             default_home / "kanban" / "workspaces"
         )
-        assert env["HERMES_KANBAN_TASK"] == "t_dispatch_env"
-        assert env["HERMES_KANBAN_BRANCH"] == "wt/t_dispatch_env"
+        assert env["ECO_KANBAN_TASK"] == "t_dispatch_env"
+        assert env["ECO_KANBAN_BRANCH"] == "wt/t_dispatch_env"
 
 
 # ---------------------------------------------------------------------------
@@ -2233,7 +2233,7 @@ def test_connect_falls_back_to_delete_on_locking_protocol(tmp_path, monkeypatch,
 
     home = tmp_path / ".eco"
     home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     # Clear module cache so a fresh connect() is attempted
@@ -2431,7 +2431,7 @@ def test_resolve_eco_argv_prefers_path_shim(monkeypatch):
     import shutil
     import eco_cli.kanban_db as kb
 
-    monkeypatch.delenv("HERMES_BIN", raising=False)
+    monkeypatch.delenv("ECO_BIN", raising=False)
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/local/bin/eco")
     argv = kb._resolve_eco_argv()
     assert argv == ["/usr/local/bin/eco"]
@@ -2442,7 +2442,7 @@ def test_resolve_eco_argv_absolutizes_relative_exe_shim(monkeypatch, tmp_path):
     import eco_cli.kanban_db as kb
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("HERMES_BIN", ".\\eco.exe")
+    monkeypatch.setenv("ECO_BIN", ".\\eco.exe")
     monkeypatch.setattr(kb, "_IS_WINDOWS", True)
 
     assert kb._resolve_eco_argv() == [os.path.abspath(".\\eco.exe")]
@@ -2456,7 +2456,7 @@ def test_resolve_eco_argv_avoids_implicit_windows_batch_shim(monkeypatch, tmp_pa
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     (bin_dir / "eco.CMD").write_text("@echo off\n", encoding="utf-8")
-    monkeypatch.delenv("HERMES_BIN", raising=False)
+    monkeypatch.delenv("ECO_BIN", raising=False)
     monkeypatch.setenv("PATH", str(bin_dir))
     monkeypatch.setenv("PATHEXT", ".CMD")
     monkeypatch.setattr(kb, "_IS_WINDOWS", True)
@@ -2465,21 +2465,21 @@ def test_resolve_eco_argv_avoids_implicit_windows_batch_shim(monkeypatch, tmp_pa
 
 
 def test_resolve_eco_argv_honors_eco_bin_path_override(monkeypatch, tmp_path):
-    """An explicit path-like HERMES_BIN lets service managers pin the executable."""
+    """An explicit path-like ECO_BIN lets service managers pin the executable."""
     import shutil
     import eco_cli.kanban_db as kb
 
     shim = tmp_path / "bin" / "eco"
     shim.parent.mkdir()
     shim.write_text("#!/bin/sh\n", encoding="utf-8")
-    monkeypatch.setenv("HERMES_BIN", str(shim))
+    monkeypatch.setenv("ECO_BIN", str(shim))
     monkeypatch.setattr(shutil, "which", lambda name: None)
 
     assert kb._resolve_eco_argv() == [str(shim)]
 
 
 def test_resolve_eco_argv_eco_bin_bare_name_uses_path(monkeypatch, tmp_path):
-    """Bare HERMES_BIN values keep PATH semantics instead of cwd shadowing."""
+    """Bare ECO_BIN values keep PATH semantics instead of cwd shadowing."""
     import stat
     import eco_cli.kanban_db as kb
 
@@ -2492,27 +2492,27 @@ def test_resolve_eco_argv_eco_bin_bare_name_uses_path(monkeypatch, tmp_path):
     path_hermes.chmod(path_hermes.stat().st_mode | stat.S_IXUSR)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("PATH", str(path_hermes.parent))
-    monkeypatch.setenv("HERMES_BIN", "eco")
+    monkeypatch.setenv("ECO_BIN", "eco")
 
     assert kb._resolve_eco_argv() == [str(path_hermes)]
 
 
 def test_resolve_eco_argv_eco_bin_bare_name_ignores_cwd(monkeypatch, tmp_path):
-    """Bare HERMES_BIN does not accept current-directory shadow executables."""
+    """Bare ECO_BIN does not accept current-directory shadow executables."""
     import sys
     import eco_cli.kanban_db as kb
 
     (tmp_path / "eco.exe").write_text("wrong\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("PATH", "")
-    monkeypatch.setenv("HERMES_BIN", "eco")
+    monkeypatch.setenv("ECO_BIN", "eco")
     monkeypatch.setattr(kb, "_IS_WINDOWS", True)
 
     assert kb._resolve_eco_argv() == [sys.executable, "-m", "eco_cli.main"]
 
 
 def test_resolve_eco_argv_eco_bin_bare_cmd_uses_module_fallback(monkeypatch, tmp_path):
-    """A PATH-resolved HERMES_BIN batch shim is not used as worker argv[0]."""
+    """A PATH-resolved ECO_BIN batch shim is not used as worker argv[0]."""
     import sys
     import eco_cli.kanban_db as kb
 
@@ -2521,19 +2521,19 @@ def test_resolve_eco_argv_eco_bin_bare_cmd_uses_module_fallback(monkeypatch, tmp
     (bin_dir / "eco.CMD").write_text("@echo off\n", encoding="utf-8")
     monkeypatch.setenv("PATH", str(bin_dir))
     monkeypatch.setenv("PATHEXT", ".CMD")
-    monkeypatch.setenv("HERMES_BIN", "eco")
+    monkeypatch.setenv("ECO_BIN", "eco")
     monkeypatch.setattr(kb, "_IS_WINDOWS", True)
 
     assert kb._resolve_eco_argv() == [sys.executable, "-m", "eco_cli.main"]
 
 
 def test_resolve_eco_argv_eco_bin_unresolved_bare_name_falls_back(monkeypatch):
-    """Unresolved HERMES_BIN command names do not delegate cwd search to Popen."""
+    """Unresolved ECO_BIN command names do not delegate cwd search to Popen."""
     import sys
     import eco_cli.kanban_db as kb
 
     monkeypatch.setenv("PATH", "")
-    monkeypatch.setenv("HERMES_BIN", "eco")
+    monkeypatch.setenv("ECO_BIN", "eco")
 
     assert kb._resolve_eco_argv() == [sys.executable, "-m", "eco_cli.main"]
 
@@ -2550,7 +2550,7 @@ def test_resolve_eco_argv_falls_back_to_module_form_when_no_path_shim(monkeypatc
     import sys
     import eco_cli.kanban_db as kb
 
-    monkeypatch.delenv("HERMES_BIN", raising=False)
+    monkeypatch.delenv("ECO_BIN", raising=False)
     monkeypatch.setattr(shutil, "which", lambda name: None)
     argv = kb._resolve_eco_argv()
     assert argv == [sys.executable, "-m", "eco_cli.main"]
@@ -2571,7 +2571,7 @@ def test_resolve_eco_argv_module_actually_runs():
     import unittest.mock as mock
 
     with mock.patch.dict(os.environ, {}, clear=False):
-        os.environ.pop("HERMES_BIN", None)
+        os.environ.pop("ECO_BIN", None)
         with mock.patch.object(shutil, "which", return_value=None):
             argv = kb._resolve_eco_argv()
     r = subprocess.run(argv + ["--version"], capture_output=True, text=True, timeout=30)
@@ -2690,7 +2690,7 @@ def test_task_dict_survives_corrupt_created_at(tmp_path, monkeypatch):
     # Set up an isolated kanban home so we can write a corrupt created_at.
     home = tmp_path / ".eco"
     home.mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
     kb._INITIALIZED_PATHS.clear()
     kb.init_db()

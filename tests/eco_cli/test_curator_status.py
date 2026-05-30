@@ -59,12 +59,12 @@ def test_status_uses_last_activity_not_only_last_used(monkeypatch, capsys):
 
 @pytest.fixture
 def curator_status_env(tmp_path, monkeypatch):
-    """Isolated HERMES_HOME with real agent-created skills on disk."""
+    """Isolated ECO_HOME with real agent-created skills on disk."""
     home = tmp_path / ".eco"
     skills = home / "skills"
     skills.mkdir(parents=True)
     (home / "logs").mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     import importlib

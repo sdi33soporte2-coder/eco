@@ -313,7 +313,7 @@ async def test_blocks_sensitive_home_and_eco_paths(tmp_path: Path, monkeypatch):
     from agent.context_references import preprocess_context_references_async
 
     monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setenv("HERMES_HOME", str(tmp_path / ".eco"))
+    monkeypatch.setenv("ECO_HOME", str(tmp_path / ".eco"))
 
     eco_env = tmp_path / ".eco" / ".env"
     eco_env.parent.mkdir(parents=True)

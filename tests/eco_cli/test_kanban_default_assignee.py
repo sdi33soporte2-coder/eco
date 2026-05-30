@@ -16,17 +16,17 @@ import pytest
 
 @pytest.fixture()
 def isolated_kanban_home(monkeypatch):
-    """Spin up a fresh HERMES_HOME with a clean kanban DB."""
+    """Spin up a fresh ECO_HOME with a clean kanban DB."""
     test_home = tempfile.mkdtemp(prefix="kanban_default_assignee_test_")
-    monkeypatch.setenv("HERMES_HOME", test_home)
-    # Force-reimport so the fresh HERMES_HOME is picked up.
+    monkeypatch.setenv("ECO_HOME", test_home)
+    # Force-reimport so the fresh ECO_HOME is picked up.
     for mod in list(sys.modules.keys()):
         if mod.startswith("eco_cli") or mod.startswith("eco_state") or mod == "eco_constants":
             del sys.modules[mod]
     from eco_cli import kanban_db
     yield kanban_db, test_home
     # Cleanup is best-effort; tempfile dir survives but pytest isolation
-    # gives each test its own monkeypatched HERMES_HOME so no cross-test
+    # gives each test its own monkeypatched ECO_HOME so no cross-test
     # contamination.
 
 

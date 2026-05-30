@@ -19,13 +19,13 @@ import pytest
 
 @pytest.fixture
 def eco_env(tmp_path, monkeypatch):
-    """Isolate HERMES_HOME for each test so jobs/scripts don't leak."""
+    """Isolate ECO_HOME for each test so jobs/scripts don't leak."""
     home = tmp_path / ".eco"
     home.mkdir()
     (home / "scripts").mkdir()
     (home / "cron").mkdir()
 
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
 
     # Reload modules that cache get_eco_home() at import time.
     import importlib

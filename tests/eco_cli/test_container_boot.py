@@ -2,7 +2,7 @@
 reconciliation that recreates per-profile gateway s6 service slots
 from the persistent profiles directory.
 
-These tests run against a fake $HERMES_HOME under tmp_path; no real
+These tests run against a fake $ECO_HOME under tmp_path; no real
 s6 supervision tree is required. The in-container integration test
 covering end-to-end "docker restart" survival lives in
 tests/docker/test_container_restart.py.
@@ -59,7 +59,7 @@ def _seed_default_root(
     with_pid: bool = False,
 ) -> None:
     """Populate gateway_state.json / stale runtime files at the
-    HERMES_HOME root (the implicit default profile)."""
+    ECO_HOME root (the implicit default profile)."""
     if state is not None:
         (eco_home / "gateway_state.json").write_text(json.dumps({
             "gateway_state": state, "timestamp": 1234567890,
@@ -326,7 +326,7 @@ def test_dry_run_makes_no_filesystem_changes(tmp_path: Path) -> None:
 def test_missing_profiles_root_still_registers_default_slot(
     tmp_path: Path,
 ) -> None:
-    """When $HERMES_HOME/profiles doesn't exist (fresh install), the
+    """When $ECO_HOME/profiles doesn't exist (fresh install), the
     reconciliation should still register a gateway-default slot for
     the root profile and return without raising. Previously this
     returned an empty list; the default slot is now always present
@@ -435,7 +435,7 @@ def test_register_service_cleans_up_stale_tmp_dir(tmp_path: Path) -> None:
 
 
 def test_default_slot_always_registered_on_empty_home(tmp_path: Path) -> None:
-    """Bare HERMES_HOME with nothing under it still produces a
+    """Bare ECO_HOME with nothing under it still produces a
     gateway-default slot (down state)."""
     scandir = tmp_path / "run-service"; scandir.mkdir()
 
@@ -454,7 +454,7 @@ def test_default_slot_always_registered_on_empty_home(tmp_path: Path) -> None:
 
 def test_default_slot_run_script_omits_profile_flag(tmp_path: Path) -> None:
     """The default slot's run script must NOT pass `-p default` —
-    that would resolve to $HERMES_HOME/profiles/default/ instead of
+    that would resolve to $ECO_HOME/profiles/default/ instead of
     the root profile. It must call `eco gateway run` directly."""
     scandir = tmp_path / "run-service"; scandir.mkdir()
 
@@ -469,7 +469,7 @@ def test_default_slot_run_script_omits_profile_flag(tmp_path: Path) -> None:
 
 
 def test_default_slot_autostarts_when_root_state_running(tmp_path: Path) -> None:
-    """gateway_state.json at the HERMES_HOME root with state=running
+    """gateway_state.json at the ECO_HOME root with state=running
     means the default slot auto-starts on container boot."""
     scandir = tmp_path / "run-service"; scandir.mkdir()
     _seed_default_root(tmp_path, state="running")
@@ -517,7 +517,7 @@ def test_default_slot_does_not_autostart_when_root_state_startup_failed(
 def test_default_slot_cleans_up_stale_runtime_files_at_root(
     tmp_path: Path,
 ) -> None:
-    """gateway.pid and processes.json at the HERMES_HOME root (left
+    """gateway.pid and processes.json at the ECO_HOME root (left
     over from the previous container's default gateway) must be
     swept the same way as for named profiles."""
     scandir = tmp_path / "run-service"; scandir.mkdir()

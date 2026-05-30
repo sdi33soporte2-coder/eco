@@ -5,13 +5,13 @@ Hermetic-test invariants enforced here (see AGENTS.md for rationale):
 1. **No credential env vars.** All provider/credential-shaped env vars
    (ending in _API_KEY, _TOKEN, _SECRET, _PASSWORD, _CREDENTIALS, etc.)
    are unset before every test. Local developer keys cannot leak in.
-2. **Isolated HERMES_HOME.** HERMES_HOME points to a per-test tempdir so
+2. **Isolated ECO_HOME.** ECO_HOME points to a per-test tempdir so
    code reading ``~/.eco/*`` via ``get_eco_home()`` can't see the
    real one. (We do NOT also redirect HOME — that broke subprocesses in
    CI. Code using ``Path.home() / ".eco"`` instead of the canonical
    ``get_eco_home()`` is a bug to fix at the callsite.)
 3. **Deterministic runtime.** TZ=UTC, LANG=C.UTF-8, PYTHONHASHSEED=0.
-4. **No HERMES_SESSION_* inheritance** — the agent's current gateway
+4. **No ECO_SESSION_* inheritance** — the agent's current gateway
    session must not leak into tests.
 
 These invariants make the local test run match CI closely. Gaps that
@@ -166,59 +166,59 @@ def _looks_like_credential(name: str) -> bool:
     return any(name.endswith(suf) for suf in _CREDENTIAL_SUFFIXES)
 
 
-# HERMES_* vars that change test behavior by being set. Unset all of these
+# ECO_* vars that change test behavior by being set. Unset all of these
 # unconditionally — individual tests that need them set do so explicitly.
-_HERMES_BEHAVIORAL_VARS = frozenset({
-    "HERMES_YOLO_MODE",
-    "HERMES_INTERACTIVE",
-    "HERMES_QUIET",
-    "HERMES_TOOL_PROGRESS",
-    "HERMES_TOOL_PROGRESS_MODE",
-    "HERMES_MAX_ITERATIONS",
-    "HERMES_SESSION_PLATFORM",
-    "HERMES_SESSION_CHAT_ID",
-    "HERMES_SESSION_CHAT_NAME",
-    "HERMES_SESSION_THREAD_ID",
-    "HERMES_SESSION_SOURCE",
-    "HERMES_SESSION_KEY",
-    "HERMES_GATEWAY_SESSION",
-    "HERMES_PLATFORM",
-    "HERMES_MODEL",
-    "HERMES_INFERENCE_MODEL",
-    "HERMES_INFERENCE_PROVIDER",
-    "HERMES_TUI_PROVIDER",
-    "HERMES_MANAGED",
-    "HERMES_DEV",
-    "HERMES_CONTAINER",
-    "HERMES_EPHEMERAL_SYSTEM_PROMPT",
-    "HERMES_TIMEZONE",
-    "HERMES_REDACT_SECRETS",
-    "HERMES_BACKGROUND_NOTIFICATIONS",
-    "HERMES_EXEC_ASK",
-    "HERMES_HOME_MODE",
-    "HERMES_AGENT_USE_LEGACY_SESSION_KEYS",
+_ECO_BEHAVIORAL_VARS = frozenset({
+    "ECO_YOLO_MODE",
+    "ECO_INTERACTIVE",
+    "ECO_QUIET",
+    "ECO_TOOL_PROGRESS",
+    "ECO_TOOL_PROGRESS_MODE",
+    "ECO_MAX_ITERATIONS",
+    "ECO_SESSION_PLATFORM",
+    "ECO_SESSION_CHAT_ID",
+    "ECO_SESSION_CHAT_NAME",
+    "ECO_SESSION_THREAD_ID",
+    "ECO_SESSION_SOURCE",
+    "ECO_SESSION_KEY",
+    "ECO_GATEWAY_SESSION",
+    "ECO_PLATFORM",
+    "ECO_MODEL",
+    "ECO_INFERENCE_MODEL",
+    "ECO_INFERENCE_PROVIDER",
+    "ECO_TUI_PROVIDER",
+    "ECO_MANAGED",
+    "ECO_DEV",
+    "ECO_CONTAINER",
+    "ECO_EPHEMERAL_SYSTEM_PROMPT",
+    "ECO_TIMEZONE",
+    "ECO_REDACT_SECRETS",
+    "ECO_BACKGROUND_NOTIFICATIONS",
+    "ECO_EXEC_ASK",
+    "ECO_HOME_MODE",
+    "ECO_AGENT_USE_LEGACY_SESSION_KEYS",
     # Kanban path/board pins must never leak from a developer shell or
     # dispatched worker into tests; otherwise tests can write fake tasks to
-    # the real ~/.eco/kanban.db instead of the per-test HERMES_HOME.
-    "HERMES_KANBAN_DB",
-    "HERMES_KANBAN_BOARD",
-    "HERMES_KANBAN_HOME",
-    "HERMES_KANBAN_WORKSPACES_ROOT",
-    "HERMES_KANBAN_LOGS_ROOT",
-    "HERMES_KANBAN_TASK",
-    "HERMES_KANBAN_WORKSPACE",
-    "HERMES_KANBAN_RUN_ID",
-    "HERMES_KANBAN_CLAIM_LOCK",
-    "HERMES_KANBAN_DISPATCH_IN_GATEWAY",
-    "HERMES_TENANT",
+    # the real ~/.eco/kanban.db instead of the per-test ECO_HOME.
+    "ECO_KANBAN_DB",
+    "ECO_KANBAN_BOARD",
+    "ECO_KANBAN_HOME",
+    "ECO_KANBAN_WORKSPACES_ROOT",
+    "ECO_KANBAN_LOGS_ROOT",
+    "ECO_KANBAN_TASK",
+    "ECO_KANBAN_WORKSPACE",
+    "ECO_KANBAN_RUN_ID",
+    "ECO_KANBAN_CLAIM_LOCK",
+    "ECO_KANBAN_DISPATCH_IN_GATEWAY",
+    "ECO_TENANT",
     # Dashboard OAuth auth gate (PR #30156). When set, the bundled
     # dashboard-auth `nous` plugin auto-registers itself on plugin discovery,
     # which is triggered by any `/api/status` call. That leaks a provider
     # into the dashboard_auth registry across tests in the same worker and
     # makes assertions like `auth_providers == []` flaky. CI never sets
     # these, so production tests must not see them either.
-    "HERMES_DASHBOARD_OAUTH_CLIENT_ID",
-    "HERMES_DASHBOARD_PORTAL_URL",
+    "ECO_DASHBOARD_OAUTH_CLIENT_ID",
+    "ECO_DASHBOARD_PORTAL_URL",
     "TERMINAL_CWD",
     "TERMINAL_ENV",
     "TERMINAL_CONTAINER_CPU",
@@ -326,7 +326,7 @@ _HERMES_BEHAVIORAL_VARS = frozenset({
 def _hermetic_environment(tmp_path, monkeypatch):
     """Blank out all credential/behavioral env vars so local and CI match.
 
-    Also redirects HOME and HERMES_HOME to per-test tempdirs so code that
+    Also redirects HOME and ECO_HOME to per-test tempdirs so code that
     reads ``~/.eco/*`` can't touch the real one, and pins TZ/LANG so
     datetime/locale-sensitive tests are deterministic.
     """
@@ -335,11 +335,11 @@ def _hermetic_environment(tmp_path, monkeypatch):
         if _looks_like_credential(name):
             monkeypatch.delenv(name, raising=False)
 
-    # 2. Blank behavioral HERMES_* vars that could change test semantics.
-    for name in _HERMES_BEHAVIORAL_VARS:
+    # 2. Blank behavioral ECO_* vars that could change test semantics.
+    for name in _ECO_BEHAVIORAL_VARS:
         monkeypatch.delenv(name, raising=False)
 
-    # 3. Redirect HERMES_HOME to a per-test tempdir. Code that reads
+    # 3. Redirect ECO_HOME to a per-test tempdir. Code that reads
     #    ``~/.eco/*`` via ``get_eco_home()`` now gets the tempdir.
     #
     #    NOTE: We do NOT also redirect HOME. Doing so broke CI because
@@ -355,7 +355,7 @@ def _hermetic_environment(tmp_path, monkeypatch):
     (fake_eco_home / "cron").mkdir()
     (fake_eco_home / "memories").mkdir()
     (fake_eco_home / "skills").mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(fake_eco_home))
+    monkeypatch.setenv("ECO_HOME", str(fake_eco_home))
 
     # 4. Deterministic locale / timezone / hashseed. CI runs in UTC with
     #    C.UTF-8 locale; local dev often doesn't. Pin everything.
@@ -641,7 +641,7 @@ def _live_system_guard(request, monkeypatch):
         monkeypatch.setattr(_os, "killpg", _guarded_killpg)
 
     # ── Subprocess command-string inspection (whole-line) ──────────
-    _HERMES_TOKENS = (
+    _ECO_TOKENS = (
         "eco-gateway",
         "eco.service",
         "eco_cli.main gateway",
@@ -675,7 +675,7 @@ def _live_system_guard(request, monkeypatch):
 
     def _matches_eco_gateway(cmd_str: str) -> bool:
         low = cmd_str.lower()
-        return any(tok in low for tok in _HERMES_TOKENS)
+        return any(tok in low for tok in _ECO_TOKENS)
 
     def _is_blocked_systemctl(cmd) -> bool:
         cmd_str = _cmd_to_string(cmd)

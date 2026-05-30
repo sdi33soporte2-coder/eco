@@ -11,15 +11,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 @pytest.fixture
 def cron_env(tmp_path, monkeypatch):
-    """Isolated cron environment with temp HERMES_HOME."""
+    """Isolated cron environment with temp ECO_HOME."""
     eco_home = tmp_path / ".eco"
     eco_home.mkdir()
     (eco_home / "cron").mkdir()
     (eco_home / "cron" / "output").mkdir()
-    monkeypatch.setenv("HERMES_HOME", str(eco_home))
+    monkeypatch.setenv("ECO_HOME", str(eco_home))
 
     import cron.jobs as jobs_mod
-    monkeypatch.setattr(jobs_mod, "HERMES_DIR", eco_home)
+    monkeypatch.setattr(jobs_mod, "ECO_DIR", eco_home)
     monkeypatch.setattr(jobs_mod, "CRON_DIR", eco_home / "cron")
     monkeypatch.setattr(jobs_mod, "JOBS_FILE", eco_home / "cron" / "jobs.json")
     monkeypatch.setattr(jobs_mod, "OUTPUT_DIR", eco_home / "cron" / "output")

@@ -34,9 +34,9 @@ class TestWriteDenyExactPaths:
         assert _is_write_denied(path) is True
 
     def test_eco_env(self):
-        # ``.env`` under the active HERMES_HOME (profile-aware, not just
+        # ``.env`` under the active ECO_HOME (profile-aware, not just
         # ``~/.eco``) must be write-denied. The hermetic test conftest
-        # points HERMES_HOME at a tempdir — resolve via get_eco_home()
+        # points ECO_HOME at a tempdir — resolve via get_eco_home()
         # to match the denylist.
         from eco_constants import get_eco_home
         path = str(get_eco_home() / ".env")
@@ -58,9 +58,9 @@ class TestWriteDenyExactPaths:
         global_env = root / ".env"
         global_env.write_text("OPENAI_API_KEY=sk-real\n")
 
-        monkeypatch.setenv("HERMES_HOME", str(profile_home))
+        monkeypatch.setenv("ECO_HOME", str(profile_home))
 
-        # Sanity check: HERMES_HOME does point to the profile dir, not the root.
+        # Sanity check: ECO_HOME does point to the profile dir, not the root.
         from eco_constants import get_eco_home, get_default_eco_root
         assert get_eco_home() == profile_home
         assert get_default_eco_root() == root

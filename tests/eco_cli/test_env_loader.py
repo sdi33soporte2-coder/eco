@@ -90,16 +90,16 @@ def test_main_import_applies_user_env_over_shell_values(tmp_path, monkeypatch):
     home = tmp_path / "eco"
     home.mkdir()
     (home / ".env").write_text(
-        "OPENAI_BASE_URL=https://new.example/v1\nHERMES_INFERENCE_PROVIDER=custom\n",
+        "OPENAI_BASE_URL=https://new.example/v1\nECO_INFERENCE_PROVIDER=custom\n",
         encoding="utf-8",
     )
 
-    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("ECO_HOME", str(home))
     monkeypatch.setenv("OPENAI_BASE_URL", "https://old.example/v1")
-    monkeypatch.setenv("HERMES_INFERENCE_PROVIDER", "openrouter")
+    monkeypatch.setenv("ECO_INFERENCE_PROVIDER", "openrouter")
 
     sys.modules.pop("eco_cli.main", None)
     importlib.import_module("eco_cli.main")
 
     assert os.getenv("OPENAI_BASE_URL") == "https://new.example/v1"
-    assert os.getenv("HERMES_INFERENCE_PROVIDER") == "custom"
+    assert os.getenv("ECO_INFERENCE_PROVIDER") == "custom"
