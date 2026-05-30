@@ -1,64 +1,45 @@
 <p align="center">
-  <img src="assets/banner.png" alt="ECO Agent" width="100%">
+  <img src="assets/banner.svg" alt="ECO Agent" width="100%">
 </p>
 
 # ECO Agent ☤
 
 <p align="center">
-  <a href="https://eco-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-eco--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
-  <a href="https://discord.gg/NousResearch"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/NousResearch/hermes-agent-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://nousresearch.com"><img src="https://img.shields.io/badge/Built%20by-Nous%20Research-blueviolet?style=for-the-badge" alt="Built by Nous Research"></a>
-  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
+  <a href="https://flowproject.ecosistemas.com.ve/#demo"><img src="https://img.shields.io/badge/Flow%20Project-ECO-E94560?style=for-the-badge" alt="Flow Project"></a>
+  <a href="https://github.com/sdi33soporte2-coder/eco/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
 </p>
 
-**The self-improving AI agent built by [Nous Research](https://nousresearch.com).** It's the only agent with a built-in learning loop — it creates skills from experience, improves them during use, nudges itself to persist knowledge, searches its own past conversations, and builds a deepening model of who you are across sessions. Run it on a $5 VPS, a GPU cluster, or serverless infrastructure that costs nearly nothing when idle. It's not tied to your laptop — talk to it from Telegram while it works on a cloud VM.
+**ECO es un agente autónomo para la gestión de proyectos, integrado con [Flow Project](https://flowproject.ecosistemas.com.ve/#demo).** Automatiza flujos de trabajo, coordina equipos y optimiza proyectos dentro del ecosistema Flow Project — desde la creación de tareas y seguimiento hasta reportes y comunicación.
 
-Use any model you want — [Nous Portal](https://portal.nousresearch.com), [OpenRouter](https://openrouter.ai) (200+ models), [NovitaAI](https://novita.ai) (AI-native cloud for Model API, Agent Sandbox, and GPU Cloud), [NVIDIA NIM](https://build.nvidia.com) (Nemotron), [Xiaomi MiMo](https://platform.xiaomimimo.com), [z.ai/GLM](https://z.ai), [Kimi/Moonshot](https://platform.moonshot.ai), [MiniMax](https://www.minimax.io), [Hugging Face](https://huggingface.co), OpenAI, or your own endpoint. Switch with `eco model` — no code changes, no lock-in.
+Conéctalo a tu instancia de Flow Project y empieza a delegar en lenguaje natural vía terminal, Telegram, Discord o WhatsApp.
 
 <table>
-<tr><td><b>A real terminal interface</b></td><td>Full TUI with multiline editing, slash-command autocomplete, conversation history, interrupt-and-redirect, and streaming tool output.</td></tr>
-<tr><td><b>Lives where you do</b></td><td>Telegram, Discord, Slack, WhatsApp, Signal, and CLI — all from a single gateway process. Voice memo transcription, cross-platform conversation continuity.</td></tr>
-<tr><td><b>A closed learning loop</b></td><td>Agent-curated memory with periodic nudges. Autonomous skill creation after complex tasks. Skills self-improve during use. FTS5 session search with LLM summarization for cross-session recall. <a href="https://github.com/plastic-labs/honcho">Honcho</a> dialectic user modeling. Compatible with the <a href="https://agentskills.io">agentskills.io</a> open standard.</td></tr>
-<tr><td><b>Scheduled automations</b></td><td>Built-in cron scheduler with delivery to any platform. Daily reports, nightly backups, weekly audits — all in natural language, running unattended.</td></tr>
-<tr><td><b>Delegates and parallelizes</b></td><td>Spawn isolated subagents for parallel workstreams. Write Python scripts that call tools via RPC, collapsing multi-step pipelines into zero-context-cost turns.</td></tr>
+<tr><td><b>Gestión de proyectos inteligente</b></td><td>Crea tareas, asigna responsables, establece fechas y monitorea el progreso directamente desde conversaciones.</td></tr>
+<tr><td><b>Integración Flow Project</b></td><td>Conéctate con tu workspace de Flow Project para leer, crear y actualizar proyectos, tareas y recursos.</td></tr>
+<tr><td><b>Multi-plataforma</b></td><td>Habla con ECO desde tu terminal, Telegram, Discord, Slack, WhatsApp o Signal — siempre sincronizado.</td></tr>
+<tr><td><b>Automatizaciones programadas</b></td><td>Programa recordatorios, reportes diarios/semanales, y auditorías de proyecto — todo en lenguaje natural.</td></tr>
+<tr><td><b>Delegación y paralelismo</b></td><td>Lanza subagentes para tareas independientes — ECO orquesta, los subagentes ejecutan.</td></tr>
 <tr><td><b>Runs anywhere, not just your laptop</b></td><td>Six terminal backends — local, Docker, SSH, Singularity, Modal, and Daytona. Daytona and Modal offer serverless persistence — your agent's environment hibernates when idle and wakes on demand, costing nearly nothing between sessions. Run it on a $5 VPS or a GPU cluster.</td></tr>
-<tr><td><b>Research-ready</b></td><td>Batch trajectory generation, trajectory compression for training the next generation of tool-calling models.</td></tr>
-</table>
 
----
+</table>
 
 ## Quick Install
 
-### Linux, macOS, WSL2, Termux
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent-agent/main/scripts/install.sh | bash
+git clone https://github.com/sdi33soporte2-coder/eco.git
+cd eco
+pip install -e ".[cron,cli,pty,mcp]"
+
+# Or use the auto-installer:
+curl -fsSL https://raw.githubusercontent.com/sdi33soporte2-coder/eco/main/scripts/install.sh | bash
 ```
-
-### Windows (native, PowerShell) — Early Beta
-
-> **Heads up:** Native Windows support is **early beta**. It installs and runs, but hasn't been road-tested as broadly as our Linux/macOS/WSL2 paths. Please [file issues](https://github.com/NousResearch/hermes-agent-agent/issues) when you hit rough edges. For the most battle-tested Windows setup today, run the Linux/macOS one-liner above inside **WSL2**.
-
-Run this in PowerShell:
-
-```powershell
-iex (irm https://raw.githubusercontent.com/NousResearch/hermes-agent-agent/main/scripts/install.ps1)
-```
-
-The installer handles everything: uv, Python 3.11, Node.js, ripgrep, ffmpeg, **and a portable Git Bash** (MinGit, unpacked to `%LOCALAPPDATA%\eco\git` — no admin required, completely isolated from any system Git install).  ECO uses this bundled Git Bash to run shell commands.
-
-If you already have Git installed, the installer detects it and uses that instead.  Otherwise a ~45MB MinGit download is all you need — it won't touch or interfere with any system Git.
-
-> **Android / Termux:** The tested manual path is documented in the [Termux guide](https://eco-agent.nousresearch.com/docs/getting-started/termux). On Termux, ECO installs a curated `.[termux]` extra because the full `.[all]` extra currently pulls Android-incompatible voice dependencies.
->
-> **Windows:** Native Windows is supported as an **early beta** — the PowerShell one-liner above installs everything, but expect rough edges and please file issues when you hit them. If you'd rather use WSL2 (our most battle-tested Windows path), the Linux command works there too. Native Windows install lives under `%LOCALAPPDATA%\eco`; WSL2 installs under `~/.eco` as on Linux.  The only ECO feature that currently needs WSL2 specifically is the browser-based dashboard chat pane (it uses a POSIX PTY — classic CLI and gateway both run natively).
 
 After installation:
 
 ```bash
-source ~/.bashrc    # reload shell (or: source ~/.zshrc)
-eco              # start chatting!
+eco           # start chatting!
+eco model     # choose your LLM provider
+eco setup     # full setup wizard
 ```
 
 ---
@@ -66,145 +47,43 @@ eco              # start chatting!
 ## Getting Started
 
 ```bash
-eco              # Interactive CLI — start a conversation
-eco model        # Choose your LLM provider and model
-eco tools        # Configure which tools are enabled
-eco config set   # Set individual config values
-eco gateway      # Start the messaging gateway (Telegram, Discord, etc.)
-eco setup        # Run the full setup wizard (configures everything at once)
-eco claw migrate # Migrate from OpenClaw (if coming from OpenClaw)
-eco update       # Update to the latest version
-eco doctor       # Diagnose any issues
+eco                   # Interactive CLI
+eco model             # Choose provider and model
+eco config set        # Configure values
+eco tools             # Enable/disable tools
+eco gateway           # Start messaging gateway
+eco doctor            # System diagnostics
 ```
-
-📖 **[Full documentation →](https://eco-agent.nousresearch.com/docs/)**
 
 ---
 
-## Skip the API-key collection — Nous Portal
+## Integration with Flow Project
 
-ECO works with whatever provider you want — that's not changing. But if you'd rather not collect five separate API keys for the model, web search, image generation, TTS, and a cloud browser, **[Nous Portal](https://portal.nousresearch.com)** covers all of them under one subscription:
+ECO connects to your [Flow Project](https://flowproject.ecosistemas.com.ve/#demo) instance to manage:
 
-- **300+ models** — pick any of them with `/model <name>`
-- **Tool Gateway** — web search (Firecrawl), image generation (FAL), text-to-speech (OpenAI), cloud browser (Browser Use), all routed through your sub. No extra accounts.
+- **Projects** — create, list, update status
+- **Tasks** — assign, prioritize, schedule, complete
+- **Resources** — manage team members and workloads
+- **Reports** — generate progress and productivity summaries
 
-One command from a fresh install:
+Configure during `eco setup` or directly:
 
 ```bash
-eco setup --portal
+eco config set flowproject.url https://tu-instancia.flowproject.com
+eco config set flowproject.api_key tu-api-key
 ```
-
-That logs you in via OAuth, sets Nous as your provider, and turns on the Tool Gateway. Check what's wired up any time with `eco portal status`. Full details on the [Tool Gateway docs page](https://eco-agent.nousresearch.com/docs/user-guide/features/tool-gateway).
-
-You can still bring your own keys per-tool whenever you want — the gateway is per-backend, not all-or-nothing.
-
----
-
-## CLI vs Messaging Quick Reference
-
-ECO has two entry points: start the terminal UI with `eco`, or run the gateway and talk to it from Telegram, Discord, Slack, WhatsApp, Signal, or Email. Once you're in a conversation, many slash commands are shared across both interfaces.
-
-| Action | CLI | Messaging platforms |
-|---------|-----|---------------------|
-| Start chatting | `eco` | Run `eco gateway setup` + `eco gateway start`, then send the bot a message |
-| Start fresh conversation | `/new` or `/reset` | `/new` or `/reset` |
-| Change model | `/model [provider:model]` | `/model [provider:model]` |
-| Set a personality | `/personality [name]` | `/personality [name]` |
-| Retry or undo the last turn | `/retry`, `/undo` | `/retry`, `/undo` |
-| Compress context / check usage | `/compress`, `/usage`, `/insights [--days N]` | `/compress`, `/usage`, `/insights [days]` |
-| Browse skills | `/skills` or `/<skill-name>` | `/<skill-name>` |
-| Interrupt current work | `Ctrl+C` or send a new message | `/stop` or send a new message |
-| Platform-specific status | `/platforms` | `/status`, `/sethome` |
-
-For the full command lists, see the [CLI guide](https://eco-agent.nousresearch.com/docs/user-guide/cli) and the [Messaging Gateway guide](https://eco-agent.nousresearch.com/docs/user-guide/messaging).
 
 ---
 
 ## Documentation
 
-All documentation lives at **[eco-agent.nousresearch.com/docs](https://eco-agent.nousresearch.com/docs/)**:
-
-| Section | What's Covered |
-|---------|---------------|
-| [Quickstart](https://eco-agent.nousresearch.com/docs/getting-started/quickstart) | Install → setup → first conversation in 2 minutes |
-| [CLI Usage](https://eco-agent.nousresearch.com/docs/user-guide/cli) | Commands, keybindings, personalities, sessions |
-| [Configuration](https://eco-agent.nousresearch.com/docs/user-guide/configuration) | Config file, providers, models, all options |
-| [Messaging Gateway](https://eco-agent.nousresearch.com/docs/user-guide/messaging) | Telegram, Discord, Slack, WhatsApp, Signal, Home Assistant |
-| [Security](https://eco-agent.nousresearch.com/docs/user-guide/security) | Command approval, DM pairing, container isolation |
-| [Tools & Toolsets](https://eco-agent.nousresearch.com/docs/user-guide/features/tools) | 40+ tools, toolset system, terminal backends |
-| [Skills System](https://eco-agent.nousresearch.com/docs/user-guide/features/skills) | Procedural memory, Skills Hub, creating skills |
-| [Memory](https://eco-agent.nousresearch.com/docs/user-guide/features/memory) | Persistent memory, user profiles, best practices |
-| [MCP Integration](https://eco-agent.nousresearch.com/docs/user-guide/features/mcp) | Connect any MCP server for extended capabilities |
-| [Cron Scheduling](https://eco-agent.nousresearch.com/docs/user-guide/features/cron) | Scheduled tasks with platform delivery |
-| [Context Files](https://eco-agent.nousresearch.com/docs/user-guide/features/context-files) | Project context that shapes every conversation |
-| [Architecture](https://eco-agent.nousresearch.com/docs/developer-guide/architecture) | Project structure, agent loop, key classes |
-| [Contributing](https://eco-agent.nousresearch.com/docs/developer-guide/contributing) | Development setup, PR process, code style |
-| [CLI Reference](https://eco-agent.nousresearch.com/docs/reference/cli-commands) | All commands and flags |
-| [Environment Variables](https://eco-agent.nousresearch.com/docs/reference/environment-variables) | Complete env var reference |
-
----
-
-## Migrating from OpenClaw
-
-If you're coming from OpenClaw, ECO can automatically import your settings, memories, skills, and API keys.
-
-**During first-time setup:** The setup wizard (`eco setup`) automatically detects `~/.openclaw` and offers to migrate before configuration begins.
-
-**Anytime after install:**
-
-```bash
-eco claw migrate              # Interactive migration (full preset)
-eco claw migrate --dry-run    # Preview what would be migrated
-eco claw migrate --preset user-data   # Migrate without secrets
-eco claw migrate --overwrite  # Overwrite existing conflicts
-```
-
-What gets imported:
-- **SOUL.md** — persona file
-- **Memories** — MEMORY.md and USER.md entries
-- **Skills** — user-created skills → `~/.eco/skills/openclaw-imports/`
-- **Command allowlist** — approval patterns
-- **Messaging settings** — platform configs, allowed users, working directory
-- **API keys** — allowlisted secrets (Telegram, OpenRouter, OpenAI, Anthropic, ElevenLabs)
-- **TTS assets** — workspace audio files
-- **Workspace instructions** — AGENTS.md (with `--workspace-target`)
-
-See `eco claw migrate --help` for all options, or use the `openclaw-migration` skill for an interactive agent-guided migration with dry-run previews.
-
----
-
-## Contributing
-
-We welcome contributions! See the [Contributing Guide](https://eco-agent.nousresearch.com/docs/developer-guide/contributing) for development setup, code style, and PR process.
-
-Quick start for contributors — clone and go with `setup-eco.sh`:
-
-```bash
-git clone https://github.com/NousResearch/hermes-agent-agent.git
-cd eco-agent
-./setup-eco.sh     # installs uv, creates venv, installs .[all], symlinks ~/.local/bin/eco
-./eco              # auto-detects the venv, no need to `source` first
-```
-
-Manual path (equivalent to the above):
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv venv .venv --python 3.11
-source .venv/bin/activate
-uv pip install -e ".[all,dev]"
-scripts/run_tests.sh
-```
-
----
-
-## Community
-
-- 💬 [Discord](https://discord.gg/NousResearch)
-- 📚 [Skills Hub](https://agentskills.io)
-- 🐛 [Issues](https://github.com/NousResearch/hermes-agent-agent/issues)
-- 🔌 [computer-use-linux](https://github.com/avifenesh/computer-use-linux) — Linux desktop-control MCP server for ECO and other MCP hosts, with AT-SPI accessibility trees, Wayland/X11 input, screenshots, and compositor window targeting.
-- 🔌 [HermesClaw](https://github.com/AaronWong1999/hermesclaw) — Community WeChat bridge: Run ECO Agent and OpenClaw on the same WeChat account.
+| Section | Contents |
+|---------|----------|
+| [Flow Project](https://flowproject.ecosistemas.com.ve/#demo) | Project management platform |
+| [CLI Usage](docs/cli.md) | Commands, keybindings, sessions |
+| [Configuration](docs/config.md) | Config file, providers, models |
+| [Messaging Gateway](docs/gateway.md) | Telegram, Discord, Slack, WhatsApp |
+| [Skills System](docs/skills.md) | Procedural memory, creating skills |
 
 ---
 
@@ -212,4 +91,8 @@ scripts/run_tests.sh
 
 MIT — see [LICENSE](LICENSE).
 
-Built by [Nous Research](https://nousresearch.com).
+---
+
+<p align="center">
+  <a href="https://flowproject.ecosistemas.com.ve/#demo">Flow Project</a> · Intelligent project management
+</p>
